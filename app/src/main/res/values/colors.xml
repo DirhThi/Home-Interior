@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="warm_white">#F5F0EB</color>
+    <color name="terracotta">#B5451B</color>
+    <color name="terracotta_dark">#8A3210</color>
+    <color name="sage">#4A7C59</color>
+    <color name="deep_espresso">#2C1810</color>
+    <color name="gold">#C4A028</color>
+    <color name="parchment">#D9CFC4</color>
+</resources>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">InteriorAI 3D</string>
+    <string name="app_tagline">Design your dream space</string>
+
+    <!-- Screens -->
+    <string name="home">Home</string>
+    <string name="catalog">Catalog</string>
+    <string name="measure">Measure</string>
+    <string name="designs">Designs</string>
+    <string name="ai">AI</string>
+
+    <!-- Features -->
+    <string name="add_furniture">Add Furniture</string>
+    <string name="view_in_ar">View in AR</string>
+    <string name="room_designer">Room Designer</string>
+    <string name="new_design">New Design</string>
+    <string name="measure_room">Measure Room</string>
+    <string name="ai_suggestions">AI Suggestions</string>
+    <string name="saved_designs">Saved Designs</string>
+    <string name="color_picker">Colors &amp; Materials</string>
+
+    <!-- Measurement -->
+    <string name="ar_scan">AR Room Scan</string>
+    <string name="manual_entry">Manual Entry</string>
+    <string name="width">Width (cm)</string>
+    <string name="length">Length (cm)</string>
+    <string name="height">Ceiling Height (cm)</string>
+    <string name="start_scan">Start AR Scan</string>
+    <string name="scan_complete">Scan Complete</string>
+    <string name="use_measurements">Use These Measurements</string>
+    <string name="rescan">Re-scan</string>
+
+    <!-- Furniture -->
+    <string name="furniture_catalog">Furniture Catalog</string>
+    <string name="search_hint">Search sofas, chairs, tables…</string>
+    <string name="add_to_room">Add to Room</string>
+    <string name="available_colors">Available Colors</string>
+
+    <!-- Room Designer -->
+    <string name="rotation">Rotation</string>
+    <string name="scale">Scale</string>
+    <string name="delete_furniture">Remove item</string>
+    <string name="save_design">Save Design</string>
+    <string name="share">Share</string>
+
+    <!-- AR -->
+    <string name="ar_mode">AR Mode</string>
+    <string name="ar_placement_hint">Tap to place furniture</string>
+
+    <!-- AI -->
+    <string name="apply_style">Apply Style</string>
+    <string name="preview">Preview</string>
+
+    <!-- General -->
+    <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
+    <string name="back">Back</string>
+    <string name="apply">Apply</string>
+    <string name="new_room">New Room</string>
+    <string name="create_room">Create Room</string>
+    <string name="room_name">Room name</string>
+    <string name="no_items">No items found</string>
+</resources>
