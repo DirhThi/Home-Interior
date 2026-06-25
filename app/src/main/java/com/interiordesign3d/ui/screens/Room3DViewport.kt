@@ -3,6 +3,7 @@ package com.interiordesign3d.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
@@ -37,6 +38,9 @@ fun RoomViewport3D(
     onEditFurniture: (String) -> Unit = {},
     onMoveFurniture: (String, Float, Float) -> Unit,
     onMoveWallFurniture: (String, Float, Float, Float) -> Unit,
+    wallColorHex: String = "#F5F0EB",
+    onWallColorChange: (String) -> Unit = {},
+    gridMinorCm: Float = 50f,
     modifier: Modifier = Modifier
 ) {
     var cameraAzimuth   by remember { mutableStateOf(35f) }
@@ -44,6 +48,12 @@ fun RoomViewport3D(
     var zoom            by remember { mutableStateOf(1f) }
     var draggingId      by remember { mutableStateOf<String?>(null) }
     var canvasSize      by remember { mutableStateOf(Size.Zero) }
+
+    // Wall appearance config
+    var seeThrough      by remember { mutableStateOf(false) }
+    var wallThicknessCm by remember { mutableStateOf(12f) }
+    var showWallConfig  by remember { mutableStateOf(false) }
+    val wallColor = parseColor(wallColorHex, Color(0xFFF5F0EB))
 
     LaunchedEffect(viewMode) {
         when (viewMode) {
@@ -216,7 +226,11 @@ fun RoomViewport3D(
                 zoom = zoom,
                 canvasSize = size,
                 roomPolygons = roomPolygons,
-                openings = floorPlan.openings
+                openings = floorPlan.openings,
+                wallColorOverride = wallColor,
+                seeThrough = seeThrough,
+                wallThicknessCm = wallThicknessCm,
+                gridMinorCm = gridMinorCm
             )
         }
 
@@ -238,6 +252,12 @@ fun RoomViewport3D(
 
         Column(Modifier.align(Alignment.BottomStart).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SmallFloatingActionButton(onClick = { showWallConfig = !showWallConfig },
+                containerColor = if (showWallConfig) MaterialTheme.colorScheme.primary
+                                 else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+            ) { Icon(Icons.Filled.Tune, "Wall settings", Modifier.size(18.dp),
+                tint = if (showWallConfig) MaterialTheme.colorScheme.onPrimary
+                       else LocalContentColor.current) }
             SmallFloatingActionButton(onClick = { zoom = (zoom * 1.2f).coerceAtMost(3f) },
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
             ) { Icon(Icons.Filled.ZoomIn, "Zoom In", Modifier.size(18.dp)) }
@@ -261,6 +281,67 @@ fun RoomViewport3D(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+
+        AnimatedVisibility(
+            visible = showWallConfig,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit  = fadeOut() + slideOutVertically { it / 2 }
+        ) {
+            Surface(shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                tonalElevation = 6.dp) {
+                Column(Modifier.padding(14.dp).width(240.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+                    Text("Walls", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold)
+
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()) {
+                        Column {
+                            Text("See-through walls",
+                                style = MaterialTheme.typography.labelLarge)
+                            Text(if (seeThrough) "X-ray view" else "Solid opaque walls",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = seeThrough, onCheckedChange = { seeThrough = it })
+                    }
+
+                    Column {
+                        Text("Thickness  ${wallThicknessCm.toInt()} cm",
+                            style = MaterialTheme.typography.labelMedium)
+                        Slider(value = wallThicknessCm, onValueChange = { wallThicknessCm = it },
+                            valueRange = 4f..30f)
+                    }
+
+                    Text("Wall color", style = MaterialTheme.typography.labelMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()) {
+                        listOf("#F5F0EB", "#E3D5C0", "#CFE3DC", "#D7E3F0",
+                               "#EAD7E0", "#F0D7CB", "#FFFFFF", "#9AA0A6").forEach { hex ->
+                            val c = parseColor(hex, Color.White)
+                            val sel = hex.equals(wallColorHex, ignoreCase = true)
+                            Box(Modifier
+                                .size(24.dp)
+                                .background(c, CircleShape)
+                                .border(
+                                    width = if (sel) 2.5.dp else 1.dp,
+                                    color = if (sel) MaterialTheme.colorScheme.primary
+                                            else Color.Black.copy(alpha = 0.15f),
+                                    shape = CircleShape)
+                                .pointerInput(hex) {
+                                    awaitEachGesture {
+                                        awaitFirstDown(); onWallColorChange(hex)
+                                    }
+                                })
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -276,7 +357,11 @@ fun DrawScope.drawAllRooms3D(
     zoom: Float,
     canvasSize: Size,
     roomPolygons: List<List<WallPoint>> = emptyList(),
-    openings: List<WallOpening> = emptyList()
+    openings: List<WallOpening> = emptyList(),
+    wallColorOverride: Color? = null,
+    seeThrough: Boolean = false,
+    wallThicknessCm: Float = 12f,
+    gridMinorCm: Float = 50f
 ) {
     val allPoints = rooms.flatMap { it.wallPoints }
     if (allPoints.isEmpty()) return
@@ -301,6 +386,68 @@ fun DrawScope.drawAllRooms3D(
     }
     fun projectPt(pt: WallPoint, yH: Float = 0f) = project(pt.x - globalCX, yH, pt.y - globalCZ)
 
+    // ── Ground plane + world grid (matches the 2D plan: minor = gridMinorCm, major every 5) ──
+    // The site fills the whole viewport: we inverse-project the screen corners onto y=0 to get
+    // exactly the visible world region, then grid only that. A zoom LOD keeps on-screen cell
+    // spacing ≥ ~6 px so the line count stays bounded (light) no matter how far you zoom out.
+    run {
+        val cosAz = cos(azRad).toFloat(); val sinAz = sin(azRad).toFloat()
+        val sinEl = sin(elRad).toFloat().coerceAtLeast(0.12f)
+        fun invWorld(sx: Float, sy: Float): Pair<Float, Float> {
+            val rx = (sx - cx) / scale
+            val rz = (cy - sy) / (scale * sinEl)
+            return (rx * cosAz + rz * sinAz + globalCX) to (rx * sinAz - rz * cosAz + globalCZ)
+        }
+        val cs = listOf(invWorld(0f, 0f), invWorld(canvasSize.width, 0f),
+                        invWorld(0f, canvasSize.height), invWorld(canvasSize.width, canvasSize.height))
+        val cenX = (minX + maxX) / 2f; val cenZ = (minY + maxY) / 2f
+        val cap = maxOf(spanW, spanL) * 8f + 3000f   // clamp span at shallow angles (safety)
+        val wMinX = cs.minOf { it.first }.coerceAtLeast(cenX - cap)
+        val wMaxX = cs.maxOf { it.first }.coerceAtMost(cenX + cap)
+        val wMinZ = cs.minOf { it.second }.coerceAtLeast(cenZ - cap)
+        val wMaxZ = cs.maxOf { it.second }.coerceAtMost(cenZ + cap)
+
+        // LOD: finest step whose most-compressed on-screen spacing stays ≥ 6 px
+        val majorEvery = 5
+        var minorCm = gridMinorCm
+        while (minorCm * scale * sinEl < 6f) minorCm *= majorEvery
+
+        val gMinX = floor(wMinX / minorCm) * minorCm; val gMaxX = ceil(wMaxX / minorCm) * minorCm
+        val gMinZ = floor(wMinZ / minorCm) * minorCm; val gMaxZ = ceil(wMaxZ / minorCm) * minorCm
+        fun g(px: Float, pz: Float) = project(px - globalCX, 0f, pz - globalCZ)
+
+        val groundPath = Path().apply {
+            val p0 = g(gMinX, gMinZ); val p1 = g(gMaxX, gMinZ)
+            val p2 = g(gMaxX, gMaxZ); val p3 = g(gMinX, gMaxZ)
+            moveTo(p0.x, p0.y); lineTo(p1.x, p1.y); lineTo(p2.x, p2.y); lineTo(p3.x, p3.y); close()
+        }
+        drawPath(groundPath, Color(0xFFDED8CF))
+
+        var x = gMinX
+        while (x <= gMaxX + 0.1f) {
+            val major = round(x / minorCm).toInt() % majorEvery == 0
+            drawLine(Color.Black.copy(alpha = if (major) 0.16f else 0.06f),
+                g(x, gMinZ), g(x, gMaxZ), if (major) 1.3f else 0.6f)
+            x += minorCm
+        }
+        var z = gMinZ
+        while (z <= gMaxZ + 0.1f) {
+            val major = round(z / minorCm).toInt() % majorEvery == 0
+            drawLine(Color.Black.copy(alpha = if (major) 0.16f else 0.06f),
+                g(gMinX, z), g(gMaxX, z), if (major) 1.3f else 0.6f)
+            z += minorCm
+        }
+
+        // Orientation gizmo (one major cell) just outside the house corner — warm = +X, cool = +Z
+        val ax = minX - gridMinorCm; val az = minY - gridMinorCm; val axisLen = gridMinorCm * majorEvery
+        drawLine(Color(0xFFD96846).copy(alpha = 0.7f), g(ax, az), g(ax + axisLen, az), 3f)
+        drawLine(Color(0xFF3E7CB1).copy(alpha = 0.7f), g(ax, az), g(ax, az + axisLen), 3f)
+    }
+
+    // Opaque near walls (the ones between viewer and interior) are drawn AFTER furniture so
+    // they occlude it like a solid room — no auto-hide. Collected here, flushed at the end.
+    val nearWallDraws = mutableListOf<() -> Unit>()
+
     rooms.forEachIndexed { roomIdx, room ->
         val pts = room.wallPoints
 
@@ -310,76 +457,144 @@ fun DrawScope.drawAllRooms3D(
             pts.drop(1).forEach { p -> val sp = projectPt(p); lineTo(sp.x, sp.y) }
             close()
         }
-        drawPath(floorPath, room.floorColor.copy(alpha = 0.78f))
+        // Translucent floor so the shared world grid reads through inside the house too
+        drawPath(floorPath, room.floorColor.copy(alpha = 0.62f))
         drawPath(floorPath, Color.Black.copy(alpha = 0.10f), style = Stroke(1f))
 
-        // Floor grid
-        val rMinX = pts.minOf { it.x }; val rMaxX = pts.maxOf { it.x }
-        val rMinY = pts.minOf { it.y }; val rMaxY = pts.maxOf { it.y }
-        val rW = rMaxX - rMinX; val rL = rMaxY - rMinY
-        for (i in 0..5) {
-            val t = i / 5f
-            drawLine(Color.Black.copy(alpha = 0.06f),
-                project(rMinX + rW * t - globalCX, 0f, rMinY - globalCZ),
-                project(rMinX + rW * t - globalCX, 0f, rMaxY - globalCZ), 0.7f)
-            drawLine(Color.Black.copy(alpha = 0.06f),
-                project(rMinX - globalCX, 0f, rMinY + rL * t - globalCZ),
-                project(rMaxX - globalCX, 0f, rMinY + rL * t - globalCZ), 0.7f)
+        // Walls — solid prisms with real thickness, back to front
+        val wallC = wallColorOverride ?: room.wallColor
+        val rCx = pts.map { it.x }.average().toFloat()
+        val rCz = pts.map { it.y }.average().toFloat()
+        val nPts = pts.size
+
+        fun edgeOutward(a: WallPoint, b: WallPoint): Pair<Float, Float> {
+            val ex = b.x - a.x; val ez = b.y - a.y
+            val l = sqrt(ex * ex + ez * ez).coerceAtLeast(0.001f)
+            var nx = -ez / l; var nz = ex / l
+            val mxx = (a.x + b.x) / 2f; val mzz = (a.y + b.y) / 2f
+            if (nx * (rCx - mxx) + nz * (rCz - mzz) > 0f) { nx = -nx; nz = -nz }
+            return nx to nz
+        }
+        // Per-node outer corner = miter point shared by the two adjacent walls, so the outer
+        // faces meet at corners instead of leaving a gap.
+        val outerNodes = pts.indices.map { i ->
+            val prev = pts[(i - 1 + nPts) % nPts]; val cur = pts[i]; val nxt = pts[(i + 1) % nPts]
+            val (n1x, n1z) = edgeOutward(prev, cur)
+            val (n2x, n2z) = edgeOutward(cur, nxt)
+            var mx = n1x + n2x; var mz = n1z + n2z
+            val ml = sqrt(mx * mx + mz * mz)
+            if (ml < 1e-3f) {
+                WallPoint(cur.x + n2x * wallThicknessCm, cur.y + n2z * wallThicknessCm)
+            } else {
+                mx /= ml; mz /= ml
+                val cosA = (mx * n2x + mz * n2z).coerceAtLeast(0.25f)  // clamp to cap miter length on sharp corners
+                val s = wallThicknessCm / cosA
+                WallPoint(cur.x + mx * s, cur.y + mz * s)
+            }
         }
 
-        // Walls — back to front, with door/window openings
         data class WallSeg(val a: WallPoint, val b: WallPoint, val depth: Float, val edgeIdx: Int)
         val segments = pts.indices.map { i ->
             val a = pts[i]; val b = pts[(i + 1) % pts.size]
-            WallSeg(a, b, ((a.x + b.x) / 2f - globalCX) * sin(azRad).toFloat() +
-                          ((a.y + b.y) / 2f - globalCZ) * cos(azRad).toFloat(), i)
+            val mx = (a.x + b.x) / 2f - globalCX; val mz = (a.y + b.y) / 2f - globalCZ
+            WallSeg(a, b, mx * sin(azRad).toFloat() - mz * cos(azRad).toFloat(), i)
         }.sortedByDescending { it.depth }
 
         segments.forEach { wallSeg ->
             val (a, b, _, edgeIdx) = wallSeg
             val dx = b.x - a.x; val dz = b.y - a.y
             val len = sqrt(dx * dx + dz * dz).coerceAtLeast(0.001f)
-            val dot = (dz * sin(azRad).toFloat() + (-dx) * cos(azRad).toFloat()) / len
-            val bright    = if (dot < 0f) 1.0f else 0.72f
-            val wallAlpha = if (dot < 0f) 0.88f else 0.55f
 
-            fun drawWallSection(t0: Float, t1: Float, yBot: Float, yTop: Float) {
-                if (t0 >= t1 || yBot >= yTop) return
-                val p0 = WallPoint(a.x + dx * t0, a.y + dz * t0)
-                val p1 = WallPoint(a.x + dx * t1, a.y + dz * t1)
-                val bl2 = projectPt(p0, yBot); val br2 = projectPt(p1, yBot)
-                val tr2 = projectPt(p1, yTop); val tl2 = projectPt(p0, yTop)
-                val wp = Path().apply {
-                    moveTo(tl2.x, tl2.y); lineTo(tr2.x, tr2.y)
-                    lineTo(br2.x, br2.y); lineTo(bl2.x, bl2.y); close()
-                }
-                drawPath(wp, (room.wallColor * bright).copy(alpha = wallAlpha))
-                drawPath(wp, Color.Black.copy(alpha = 0.07f), style = Stroke(1f))
+            // outward normal (points away from room centroid) → wall grows outward, floor stays put
+            var nX = -dz / len; var nZ = dx / len
+            val mx = (a.x + b.x) / 2f; val mz = (a.y + b.y) / 2f
+            if (nX * (rCx - mx) + nZ * (rCz - mz) > 0f) { nX = -nX; nZ = -nZ }
+            val oX = nX * wallThicknessCm; val oZ = nZ * wallThicknessCm
+            val outerStart = outerNodes[edgeIdx]
+            val outerEnd   = outerNodes[(edgeIdx + 1) % nPts]
+
+            // A wall is "near" when its outward normal points toward the camera, i.e. it
+            // sits between the viewer and the interior. Test it against the projection's own
+            // depth direction (rz = x·sin(az) − z·cos(az), larger = farther) so the result is
+            // consistent at every azimuth — in solid mode exactly the front walls auto-hide.
+            val outwardDepth = nX * sin(azRad).toFloat() - nZ * cos(azRad).toFloat()
+            val cameraFacing = outwardDepth < 0f
+
+            val faceAlpha = when {
+                seeThrough -> if (cameraFacing) 0.30f else 0.55f
+                else       -> 1.0f
             }
 
-            val edgeOpenings = openings.filter { it.roomIdx == roomIdx && it.edgeIdx == edgeIdx }
-                .sortedBy { it.t }
-
-            if (edgeOpenings.isEmpty()) {
-                drawWallSection(0f, 1f, 0f, roomHeight)
-            } else {
-                var tPrev = 0f
-                for (op in edgeOpenings) {
-                    val halfT  = (op.widthCm / 2f) / len.coerceAtLeast(1f)
-                    val tStart = (op.t - halfT).coerceAtLeast(0f)
-                    val tEnd   = (op.t + halfT).coerceAtMost(1f)
-                    if (tStart > tPrev) drawWallSection(tPrev, tStart, 0f, roomHeight)
-                    when (op.type) {
-                        OpeningType.DOOR -> { /* full-height gap — draw nothing */ }
-                        OpeningType.WINDOW -> {
-                            drawWallSection(tStart, tEnd, 0f, 90f)             // below sill
-                            drawWallSection(tStart, tEnd, 210f, roomHeight)    // above header
-                        }
+            val renderSeg: () -> Unit = render@{
+                fun face(p0: Offset, p1: Offset, p2: Offset, p3: Offset, c: Color) {
+                    val path = Path().apply {
+                        moveTo(p0.x, p0.y); lineTo(p1.x, p1.y)
+                        lineTo(p2.x, p2.y); lineTo(p3.x, p3.y); close()
                     }
-                    tPrev = tEnd
+                    drawPath(path, c)
+                    drawPath(path, Color.Black.copy(alpha = 0.08f), style = Stroke(1f))
                 }
-                if (tPrev < 1f) drawWallSection(tPrev, 1f, 0f, roomHeight)
+
+                fun drawWallSection(t0: Float, t1: Float, yBot: Float, yTop: Float) {
+                    if (t0 >= t1 || yBot >= yTop) return
+                    val ax0 = a.x + dx * t0; val az0 = a.y + dz * t0
+                    val ax1 = a.x + dx * t1; val az1 = a.y + dz * t1
+                    fun pp(px: Float, pz: Float, y: Float) = project(px - globalCX, y, pz - globalCZ)
+
+                    // inner face (room side)
+                    val iBL = pp(ax0, az0, yBot); val iBR = pp(ax1, az1, yBot)
+                    val iTR = pp(ax1, az1, yTop); val iTL = pp(ax0, az0, yTop)
+                    // outer face: at a true corner (t=0 / t=1) use the shared miter point so walls
+                    // join cleanly; mid-edge (opening reveals) use the plain parallel offset.
+                    val o0x = if (t0 <= 1e-4f) outerStart.x else ax0 + oX
+                    val o0z = if (t0 <= 1e-4f) outerStart.y else az0 + oZ
+                    val o1x = if (t1 >= 1f - 1e-4f) outerEnd.x else ax1 + oX
+                    val o1z = if (t1 >= 1f - 1e-4f) outerEnd.y else az1 + oZ
+                    val oBL = pp(o0x, o0z, yBot); val oBR = pp(o1x, o1z, yBot)
+                    val oTR = pp(o1x, o1z, yTop); val oTL = pp(o0x, o0z, yTop)
+
+                    val innerC = (wallC * (if (cameraFacing) 0.82f else 0.92f)).copy(alpha = faceAlpha)
+                    val outerC = (wallC * 0.60f).copy(alpha = faceAlpha)
+                    val jambC  = (wallC * 0.70f).copy(alpha = faceAlpha)
+                    val capC   = wallC.copy(alpha = faceAlpha)
+
+                    // back vertical face first, side jambs, front vertical face, then top cap on top.
+                    // For a near wall the camera sees the OUTER side, so it becomes the front face.
+                    if (cameraFacing) face(iTL, iTR, iBR, iBL, innerC) else face(oTL, oTR, oBR, oBL, outerC)
+                    face(iTL, oTL, oBL, iBL, jambC)
+                    face(iTR, oTR, oBR, iBR, jambC)
+                    if (cameraFacing) face(oTL, oTR, oBR, oBL, outerC) else face(iTL, iTR, iBR, iBL, innerC)
+                    face(iTL, iTR, oTR, oTL, capC)
+                }
+
+                val edgeOpenings = openings.filter { it.roomIdx == roomIdx && it.edgeIdx == edgeIdx }
+                    .sortedBy { it.t }
+
+                if (edgeOpenings.isEmpty()) {
+                    drawWallSection(0f, 1f, 0f, roomHeight)
+                } else {
+                    var tPrev = 0f
+                    for (op in edgeOpenings) {
+                        val halfT  = (op.widthCm / 2f) / len.coerceAtLeast(1f)
+                        val tStart = (op.t - halfT).coerceAtLeast(0f)
+                        val tEnd   = (op.t + halfT).coerceAtMost(1f)
+                        if (tStart > tPrev) drawWallSection(tPrev, tStart, 0f, roomHeight)
+                        when (op.type) {
+                            OpeningType.DOOR -> { /* full-height gap — draw nothing */ }
+                            OpeningType.WINDOW -> {
+                                drawWallSection(tStart, tEnd, 0f, 90f)             // below sill
+                                drawWallSection(tStart, tEnd, 210f, roomHeight)    // above header
+                            }
+                        }
+                        tPrev = tEnd
+                    }
+                    if (tPrev < 1f) drawWallSection(tPrev, 1f, 0f, roomHeight)
+                }
             }
+
+            // Far walls draw now (behind furniture); opaque near walls defer until after furniture
+            // so they occlude it. In see-through mode everything draws now (transparent anyway).
+            if (!seeThrough && cameraFacing) nearWallDraws.add(renderSeg) else renderSeg()
         }
     }
 
@@ -390,6 +605,9 @@ fun DrawScope.drawAllRooms3D(
     furniture.filter { it.isWallMounted }.forEach { item ->
         drawFurnitureBox(item, selectedId, ::project, scale, globalCX, globalCZ, roomPolygons)
     }
+
+    // Flush opaque near walls last so they sit in front of the interior (solid-room look)
+    nearWallDraws.forEach { it() }
 }
 
 // ─── Furniture Box ────────────────────────────────────────────────────────────

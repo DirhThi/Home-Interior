@@ -48,6 +48,7 @@ fun RoomDesignerScreen(
     var snapEnabled    by remember { mutableStateOf(true) }
     var saveSuccess    by remember { mutableStateOf(false) }
     var placementTool  by remember { mutableStateOf(PlacementTool.NONE) }
+    var wallColorHex   by remember { mutableStateOf("#F5F0EB") }
 
     // ── Load from DB on open ──────────────────────────────────────────────────
     LaunchedEffect(roomId) {
@@ -57,6 +58,7 @@ fun RoomDesignerScreen(
             drawingPhase = DrawingPhase.EDITING
             editorMode   = EditorMode.DRAW_WALLS
         }
+        if (room != null) wallColorHex = room.wallColor
         val items = db.placedFurnitureDao().getFurnitureForRoom(roomId).first()
         placedFurniture = items.toMutableList()
     }
@@ -302,6 +304,18 @@ fun RoomDesignerScreen(
                             placedFurniture = placedFurniture.map {
                                 if (it.id == id) it.copy(posX = x, posZ = z, wallMountHeight = h) else it
                             }.toMutableList()
+                        },
+                        wallColorHex = wallColorHex,
+                        gridMinorCm = if (snapEnabled) 10f else 50f,
+                        onWallColorChange = { hex ->
+                            wallColorHex = hex
+                            scope.launch {
+                                db.roomDao().getRoomById(roomId)?.let {
+                                    db.roomDao().updateRoom(
+                                        it.copy(wallColor = hex, updatedAt = System.currentTimeMillis())
+                                    )
+                                }
+                            }
                         },
                         modifier = Modifier.fillMaxSize()
                     )
