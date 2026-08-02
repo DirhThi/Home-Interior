@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import com.interiordesign3d.data.models.*
@@ -24,12 +25,9 @@ internal fun FurnitureControlPanel(
     onDeselect: () -> Unit,
     onToggleWallMount: (Boolean) -> Unit,
     onChangeHeight: (Float) -> Unit,
-    onChangeDims: (Float, Float, Float) -> Unit
+    onColorChange: (String?) -> Unit = {},
 ) {
-    val catIcon = try { FurnitureCategory.valueOf(item.furnitureId).icon } catch (e: Exception) { "🛋️" }
-    val baseW = item.customWidthCm.takeIf  { it > 0f } ?: 60f
-    val baseD = item.customDepthCm.takeIf  { it > 0f } ?: 60f
-    val baseH = item.customHeightCm.takeIf { it > 0f } ?: 40f
+    val catIcon = catalogItem(item.furnitureId)?.let { "🪑" } ?: "🛋️"
 
     Surface(tonalElevation = 8.dp, shadowElevation = 8.dp) {
         Column(
@@ -65,15 +63,30 @@ internal fun FurnitureControlPanel(
                     valueRange = 0.5f..2.0f, modifier = Modifier.fillMaxWidth())
             }
 
-            HorizontalDivider()
-
-            // ── Dimension sliders ──────────────────────────────────────────────
-            DimSlider("Width",  baseW, 20f..1000f, displayValue = baseW * item.scale) { onChangeDims(it, baseD, baseH) }
-            if (item.isWallMounted)
-                DimSlider("Thickness", baseD, 2f..100f, displayValue = baseD * item.scale) { onChangeDims(baseW, it, baseH) }
-            else
-                DimSlider("Depth", baseD, 20f..1000f, displayValue = baseD * item.scale) { onChangeDims(baseW, it, baseH) }
-            DimSlider("Height", baseH, 10f..600f, displayValue = baseH * item.scale) { onChangeDims(baseW, baseD, it) }
+            // ── Color ──────────────────────────────────────────────────────────
+            Text("Màu", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val swatches = listOf(
+                    null, "#D9C2A6", "#FFFFFF", "#9AA0A6", "#3B3B3B",
+                    "#C75D4F", "#E0A24B", "#5B7C99", "#6E8B5B", "#8E6FB0"
+                )
+                swatches.forEach { hex ->
+                    val sel = item.colorOverride == hex
+                    Box(
+                        Modifier.size(30.dp)
+                            .background(hex?.let { parseColor(it, Color.Gray) } ?: MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                            .border(if (sel) 3.dp else 1.dp,
+                                if (sel) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.15f),
+                                CircleShape)
+                            .clickable { onColorChange(hex) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (hex == null) Icon(Icons.Filled.FormatColorReset, "Mặc định",
+                            Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
 
             // ── Wall mount toggle ──────────────────────────────────────────────
             Surface(shape = RoundedCornerShape(10.dp),

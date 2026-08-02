@@ -49,6 +49,12 @@ fun RoomDesignerScreen(
     var saveSuccess    by remember { mutableStateOf(false) }
     var placementTool  by remember { mutableStateOf(PlacementTool.NONE) }
     var wallColorHex   by remember { mutableStateOf("#F5F0EB") }
+    var use3DEngine    by remember { mutableStateOf(true) }
+    var wallPresetIdx  by remember { mutableStateOf(0) }
+    var floorPresetIdx by remember { mutableStateOf(0) }
+    var shadowsOn      by remember { mutableStateOf(true) }
+    var showSurfaceSheet by remember { mutableStateOf(false) }
+    var loaded         by remember { mutableStateOf(false) }
 
     // ── Load from DB on open ──────────────────────────────────────────────────
     LaunchedEffect(roomId) {
@@ -61,6 +67,16 @@ fun RoomDesignerScreen(
         if (room != null) wallColorHex = room.wallColor
         val items = db.placedFurnitureDao().getFurnitureForRoom(roomId).first()
         placedFurniture = items.toMutableList()
+        loaded = true
+    }
+
+    // ── Auto-save placed furniture (debounced) so changes persist without a manual Save ──
+    LaunchedEffect(placedFurniture, loaded) {
+        if (!loaded) return@LaunchedEffect
+        kotlinx.coroutines.delay(400)
+        val snapshot = placedFurniture.toList()
+        db.placedFurnitureDao().clearRoomFurniture(roomId)
+        snapshot.forEach { db.placedFurnitureDao().insertPlacedFurniture(it.copy(roomId = roomId)) }
     }
 
     // ── Save toast auto-hide ──────────────────────────────────────────────────
@@ -285,8 +301,27 @@ fun RoomDesignerScreen(
                 EditorMode.DESIGN -> {
                     BoxWithConstraints(Modifier.weight(1f)) {
                     val halfH = maxHeight * 0.5f
-                    Column(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(1f)) {
+                    Box(Modifier.fillMaxSize()) {
+                    if (use3DEngine) {
+                        FilamentRoomViewport(
+                            floorPlan = floorPlan,
+                            roomPolygons = roomPolygons,
+                            placedFurniture = placedFurniture,
+                            roomHeight = roomHeight,
+                            wallModel = WALL_PRESETS[wallPresetIdx].model,
+                            wallColorHex = WALL_PRESETS[wallPresetIdx].colorHex,
+                            floorModel = FLOOR_PRESETS[floorPresetIdx].model,
+                            floorColorHex = FLOOR_PRESETS[floorPresetIdx].colorHex,
+                            shadows = shadowsOn,
+                            onSelectFurniture = { selectedId = it },
+                            onMoveFurniture = { id, x, z ->
+                                placedFurniture = placedFurniture.map {
+                                    if (it.id == id) it.copy(posX = x, posZ = z) else it
+                                }.toMutableList()
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
                     RoomViewport3D(
                         floorPlan = floorPlan,
                         roomHeight = roomHeight,
@@ -319,9 +354,31 @@ fun RoomDesignerScreen(
                         },
                         modifier = Modifier.fillMaxSize()
                     )
-                    } // Box viewport
-                    AnimatedVisibility(
+                    } // else (Canvas viewport)
+
+                    // Toggle 3D engine ↔ Canvas + wall/floor surface picker
+                    Column(Modifier.align(Alignment.TopStart).padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SmallFloatingActionButton(
+                            onClick = { use3DEngine = !use3DEngine },
+                            containerColor = if (use3DEngine) MaterialTheme.colorScheme.primary
+                                             else MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        ) {
+                            Icon(Icons.Filled.ViewInAr,
+                                if (use3DEngine) "Using 3D engine" else "Using canvas",
+                                Modifier.size(18.dp),
+                                tint = if (use3DEngine) MaterialTheme.colorScheme.onPrimary
+                                       else LocalContentColor.current)
+                        }
+                        if (use3DEngine) SmallFloatingActionButton(
+                            onClick = { showSurfaceSheet = true },
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        ) { Icon(Icons.Filled.Wallpaper, "Tường & sàn", Modifier.size(18.dp)) }
+                    }
+
+                    androidx.compose.animation.AnimatedVisibility(
                         visible = selectedId != null,
+                        modifier = Modifier.align(Alignment.BottomCenter),
                         enter = slideInVertically { it }, exit = slideOutVertically { it }
                     ) {
                     Box(Modifier.height(halfH).fillMaxWidth()) {
@@ -361,18 +418,16 @@ fun RoomDesignerScreen(
                                         if (it.id == selectedId) it.copy(wallMountHeight = h) else it
                                     }.toMutableList()
                                 },
-                                onChangeDims = { w, d, h ->
+                                onColorChange = { hex ->
                                     placedFurniture = placedFurniture.map {
-                                        if (it.id == selectedId) it.copy(
-                                            customWidthCm = w, customDepthCm = d, customHeightCm = h
-                                        ) else it
+                                        if (it.id == selectedId) it.copy(colorOverride = hex) else it
                                     }.toMutableList()
                                 }
                             )
                         }
                     } // Box panel
                     } // AnimatedVisibility
-                    } // Column inner
+                    } // Box overlay
                     } // BoxWithConstraints
                 }
             }
@@ -381,21 +436,29 @@ fun RoomDesignerScreen(
 
     if (showAddFurnitureSheet) {
         AddFurnitureSheet(
-            onAdd = { cat, wCm, dCm, hCm, isWallMounted ->
+            onAdd = { key, wallMounted ->
                 val cx = floorPlan.nodes.map { it.x }.average().toFloat().takeIf { !it.isNaN() } ?: 190f
                 val cz = floorPlan.nodes.map { it.y }.average().toFloat().takeIf { !it.isNaN() } ?: 260f
                 val placed = PlacedFurniture(
                     id = UUID.randomUUID().toString(), roomId = roomId,
-                    furnitureId = cat.name, furnitureName = "New ${cat.displayName}",
+                    furnitureId = key, furnitureName = catalogItem(key)?.label ?: key,
                     modelUrl = "",
-                    posX = cx, posZ = cz, isWallMounted = isWallMounted,
-                    customWidthCm = wCm, customDepthCm = dCm, customHeightCm = hCm
+                    posX = cx, posZ = cz, isWallMounted = wallMounted
                 )
                 placedFurniture = (placedFurniture + placed).toMutableList()
                 selectedId = placed.id
                 showAddFurnitureSheet = false
             },
             onDismiss = { showAddFurnitureSheet = false }
+        )
+    }
+
+    if (showSurfaceSheet) {
+        SurfaceSheet(
+            wallIdx = wallPresetIdx, floorIdx = floorPresetIdx, shadows = shadowsOn,
+            onWall = { wallPresetIdx = it }, onFloor = { floorPresetIdx = it },
+            onShadows = { shadowsOn = it },
+            onDismiss = { showSurfaceSheet = false }
         )
     }
 
