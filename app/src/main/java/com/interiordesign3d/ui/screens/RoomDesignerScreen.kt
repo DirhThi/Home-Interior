@@ -67,6 +67,7 @@ fun RoomDesignerScreen(
         }
         if (room != null) wallColorHex = room.wallColor
         val items = db.placedFurnitureDao().getFurnitureForRoom(roomId).first()
+            .filter { catalogItem(it.furnitureId) != null }  // drop items from removed packs
         placedFurniture = items.toMutableList()
         loaded = true
     }
@@ -312,8 +313,10 @@ fun RoomDesignerScreen(
                             roomHeight = roomHeight,
                             wallModel = WALL_PRESETS[wallPresetIdx].model,
                             wallColorHex = WALL_PRESETS[wallPresetIdx].colorHex,
+                            wallTileM = WALL_PRESETS[wallPresetIdx].tileM,
                             floorModel = FLOOR_PRESETS[floorPresetIdx].model,
                             floorColorHex = FLOOR_PRESETS[floorPresetIdx].colorHex,
+                            floorTileM = FLOOR_PRESETS[floorPresetIdx].tileM,
                             shadows = shadowsOn,
                             autoHideWalls = autoHideWalls,
                             onDropOpening = { rIdx, eIdx, t, widthCm, furnitureId ->

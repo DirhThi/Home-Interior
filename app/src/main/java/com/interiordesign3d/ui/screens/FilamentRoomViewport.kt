@@ -47,16 +47,22 @@ private val filamentReady: Boolean by lazy { Utils.init(); true }
 private const val CM = 0.01f
 private const val WALL_THICK_CM = 10f
 
+/** Per-pack unit fix: Quaternius (q_*) models are authored at 2× real size; Kenney is 1 unit = 1 m. */
+private fun packScale(furnitureId: String) = catalogItem(furnitureId)?.unitScale ?: 1f
+private fun worldScale(f: PlacedFurniture) = f.scale * packScale(f.furnitureId)
+
 @Composable
 fun FilamentRoomViewport(
     floorPlan: FloorPlan,
     roomPolygons: List<List<WallPoint>>,
     placedFurniture: List<PlacedFurniture>,
     roomHeight: Float,
-    wallModel: String = "wall",
-    wallColorHex: String = "#EFEAE3",
-    floorModel: String = "floorFull",
-    floorColorHex: String = "#C9A877",
+    wallModel: String = "mat_paintedplaster017",
+    wallColorHex: String = "#F2E6D3",
+    wallTileM: Float = 2f,
+    floorModel: String = "mat_woodfloor051",
+    floorColorHex: String = "#FFFFFF",
+    floorTileM: Float = 1f,
     shadows: Boolean = false,
     autoHideWalls: Boolean = true,
     onDropOpening: (roomIdx: Int, edgeIdx: Int, t: Float, widthCm: Float, furnitureId: String) -> Unit = { _, _, _, _, _ -> },
@@ -98,7 +104,7 @@ fun FilamentRoomViewport(
                 s.setAutoHideWalls(autoHideWalls)
                 s.onDropOpening = { r, e, t, w, id -> onDrop.value(r, e, t, w, id) }
                 s.update(roomPolygons, floorPlan.openings, placedFurniture, roomHeight,
-                    wallModel, wallColorHex, floorModel, floorColorHex)
+                    wallModel, wallColorHex, wallTileM, floorModel, floorColorHex, floorTileM)
             }
         },
         onRelease = { sceneRef.value?.destroy(); sceneRef.value = null }
@@ -129,10 +135,9 @@ private class RoomScene(
     private val ctx = context
 
     private val structureAssets = mutableListOf<FilamentAsset>()
-    private val floorEntities = mutableListOf<Int>()          // floor meshes built from the room polygon
-    private val floorBuffers = mutableListOf<Pair<VertexBuffer, IndexBuffer>>()
-    private var floorMatAsset: FilamentAsset? = null      // kept out of the scene, only for its material
-    private var floorMatModel = ""
+    private val meshEntities = mutableListOf<Int>()          // procedural floor / wall boxes
+    private val meshBuffers = mutableListOf<Pair<VertexBuffer, IndexBuffer>>()
+    private val matAssets = HashMap<String, Pair<String, FilamentAsset>>()   // slot → (model, asset kept out of scene for its material)
     private class WallSeg(val roomIdx: Int, val edgeIdx: Int, val nx: Float, val nz: Float,
                           val mx: Float, val mz: Float, val entities: IntArray)   // outward normal + world midpoint (m)
     private val wallSegs = mutableListOf<WallSeg>()
@@ -236,7 +241,8 @@ private class RoomScene(
     fun update(
         roomPolygons: List<List<WallPoint>>, openings: List<WallOpening>,
         furniture: List<PlacedFurniture>, roomHeightCm: Float,
-        wallModel: String, wallColorHex: String, floorModel: String, floorColorHex: String,
+        wallModel: String, wallColorHex: String, wallTileM: Float,
+        floorModel: String, floorColorHex: String, floorTileM: Float,
     ) {
         val allPts = roomPolygons.flatten()
         if (allPts.isEmpty()) return
@@ -247,11 +253,11 @@ private class RoomScene(
         val spanX = (maxX - minX).coerceAtLeast(1f); val spanZ = (maxZ - minZ).coerceAtLeast(1f)
 
         val sSig = roomPolygons.joinToString(";") { p -> p.joinToString(",") { "${it.x.toInt()}/${it.y.toInt()}" } } +
-                "|${roomHeightCm.toInt()}|$wallModel|$wallColorHex|$floorModel|$floorColorHex" +
+                "|${roomHeightCm.toInt()}|$wallModel|$wallColorHex|$wallTileM|$floorModel|$floorColorHex|$floorTileM" +
                 "|" + openings.joinToString(",") { "${it.roomIdx}/${it.edgeIdx}/${it.t}/${it.type}/${it.widthCm}" }
         if (sSig != structSig) {
             structSig = sSig
-            rebuildStructure(roomPolygons, openings, roomHeightCm, wallModel, wallColorHex, floorModel, floorColorHex)
+            rebuildStructure(roomPolygons, openings, roomHeightCm, wallModel, wallColorHex, wallTileM, floorModel, floorColorHex, floorTileM)
             // frame the room only when its geometry changes (keeps user's orbit otherwise)
             centerX = 0f; centerZ = 0f; centerY = roomHeightCm * CM * 0.35f
             radius = maxOf(spanX, spanZ) * CM * 1.3f + roomHeightCm * CM
@@ -276,27 +282,29 @@ private class RoomScene(
     private fun rebuildStructure(
         roomPolygons: List<List<WallPoint>>, openings: List<WallOpening>,
         roomHeightCm: Float,
-        wallModel: String, wallColorHex: String, floorModel: String, floorColorHex: String,
+        wallModel: String, wallColorHex: String, wallTileM: Float,
+        floorModel: String, floorColorHex: String, floorTileM: Float,
     ) {
         structureAssets.forEach { runCatching { assetLoader.destroyAsset(it) } }
         structureAssets.clear()
-        destroyFloorMeshes()
+        destroyMeshes()
         wallSegs.clear(); wallHidden = BooleanArray(0)
         cornerSegs.clear(); cornerHidden = BooleanArray(0)
         fun wx(cm: Float) = (cm - houseCx) * CM
         fun wz(cm: Float) = (cm - houseCz) * CM
         val wt = WALL_THICK_CM * CM
         val hM = roomHeightCm * CM
+        val floorT = 0.05f
+        val wallMi = materialOf("wall", wallModel, wallColorHex) ?: return
+        val trimMi = materialOf("trim", "mat_paint", wallColorHex, 0.72f) ?: return
+        val floorMi = materialOf("floor", floorModel, floorColorHex) ?: return
 
         // One floor per room, built from the room polygon itself and grown outward by the wall
-        // thickness so it runs under the walls. A bbox slab would poke out past any edge the user
-        // drew off-square (and cover the notch of an L-shaped room).
-        val floorT = 0.05f
-        for (poly in roomPolygons) buildFloorMesh(poly, floorModel, floorColorHex)
+        // thickness so it runs under the walls (a bbox slab would poke past off-square edges).
+        for (poly in roomPolygons) buildFloorMesh(poly, floorMi, floorTileM)
 
-        // Walls — split each edge around doors/windows. Solid parts use the chosen wall model;
-        // openings use Kenney's wallDoorway / wallWindow tile (so you see the hole). Solid panels
-        // at a true room corner are extended by the thickness so adjacent walls overlap (no gap).
+        // Walls are textured boxes split around openings: door → lintel above; window → sill panel
+        // below + header above, with a Quaternius frame/leaf filling the hole.
         roomPolygons.forEachIndexed { roomIdx, poly ->
             val cx = poly.map { it.x }.average().toFloat(); val cz = poly.map { it.y }.average().toFloat()
             val segBase = wallSegs.size
@@ -310,55 +318,48 @@ private class RoomScene(
                 val rotDeg = Math.toDegrees(atan2(-dz.toDouble(), dx.toDouble())).toFloat()
                 val edgeEnts = mutableListOf<Int>()   // every renderable of this edge → one WallSeg
 
-                fun panel(t0: Float, t1: Float, model: String, extendEnds: Boolean) {
-                    // Exact edge length — the outer corner square is a separate post (see below) so
-                    // nothing pokes out when the neighbouring wall is auto-hidden.
-                    val s = t0 * lenCm; val e = t1 * lenCm
-                    val segLen = e - s; if (segLen < 1f) return
-                    val mid = (s + e) / 2f
-                    val mxC = a.x + ux * mid; val mzC = a.y + uz * mid
-                    val midX = mxC + nx * (WALL_THICK_CM / 2f); val midZ = mzC + nz * (WALL_THICK_CM / 2f)
-                    // Walls run from below the floor slab up to the ceiling, so the slab's side
-                    // edge is hidden behind the outer face (no tan strip under the wall).
-                    place("models/$model.glb", segLen * CM, hM + floorT, wt, wx(midX), (hM - floorT) / 2f, wz(midZ), rotDeg, false)
-                        ?.let { tint(it, wallColorHex); edgeEnts += it.entities.toList() }
-                    if (model == wallModel) {
-                        // Baseboard: 8 cm strip just proud of the inner face, a shade darker than the wall.
-                        val bx = mxC - nx * 0.6f; val bz = mzC - nz * 0.6f
-                        place("models/wall.glb", segLen * CM, 0.08f, 0.012f, wx(bx), 0f, wz(bz), rotDeg, true)
-                            ?.let { tint(it, wallColorHex, 0.72f); edgeEnts += it.entities.toList() }
-                    }
+                fun along(t: Float) = (a.x + ux * t * lenCm) to (a.y + uz * t * lenCm)
+                // Wall box between t0..t1 along the edge and y0..y1 (m), centred in the wall thickness.
+                fun slab(t0: Float, t1: Float, y0: Float, y1: Float) {
+                    val segLen = (t1 - t0) * lenCm; if (segLen < 1f || y1 - y0 < 0.005f) return
+                    val (mx, mz) = along((t0 + t1) / 2f)
+                    edgeEnts += buildBox(wallMi, segLen * CM, y1 - y0, wt,
+                        wx(mx + nx * (WALL_THICK_CM / 2f)), y0, wz(mz + nz * (WALL_THICK_CM / 2f)), rotDeg, wallTileM)
+                }
+                // 8 cm strip just proud of the inner face, a shade darker than the wall.
+                fun baseboard(t0: Float, t1: Float) {
+                    val segLen = (t1 - t0) * lenCm; if (segLen < 1f) return
+                    val (mx, mz) = along((t0 + t1) / 2f)
+                    edgeEnts += buildBox(trimMi, segLen * CM, 0.08f, 0.012f, wx(mx - nx * 0.6f), 0f, wz(mz - nz * 0.6f), rotDeg, 1f)
                 }
 
                 val edgeOpenings = openings.filter { it.roomIdx == roomIdx && it.edgeIdx == i }.sortedBy { it.t }
-                if (edgeOpenings.isEmpty()) {
-                    panel(0f, 1f, wallModel, true)
-                } else {
-                    var tPrev = 0f
-                    for (op in edgeOpenings) {
-                        val halfT = (op.widthCm / 2f) / lenCm
-                        val tS = (op.t - halfT).coerceIn(0f, 1f); val tE = (op.t + halfT).coerceIn(0f, 1f)
-                        if (tS > tPrev + 1e-3f) panel(tPrev, tS, wallModel, true)
-                        val tile = when (op.type) {
-                            OpeningType.DOOR -> if (op.widthCm > 110f) "wallDoorwayWide" else "wallDoorway"
-                            OpeningType.WINDOW -> if (op.widthCm > 130f) "wallWindowSlide" else "wallWindow"
-                        }
-                        panel(tS, tE, tile, false)
-                        if (op.type == OpeningType.DOOR) {
-                            // Leaf matches the prop that made the opening: frame-only → hole, front → closed, else open.
-                            val leaf = when (op.style) { "doorway" -> null; "doorwayFront" -> "doorwayFront"; else -> "doorwayOpen" }
-                            if (leaf != null) {
-                                val mid = op.t * lenCm
-                                val lx = a.x + ux * mid + nx * (WALL_THICK_CM / 2f)
-                                val lz = a.y + uz * mid + nz * (WALL_THICK_CM / 2f)
-                                place("models/$leaf.glb", op.widthCm * CM * 0.95f, minOf(2.0f, hM * 0.9f), wt,
-                                    wx(lx), 0f, wz(lz), rotDeg, true)?.let { edgeEnts += it.entities.toList() }
-                            }
-                        }
-                        tPrev = tE
+                var tPrev = 0f
+                for (op in edgeOpenings) {
+                    val halfT = (op.widthCm / 2f) / lenCm
+                    val tS = (op.t - halfT).coerceIn(0f, 1f); val tE = (op.t + halfT).coerceIn(0f, 1f)
+                    if (tS > tPrev + 1e-3f) { slab(tPrev, tS, -floorT, hM); baseboard(tPrev, tS) }
+                    val (ox, oz) = along(op.t)
+                    val lx = wx(ox + nx * (WALL_THICK_CM / 2f)); val lz = wz(oz + nz * (WALL_THICK_CM / 2f))
+                    if (op.type == OpeningType.DOOR) {
+                        val doorH = minOf(2.1f, hM * 0.85f)
+                        slab(tS, tE, doorH, hM)
+                        // Leaf matches the prop that made the opening; "doorway" = frame-only hole.
+                        val leaf = when { op.style.startsWith("q_door") -> op.style; op.style == "doorway" -> null; else -> "q_door" }
+                        if (leaf != null) place("models/$leaf.glb", op.widthCm * CM, doorH, wt, lx, 0f, lz, rotDeg, true)
+                            ?.let { edgeEnts += it.entities.toList() }
+                    } else {
+                        val sill = minOf(0.9f, hM * 0.35f)
+                        val winH = minOf(1.3f, hM - sill - 0.3f).coerceAtLeast(0.4f)
+                        slab(tS, tE, -floorT, sill); baseboard(tS, tE)
+                        slab(tS, tE, sill + winH, hM)
+                        val frame = if (op.widthCm > 130f) "q_window_large" else "q_window_small"
+                        place("models/$frame.glb", op.widthCm * CM, winH, wt, lx, sill, lz, rotDeg, true)
+                            ?.let { edgeEnts += it.entities.toList() }
                     }
-                    if (tPrev < 1f - 1e-3f) panel(tPrev, 1f, wallModel, true)
+                    tPrev = tE
                 }
+                if (tPrev < 1f - 1e-3f) { slab(tPrev, 1f, -floorT, hM); baseboard(tPrev, 1f) }
                 wallSegs.add(WallSeg(roomIdx, i, nx, nz, wx((a.x + b.x) / 2f), wz((a.y + b.y) / 2f), edgeEnts.toIntArray()))
             }
             // Corner posts: fill the outer wt×wt square at each vertex; hidden with either neighbour.
@@ -369,16 +370,15 @@ private class RoomScene(
                 val p = wallSegs[segPrev]; val q = wallSegs[segNext]
                 val v = poly[i]
                 val ox = (p.nx + q.nx) * (WALL_THICK_CM / 2f); val oz = (p.nz + q.nz) * (WALL_THICK_CM / 2f)
-                val post = place("models/$wallModel.glb", wt + 0.004f, hM + floorT, wt + 0.004f,
-                    wx(v.x + ox), (hM - floorT) / 2f, wz(v.y + oz), 0f, false)
-                    ?.let { tint(it, wallColorHex); it } ?: continue
-                cornerSegs.add(CornerSeg(segPrev, segNext, post.entities))
+                val post = buildBox(wallMi, wt + 0.004f, hM + floorT, wt + 0.004f,
+                    wx(v.x + ox), -floorT, wz(v.y + oz), 0f, wallTileM)
+                cornerSegs.add(CornerSeg(segPrev, segNext, intArrayOf(post)))
             }
         }
     }
 
     private fun addFurniture(f: PlacedFurniture) {
-        val asset = load("models/${f.furnitureId}.glb") ?: load("models/chair.glb") ?: return
+        val asset = load("models/${f.furnitureId}.glb") ?: return
         furnitureAssets[f.id] = asset
         furnitureMeta[f.id] = f
         f.colorOverride?.let { tint(asset, it) }
@@ -395,7 +395,7 @@ private class RoomScene(
 
     private fun transformFurniture(asset: FilamentAsset, f: PlacedFurniture) {
         val bb = asset.boundingBox
-        val s = f.scale                                   // Kenney models are real-scale (1 unit = 1 m)
+        val s = worldScale(f)
         val halfH = bb.halfExtent[1] * s
         val mount = catalogItem(f.furnitureId)?.mount ?: MountType.FLOOR
 
@@ -433,8 +433,9 @@ private class RoomScene(
             if (id == f.id || catalogItem(o.furnitureId)?.surface != true) return@forEach
             val ob = furnitureAssets[id]?.boundingBox ?: return@forEach
             val ow = furnitureWorld[id] ?: return@forEach
-            val half = maxOf(ob.halfExtent[0], ob.halfExtent[2]) * o.scale   // rotation-safe footprint
-            if (abs(wx - ow[0]) <= half && abs(wz - ow[2]) <= half) top = maxOf(top, ob.halfExtent[1] * 2f * o.scale)
+            val os = worldScale(o)
+            val half = maxOf(ob.halfExtent[0], ob.halfExtent[2]) * os   // rotation-safe footprint
+            if (abs(wx - ow[0]) <= half && abs(wz - ow[2]) <= half) top = maxOf(top, ob.halfExtent[1] * 2f * os)
         }
         return top
     }
@@ -447,7 +448,8 @@ private class RoomScene(
     private fun footprintCm(id: String): FloatArray? {
         val bb = furnitureAssets[id]?.boundingBox ?: return null
         val m = furnitureMeta[id] ?: return null
-        val hx = bb.halfExtent[0] * m.scale / CM; val hz = bb.halfExtent[2] * m.scale / CM
+        val ws = worldScale(m)
+        val hx = bb.halfExtent[0] * ws / CM; val hz = bb.halfExtent[2] * ws / CM
         val r = Math.toRadians(m.rotationY.toDouble())
         val c = abs(cos(r)).toFloat(); val s = abs(sin(r)).toFloat()
         return floatArrayOf(hx * c + hz * s, hx * s + hz * c)
@@ -456,7 +458,7 @@ private class RoomScene(
     private fun isFlat(id: String) = (furnitureAssets[id]?.boundingBox?.halfExtent?.get(1) ?: 1f) * 2f < 0.06f
     private fun isSmall(id: String): Boolean {
         val bb = furnitureAssets[id]?.boundingBox ?: return false
-        val s = furnitureMeta[id]?.scale ?: 1f
+        val s = furnitureMeta[id]?.let { worldScale(it) } ?: 1f
         return bb.halfExtent[1] * 2f * s <= 1.0f && maxOf(bb.halfExtent[0], bb.halfExtent[2]) * 2f * s <= 0.9f
     }
     private fun onFloor(o: PlacedFurniture) =
@@ -472,13 +474,13 @@ private class RoomScene(
         return hit
     }
 
-    /** A door prop (doorway*) released within 20 cm of a wall becomes a real DOOR opening on that edge. */
+    /** A door prop (q_door* / doorway*) released within 20 cm of a wall becomes a real DOOR opening on that edge. */
     private fun tryDropDoorOnWall(id: String) {
         val m = furnitureMeta[id] ?: return
-        if (!m.furnitureId.startsWith("doorway")) return
+        if (!m.furnitureId.startsWith("q_door") && !m.furnitureId.startsWith("doorway")) return
         val (ri, ei, t) = nearestEdge(m.posX, m.posZ, 20f) ?: return
         val bb = furnitureAssets[id]?.boundingBox
-        val widthCm = ((bb?.halfExtent?.get(0) ?: 0.45f) * 2f * m.scale / CM).coerceAtLeast(80f)
+        val widthCm = ((bb?.halfExtent?.get(0) ?: 0.45f) * 2f * worldScale(m) / CM).coerceAtLeast(80f)
         onDropOpening(ri, ei, t, widthCm, id)
     }
 
@@ -529,79 +531,111 @@ private class RoomScene(
         return floatArrayOf(x, z)
     }
 
-    private fun destroyFloorMeshes() {
-        floorEntities.forEach { runCatching { scene.removeEntity(it) }; runCatching { engine.destroyEntity(it) } }
-        floorBuffers.forEach { (vb, ib) ->
+    private fun destroyMeshes() {
+        meshEntities.forEach { runCatching { scene.removeEntity(it) }; runCatching { engine.destroyEntity(it) } }
+        meshBuffers.forEach { (vb, ib) ->
             runCatching { engine.destroyVertexBuffer(vb) }; runCatching { engine.destroyIndexBuffer(ib) }
         }
-        floorEntities.clear(); floorBuffers.clear()
+        meshEntities.clear(); meshBuffers.clear()
     }
 
-    /** Material instance of the floor .glb — reused as-is (a fresh instance would miss the glTF
-     *  defaults gltfio fills in, and renders near-black). The asset itself never enters the scene. */
-    private fun floorMaterial(model: String, colorHex: String): MaterialInstance? {
-        if (model != floorMatModel) {
-            floorMatAsset?.let { runCatching { assetLoader.destroyAsset(it) } }
-            floorMatAsset = load("models/$model.glb"); floorMatModel = model
+    /** Material instance of a mat_*.glb (textured quad) — reused as-is: a fresh instance would miss
+     *  the glTF defaults gltfio fills in and render near-black. One asset per slot so wall / trim /
+     *  floor can carry different tints. The asset itself never enters the scene. */
+    private fun materialOf(slot: String, model: String, colorHex: String, mul: Float = 1f): MaterialInstance? {
+        val cur = matAssets[slot]
+        val asset = if (cur != null && cur.first == model) cur.second else {
+            cur?.let { runCatching { assetLoader.destroyAsset(it.second) } }
+            val a = load("models/$model.glb") ?: load("models/mat_paint.glb") ?: return null
+            matAssets[slot] = model to a; a
         }
-        val asset = floorMatAsset ?: return null
         val rm = engine.renderableManager
         for (e in asset.entities) {
             val ri = rm.getInstance(e)
             if (ri != 0 && rm.getPrimitiveCount(ri) > 0) {
                 val mi = rm.getMaterialInstanceAt(ri, 0)
                 val (r, g, b) = hexLinear(colorHex)
-                runCatching { mi.setParameter("baseColorFactor", r, g, b, 1f) }
+                runCatching { mi.setParameter("baseColorFactor", r * mul, g * mul, b * mul, 1f) }
                 return mi
             }
         }
         return null
     }
 
+    // The ubershader declares position+tangents+color+uv0+uv1; every one must be supplied.
+    private val VSTRIDE = 60
+    private fun ByteBuffer.vertex(x: Float, y: Float, z: Float, q: FloatArray, u: Float, v: Float): ByteBuffer =
+        putFloat(x).putFloat(y).putFloat(z).putFloat(q[0]).putFloat(q[1]).putFloat(q[2]).putFloat(q[3])
+            .putFloat(1f).putFloat(1f).putFloat(1f).putFloat(1f).putFloat(u).putFloat(v).putFloat(u).putFloat(v)
+
+    private fun addMesh(vbData: ByteBuffer, vCount: Int, ibData: ByteBuffer, iCount: Int, mi: MaterialInstance,
+                        bbox: Box, transform: FloatArray?, castShadows: Boolean): Int {
+        val vb = VertexBuffer.Builder().bufferCount(1).vertexCount(vCount)
+            .attribute(VertexBuffer.VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, VSTRIDE)
+            .attribute(VertexBuffer.VertexAttribute.TANGENTS, 0, VertexBuffer.AttributeType.FLOAT4, 12, VSTRIDE)
+            .attribute(VertexBuffer.VertexAttribute.COLOR, 0, VertexBuffer.AttributeType.FLOAT4, 28, VSTRIDE)
+            .attribute(VertexBuffer.VertexAttribute.UV0, 0, VertexBuffer.AttributeType.FLOAT2, 44, VSTRIDE)
+            .attribute(VertexBuffer.VertexAttribute.UV1, 0, VertexBuffer.AttributeType.FLOAT2, 52, VSTRIDE)
+            .build(engine)
+        vb.setBufferAt(engine, 0, vbData)
+        val ib = IndexBuffer.Builder().indexCount(iCount).bufferType(IndexBuffer.Builder.IndexType.USHORT).build(engine)
+        ib.setBuffer(engine, ibData)
+        val entity = EntityManager.get().create()
+        RenderableManager.Builder(1).boundingBox(bbox)
+            .geometry(0, RenderableManager.PrimitiveType.TRIANGLES, vb, ib, 0, iCount)
+            .material(0, mi).castShadows(castShadows).receiveShadows(true)
+            .build(engine, entity)
+        if (transform != null) {
+            val tm = engine.transformManager
+            tm.create(entity); tm.setTransform(tm.getInstance(entity), transform)
+        }
+        scene.addEntity(entity)
+        meshEntities += entity; meshBuffers += vb to ib
+        return entity
+    }
+
+    /** Box sx×sy×sz with its bottom centre at (px,py,pz), rotated about Y. Face UVs are in metres /
+     *  [tileM] so the texture repeats at real size regardless of the box dimensions. */
+    private fun buildBox(mi: MaterialInstance, sx: Float, sy: Float, sz: Float,
+                         px: Float, py: Float, pz: Float, rotDeg: Float, tileM: Float): Int {
+        val w = sx / 2f; val h = sz / 2f; val t = 1f / tileM
+        val qPZ = floatArrayOf(0f, 0f, 0f, 1f); val qNZ = floatArrayOf(0f, 1f, 0f, 0f)
+        val qPX = floatArrayOf(0f, 0.70710678f, 0f, 0.70710678f); val qNX = floatArrayOf(0f, -0.70710678f, 0f, 0.70710678f)
+        val qPY = floatArrayOf(-0.70710678f, 0f, 0f, 0.70710678f); val qNY = floatArrayOf(0.70710678f, 0f, 0f, 0.70710678f)
+        val vb = ByteBuffer.allocateDirect(24 * VSTRIDE).order(ByteOrder.nativeOrder())
+        // Each face: 4 corners counter-clockwise seen from outside.
+        vb.vertex(-w, 0f, h, qPZ, -w * t, 0f).vertex(w, 0f, h, qPZ, w * t, 0f).vertex(w, sy, h, qPZ, w * t, sy * t).vertex(-w, sy, h, qPZ, -w * t, sy * t)
+        vb.vertex(w, 0f, -h, qNZ, w * t, 0f).vertex(-w, 0f, -h, qNZ, -w * t, 0f).vertex(-w, sy, -h, qNZ, -w * t, sy * t).vertex(w, sy, -h, qNZ, w * t, sy * t)
+        vb.vertex(w, 0f, h, qPX, h * t, 0f).vertex(w, 0f, -h, qPX, -h * t, 0f).vertex(w, sy, -h, qPX, -h * t, sy * t).vertex(w, sy, h, qPX, h * t, sy * t)
+        vb.vertex(-w, 0f, -h, qNX, -h * t, 0f).vertex(-w, 0f, h, qNX, h * t, 0f).vertex(-w, sy, h, qNX, h * t, sy * t).vertex(-w, sy, -h, qNX, -h * t, sy * t)
+        vb.vertex(-w, sy, h, qPY, -w * t, h * t).vertex(w, sy, h, qPY, w * t, h * t).vertex(w, sy, -h, qPY, w * t, -h * t).vertex(-w, sy, -h, qPY, -w * t, -h * t)
+        vb.vertex(w, 0f, h, qNY, w * t, h * t).vertex(-w, 0f, h, qNY, -w * t, h * t).vertex(-w, 0f, -h, qNY, -w * t, -h * t).vertex(w, 0f, -h, qNY, w * t, -h * t)
+        vb.flip()
+        val ib = ByteBuffer.allocateDirect(36 * 2).order(ByteOrder.nativeOrder())
+        for (f in 0 until 6) { val b = f * 4; intArrayOf(b, b + 1, b + 2, b, b + 2, b + 3).forEach { ib.putShort(it.toShort()) } }
+        ib.flip()
+        val rad = Math.toRadians(rotDeg.toDouble()); val c = cos(rad).toFloat(); val sn = sin(rad).toFloat()
+        val m = floatArrayOf(c, 0f, -sn, 0f, 0f, 1f, 0f, 0f, sn, 0f, c, 0f, px, py, pz, 1f)
+        return addMesh(vb, 24, ib, 36, mi, Box(0f, sy / 2f, 0f, w, sy / 2f, h), m, true)
+    }
+
     /** Flat floor at y = 0 covering the room polygon (grown outward by the wall thickness). */
-    private fun buildFloorMesh(poly: List<WallPoint>, model: String, colorHex: String) {
+    private fun buildFloorMesh(poly: List<WallPoint>, mi: MaterialInstance, tileM: Float) {
         if (poly.size < 3) return
         val pts = outset(poly, WALL_THICK_CM)
         val tris = triangulate(pts); if (tris.isEmpty()) return
-        val mi = floorMaterial(model, colorHex) ?: return
-
-        // The ubershader declares position+tangents+color+uv0+uv1; every one must be supplied.
-        val stride = 60
-        val vbData = ByteBuffer.allocateDirect(pts.size * stride).order(ByteOrder.nativeOrder())
-        pts.forEach { pt ->
-            val u = pt.x * CM * 0.5f; val v = pt.y * CM * 0.5f
-            vbData.putFloat((pt.x - houseCx) * CM).putFloat(0f).putFloat((pt.y - houseCz) * CM)
-            vbData.putFloat(-0.70710678f).putFloat(0f).putFloat(0f).putFloat(0.70710678f)   // +Y tangent frame
-            vbData.putFloat(1f).putFloat(1f).putFloat(1f).putFloat(1f)
-            vbData.putFloat(u).putFloat(v).putFloat(u).putFloat(v)
-        }
+        val qUp = floatArrayOf(-0.70710678f, 0f, 0f, 0.70710678f)
+        val vbData = ByteBuffer.allocateDirect(pts.size * VSTRIDE).order(ByteOrder.nativeOrder())
+        pts.forEach { pt -> vbData.vertex((pt.x - houseCx) * CM, 0f, (pt.y - houseCz) * CM, qUp, pt.x * CM / tileM, pt.y * CM / tileM) }
         vbData.flip()
         val ibData = ByteBuffer.allocateDirect(tris.size * 2).order(ByteOrder.nativeOrder())
         tris.forEach { ibData.putShort(it.toShort()) }
         ibData.flip()
-
-        val vb = VertexBuffer.Builder().bufferCount(1).vertexCount(pts.size)
-            .attribute(VertexBuffer.VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, stride)
-            .attribute(VertexBuffer.VertexAttribute.TANGENTS, 0, VertexBuffer.AttributeType.FLOAT4, 12, stride)
-            .attribute(VertexBuffer.VertexAttribute.COLOR, 0, VertexBuffer.AttributeType.FLOAT4, 28, stride)
-            .attribute(VertexBuffer.VertexAttribute.UV0, 0, VertexBuffer.AttributeType.FLOAT2, 44, stride)
-            .attribute(VertexBuffer.VertexAttribute.UV1, 0, VertexBuffer.AttributeType.FLOAT2, 52, stride)
-            .build(engine)
-        vb.setBufferAt(engine, 0, vbData)
-        val ib = IndexBuffer.Builder().indexCount(tris.size).bufferType(IndexBuffer.Builder.IndexType.USHORT).build(engine)
-        ib.setBuffer(engine, ibData)
-
         val minX = pts.minOf { it.x }; val maxX = pts.maxOf { it.x }
         val minZ = pts.minOf { it.y }; val maxZ = pts.maxOf { it.y }
-        val entity = EntityManager.get().create()
-        RenderableManager.Builder(1)
-            .boundingBox(Box(((minX + maxX) / 2f - houseCx) * CM, 0f, ((minZ + maxZ) / 2f - houseCz) * CM,
-                             (maxX - minX) * CM / 2f + 0.01f, 0.01f, (maxZ - minZ) * CM / 2f + 0.01f))
-            .geometry(0, RenderableManager.PrimitiveType.TRIANGLES, vb, ib, 0, tris.size)
-            .material(0, mi).castShadows(false).receiveShadows(true)
-            .build(engine, entity)
-        scene.addEntity(entity)
-        floorEntities += entity; floorBuffers += vb to ib
+        addMesh(vbData, pts.size, ibData, tris.size, mi,
+            Box(((minX + maxX) / 2f - houseCx) * CM, 0f, ((minZ + maxZ) / 2f - houseCz) * CM,
+                (maxX - minX) * CM / 2f + 0.01f, 0.01f, (maxZ - minZ) * CM / 2f + 0.01f), null, false)
     }
 
     /** Offset every edge outward by [cm] (corners = intersection of the two offset lines), so the
@@ -852,7 +886,7 @@ private class RoomScene(
                         val r = resolveDrag(gid, it[0] / CM + houseCx, it[1] / CM + houseCz)
                         onMove(gid, r[0], r[1])
                     }
-                    else { azimuth += (e.x - lastX) * 0.3f; elevation = (elevation - (e.y - lastY) * 0.3f).coerceIn(5f, 85f) }
+                    else { azimuth -= (e.x - lastX) * 0.3f; elevation = (elevation + (e.y - lastY) * 0.3f).coerceIn(5f, 85f) }
                     lastX = e.x; lastY = e.y
                 }
             }
@@ -894,8 +928,8 @@ private class RoomScene(
         structureAssets.forEach { runCatching { assetLoader.destroyAsset(it) } }
         furnitureAssets.values.forEach { runCatching { assetLoader.destroyAsset(it) } }
         structureAssets.clear(); furnitureAssets.clear(); furnitureWorld.clear()
-        destroyFloorMeshes()
-        floorMatAsset?.let { runCatching { assetLoader.destroyAsset(it) } }; floorMatAsset = null
+        destroyMeshes()
+        matAssets.values.forEach { runCatching { assetLoader.destroyAsset(it.second) } }; matAssets.clear()
         runCatching { resourceLoader.destroy() }
         runCatching { assetLoader.destroy() }
         runCatching { materialProvider.destroyMaterials() }

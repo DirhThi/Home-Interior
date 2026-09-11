@@ -197,8 +197,8 @@ fun RoomViewport3D(
                         else -> {
                             prevPinchDist = 0f
                             if (totalMove > 4f && viewModeRef.value == ViewMode.PERSPECTIVE) {
-                                cameraAzimuth   = (cameraAzimuth + delta.x * 0.3f) % 360f
-                                cameraElevation = (cameraElevation - delta.y * 0.3f).coerceIn(10f, 88f)
+                                cameraAzimuth   = (cameraAzimuth - delta.x * 0.3f) % 360f
+                                cameraElevation = (cameraElevation + delta.y * 0.3f).coerceIn(10f, 88f)
                                 main.consume()
                             }
                         }

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.asImageBitmap
@@ -155,6 +156,7 @@ internal fun SurfaceSheet(
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 itemsIndexed(WALL_PRESETS) { i, p ->
                     FilterChip(selected = i == wallIdx, onClick = { onWall(i) },
+                        leadingIcon = { SurfaceSwatch(p) },
                         label = { Text(p.label, style = MaterialTheme.typography.labelMedium) })
                 }
             }
@@ -163,11 +165,19 @@ internal fun SurfaceSheet(
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 itemsIndexed(FLOOR_PRESETS) { i, p ->
                     FilterChip(selected = i == floorIdx, onClick = { onFloor(i) },
+                        leadingIcon = { SurfaceSwatch(p) },
                         label = { Text(p.label, style = MaterialTheme.typography.labelMedium) })
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SurfaceSwatch(p: SurfacePreset) {
+    val m = Modifier.size(18.dp).clip(CircleShape)
+    if (p.isPaint) Box(m.background(Color(android.graphics.Color.parseColor(p.colorHex))))
+    else AssetImage(p.preview, m)
 }
 
 // ─── Shared dimension slider ──────────────────────────────────────────────────

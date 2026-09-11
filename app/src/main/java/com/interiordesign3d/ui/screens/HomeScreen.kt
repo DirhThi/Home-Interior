@@ -29,6 +29,23 @@ fun HomeScreen(onNavigateToDesigner: (String) -> Unit) {
     val db      = remember { AppDatabase.getInstance(context) }
     val scope   = rememberCoroutineScope()
     val rooms   by db.roomDao().getAllRooms().collectAsState(initial = emptyList())
+    var showCredits by remember { mutableStateOf(false) }
+
+    if (showCredits) {
+        val localizedContext = context
+        AlertDialog(
+            onDismissRequest = { showCredits = false },
+            confirmButton = { TextButton(onClick = { showCredits = false }) { Text("Đóng") } },
+            title = { Text("Nguồn mô hình 3D") },
+            text = {
+                CompositionLocalProvider(LocalContext provides localizedContext) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(MODEL_CREDITS) { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    }
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -42,6 +59,9 @@ fun HomeScreen(onNavigateToDesigner: (String) -> Unit) {
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary)
                     }
+                },
+                actions = {
+                    IconButton(onClick = { showCredits = true }) { Icon(Icons.Filled.Info, "Nguồn mô hình") }
                 }
             )
         },
