@@ -123,8 +123,8 @@ internal fun AddFurnitureSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SurfaceSheet(
-    wallIdx: Int, floorIdx: Int, shadows: Boolean,
-    onWall: (Int) -> Unit, onFloor: (Int) -> Unit, onShadows: (Boolean) -> Unit,
+    wallIdx: Int, floorIdx: Int, shadows: Boolean, autoHide: Boolean,
+    onWall: (Int) -> Unit, onFloor: (Int) -> Unit, onShadows: (Boolean) -> Unit, onAutoHide: (Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -132,6 +132,15 @@ internal fun SurfaceSheet(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Column {
+                    Text("Ẩn tường phía trước", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text("Tự ẩn 2 tường chắn tầm nhìn theo góc xoay",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = autoHide, onCheckedChange = onAutoHide)
+            }
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column {
                     Text("Đổ bóng", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)

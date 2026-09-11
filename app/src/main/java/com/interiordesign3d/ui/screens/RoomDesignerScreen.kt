@@ -52,7 +52,8 @@ fun RoomDesignerScreen(
     var use3DEngine    by remember { mutableStateOf(true) }
     var wallPresetIdx  by remember { mutableStateOf(0) }
     var floorPresetIdx by remember { mutableStateOf(0) }
-    var shadowsOn      by remember { mutableStateOf(true) }
+    var shadowsOn      by remember { mutableStateOf(false) }
+    var autoHideWalls  by remember { mutableStateOf(false) }   // mặc định giữ nguyên 4 tường; bật tay trong SurfaceSheet
     var showSurfaceSheet by remember { mutableStateOf(false) }
     var loaded         by remember { mutableStateOf(false) }
 
@@ -100,6 +101,7 @@ fun RoomDesignerScreen(
                 drawingPhase = drawingPhase,
                 viewMode = viewMode,
                 onViewChange = { viewMode = it },
+                showViewModes = !use3DEngine,
                 onEditFloorPlan = {
                     scope.launch {
                         db.placedFurnitureDao().clearRoomFurniture(roomId)
@@ -313,6 +315,16 @@ fun RoomDesignerScreen(
                             floorModel = FLOOR_PRESETS[floorPresetIdx].model,
                             floorColorHex = FLOOR_PRESETS[floorPresetIdx].colorHex,
                             shadows = shadowsOn,
+                            autoHideWalls = autoHideWalls,
+                            onDropOpening = { rIdx, eIdx, t, widthCm, furnitureId ->
+                                // door prop → real wall opening (cuts the wall), prop removed
+                                floorPlan = floorPlan.copy(openings = floorPlan.openings + WallOpening(
+                                    id = UUID.randomUUID().toString(), roomIdx = rIdx, edgeIdx = eIdx,
+                                    t = t, type = OpeningType.DOOR, widthCm = widthCm.coerceIn(60f, 200f),
+                                    style = furnitureId))
+                                placedFurniture = placedFurniture.filter { it.id != furnitureId }.toMutableList()
+                                if (selectedId == furnitureId) selectedId = null
+                            },
                             onSelectFurniture = { selectedId = it },
                             onMoveFurniture = { id, x, z ->
                                 placedFurniture = placedFurniture.map {
@@ -439,11 +451,14 @@ fun RoomDesignerScreen(
             onAdd = { key, wallMounted ->
                 val cx = floorPlan.nodes.map { it.x }.average().toFloat().takeIf { !it.isNaN() } ?: 190f
                 val cz = floorPlan.nodes.map { it.y }.average().toFloat().takeIf { !it.isNaN() } ?: 260f
+                val (sx, sz) = findFreeSpot(cx, cz, placedFurniture, floorPlan.nodes)
+                val item = catalogItem(key)
                 val placed = PlacedFurniture(
                     id = UUID.randomUUID().toString(), roomId = roomId,
-                    furnitureId = key, furnitureName = catalogItem(key)?.label ?: key,
+                    furnitureId = key, furnitureName = item?.label ?: key,
                     modelUrl = "",
-                    posX = cx, posZ = cz, isWallMounted = wallMounted
+                    posX = sx, posZ = sz, isWallMounted = wallMounted,
+                    wallMountHeight = item?.wallHeightCm ?: 120f
                 )
                 placedFurniture = (placedFurniture + placed).toMutableList()
                 selectedId = placed.id
@@ -455,9 +470,9 @@ fun RoomDesignerScreen(
 
     if (showSurfaceSheet) {
         SurfaceSheet(
-            wallIdx = wallPresetIdx, floorIdx = floorPresetIdx, shadows = shadowsOn,
+            wallIdx = wallPresetIdx, floorIdx = floorPresetIdx, shadows = shadowsOn, autoHide = autoHideWalls,
             onWall = { wallPresetIdx = it }, onFloor = { floorPresetIdx = it },
-            onShadows = { shadowsOn = it },
+            onShadows = { shadowsOn = it }, onAutoHide = { autoHideWalls = it },
             onDismiss = { showSurfaceSheet = false }
         )
     }
@@ -500,6 +515,7 @@ private fun DesignerTopBar(
     drawingPhase: DrawingPhase,
     viewMode: ViewMode,
     onViewChange: (ViewMode) -> Unit,
+    showViewModes: Boolean,               // Canvas-only view modes; hidden for the 3D engine
     onEditFloorPlan: () -> Unit,
     onColors: () -> Unit,
     onSave: () -> Unit,
@@ -522,7 +538,7 @@ private fun DesignerTopBar(
         navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "Back") } },
         actions = {
             if (editorMode == EditorMode.DESIGN) {
-                ViewMode.entries.forEach { mode ->
+                if (showViewModes) ViewMode.entries.forEach { mode ->
                     IconButton(onClick = { onViewChange(mode) }) {
                         Icon(mode.icon, mode.label,
                             tint = if (viewMode == mode) MaterialTheme.colorScheme.primary
@@ -535,4 +551,28 @@ private fun DesignerTopBar(
             }
         }
     )
+}
+
+// ─── Spawn helper ─────────────────────────────────────────────────────────────
+
+/** Nearest spot to (cx,cz) not within 60 cm of existing furniture, searched in rings and kept inside the plan bbox. */
+private fun findFreeSpot(
+    cx: Float, cz: Float, existing: List<PlacedFurniture>, nodes: List<WallPoint>,
+): Pair<Float, Float> {
+    val minX = nodes.minOfOrNull { it.x } ?: (cx - 200f); val maxX = nodes.maxOfOrNull { it.x } ?: (cx + 200f)
+    val minZ = nodes.minOfOrNull { it.y } ?: (cz - 200f); val maxZ = nodes.maxOfOrNull { it.y } ?: (cz + 200f)
+    fun free(x: Float, z: Float) = existing.none { kotlin.math.hypot(it.posX - x, it.posZ - z) < 60f }
+    if (free(cx, cz)) return cx to cz
+    val step = 70f
+    for (ring in 1..8) {
+        val r = ring * step
+        val n = ring * 8
+        for (i in 0 until n) {
+            val a = 2.0 * Math.PI * i / n
+            val x = (cx + r * kotlin.math.cos(a)).toFloat().coerceIn(minX + 30f, maxX - 30f)
+            val z = (cz + r * kotlin.math.sin(a)).toFloat().coerceIn(minZ + 30f, maxZ - 30f)
+            if (free(x, z)) return x to z
+        }
+    }
+    return cx to cz
 }

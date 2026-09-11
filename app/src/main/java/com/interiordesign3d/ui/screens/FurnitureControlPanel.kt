@@ -27,7 +27,7 @@ internal fun FurnitureControlPanel(
     onChangeHeight: (Float) -> Unit,
     onColorChange: (String?) -> Unit = {},
 ) {
-    val catIcon = catalogItem(item.furnitureId)?.let { "🪑" } ?: "🛋️"
+    val preview = catalogItem(item.furnitureId)?.preview
 
     Surface(tonalElevation = 8.dp, shadowElevation = 8.dp) {
         Column(
@@ -38,7 +38,8 @@ internal fun FurnitureControlPanel(
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text(catIcon, style = MaterialTheme.typography.titleLarge)
+                    if (preview != null) AssetImage(preview, Modifier.size(36.dp))
+                    else Text("🛋️", style = MaterialTheme.typography.titleLarge)
                     Text(item.furnitureName, style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold)
                 }

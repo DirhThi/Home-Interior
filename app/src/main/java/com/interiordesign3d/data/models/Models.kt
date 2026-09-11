@@ -54,7 +54,8 @@ data class WallOpening(
     val edgeIdx: Int,
     val t: Float,              // position along edge [0, 1]
     val type: OpeningType,
-    val widthCm: Float = 90f  // 90 cm door, 100 cm window default
+    val widthCm: Float = 90f, // 90 cm door, 100 cm window default
+    val style: String = ""    // door leaf model key ("doorway" = frame only); "" = default open leaf
 )
 
 @Serializable
