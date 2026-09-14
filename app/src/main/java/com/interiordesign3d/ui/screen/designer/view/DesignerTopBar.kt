@@ -17,7 +17,6 @@ import androidx.compose.ui.res.stringResource
 import com.interiordesign3d.R
 import com.interiordesign3d.ui.screen.designer.DrawingPhase
 import com.interiordesign3d.ui.screen.designer.EditorMode
-import com.interiordesign3d.ui.screen.designer.ViewMode
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
 
 @Composable
@@ -51,18 +50,6 @@ fun DesignerTopBar(state: DesignerState) {
         },
         actions = {
             if (inDesign) {
-                if (!state.use3DEngine) {
-                    ViewMode.entries.forEach { mode ->
-                        IconButton(onClick = { state.onViewChange(mode) }) {
-                            Icon(
-                                mode.icon,
-                                mode.label,
-                                tint = if (state.viewMode == mode) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
                 IconButton(onClick = state::onEditFloorPlan) {
                     Icon(Icons.Outlined.EditNote, stringResource(R.string.edit_floor_plan))
                 }

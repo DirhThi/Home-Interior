@@ -12,16 +12,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.Chair
-import androidx.compose.material.icons.outlined.ViewInAr
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,7 +34,6 @@ import com.interiordesign3d.ui.screen.designer.DrawingPhase
 import com.interiordesign3d.ui.screen.designer.EditorMode
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
 import com.interiordesign3d.ui.screen.designer.view.viewport.FilamentRoomViewport
-import com.interiordesign3d.ui.screen.designer.view.viewport.RoomViewport3D
 import com.interiordesign3d.ui.screen.designer.view.viewport.WallDrawingCanvas
 
 @Composable
@@ -140,53 +137,24 @@ private fun PlanEditor(state: DesignerState, modifier: Modifier) {
 @Composable
 private fun RoomDesignView(state: DesignerState, modifier: Modifier) {
     Box(modifier.fillMaxSize()) {
-        if (state.use3DEngine) {
-            FilamentRoomViewport(
-                floorPlan = state.floorPlan,
-                roomPolygons = state.roomPolygons,
-                placedFurniture = state.placedFurniture,
-                roomHeight = state.roomHeightCm,
-                wallModel = state.wallPreset.model,
-                wallColorHex = state.wallColorHex,
-                wallTileM = state.wallPreset.tileM,
-                floorModel = state.floorPreset.model,
-                floorColorHex = state.floorPreset.colorHex,
-                floorTileM = state.floorPreset.tileM,
-                shadows = state.shadowsOn,
-                autoHideWalls = state.autoHideWalls,
-                onDropOpening = state::onDropOpening,
-                onSelectFurniture = state::onSelectFurniture,
-                onMoveFurniture = state::onMoveFurniture,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            RoomViewport3D(
-                floorPlan = state.floorPlan,
-                roomHeight = state.roomHeightCm,
-                placedFurniture = state.placedFurniture,
-                selectedId = state.selectedId,
-                viewMode = state.viewMode,
-                roomPolygons = state.roomPolygons,
-                onSelectFurniture = state::onSelectFurniture,
-                onMoveFurniture = state::onMoveFurniture,
-                onMoveWallFurniture = state::onMoveWallFurniture,
-                wallColorHex = state.wallColorHex,
-                gridMinorCm = if (state.snapEnabled) 10f else 50f,
-                onWallColorChange = state::onWallColor,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-
-        SmallFloatingActionButton(
-            onClick = state::onToggleRenderer,
-            containerColor = if (state.use3DEngine) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.surfaceContainerHigh,
-            contentColor = if (state.use3DEngine) MaterialTheme.colorScheme.onPrimary
-            else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
-        ) {
-            Icon(Icons.Outlined.ViewInAr, stringResource(R.string.toggle_renderer), Modifier.size(20.dp))
-        }
+        FilamentRoomViewport(
+            floorPlan = state.floorPlan,
+            roomPolygons = state.roomPolygons,
+            placedFurniture = state.placedFurniture,
+            roomHeight = state.roomHeightCm,
+            wallModel = state.wallPreset.model,
+            wallColorHex = state.wallColorHex,
+            wallTileM = state.wallPreset.tileM,
+            floorModel = state.floorPreset.model,
+            floorColorHex = state.floorPreset.colorHex,
+            floorTileM = state.floorPreset.tileM,
+            shadows = state.shadowsOn,
+            autoHideWalls = state.autoHideWalls,
+            onDropOpening = state::onDropOpening,
+            onSelectFurniture = state::onSelectFurniture,
+            onMoveFurniture = state::onMoveFurniture,
+            modifier = Modifier.fillMaxSize(),
+        )
 
         AnimatedVisibility(
             visible = state.selectedItem != null,

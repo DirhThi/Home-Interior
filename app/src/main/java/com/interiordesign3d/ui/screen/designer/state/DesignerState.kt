@@ -16,7 +16,6 @@ import com.interiordesign3d.data.models.WallPoint
 import com.interiordesign3d.ui.screen.designer.DrawingPhase
 import com.interiordesign3d.ui.screen.designer.EditorMode
 import com.interiordesign3d.ui.screen.designer.PlacementTool
-import com.interiordesign3d.ui.screen.designer.ViewMode
 
 @Stable
 open class DesignerState : BaseScreenState() {
@@ -32,10 +31,7 @@ open class DesignerState : BaseScreenState() {
     var placedFurniture by mutableStateOf(emptyList<PlacedFurniture>())
     var selectedId by mutableStateOf<String?>(null)
 
-    // ── Mode / renderer ───────────────────────────────────────────────────────
     var editorMode by mutableStateOf(EditorMode.DRAW_WALLS)
-    var viewMode by mutableStateOf(ViewMode.PERSPECTIVE)
-    var use3DEngine by mutableStateOf(true)
 
     // ── Surfaces ──────────────────────────────────────────────────────────────
     var wallPresetIdx by mutableStateOf(0)
@@ -94,7 +90,6 @@ open class DesignerState : BaseScreenState() {
     // ── Furniture ─────────────────────────────────────────────────────────────
     open fun onSelectFurniture(id: String?) { selectedId = id }
     open fun onMoveFurniture(id: String, x: Float, z: Float) {}
-    open fun onMoveWallFurniture(id: String, x: Float, z: Float, height: Float) {}
     open fun onAddFurniture(key: String, wallMounted: Boolean) {}
     open fun onRotate(degrees: Float) {}
     open fun onScale(scale: Float) {}
@@ -104,9 +99,7 @@ open class DesignerState : BaseScreenState() {
     open fun onChangeHeight(heightCm: Float) {}
     open fun onColorChange(hex: String?) {}
 
-    // ── Renderer / surfaces ───────────────────────────────────────────────────
-    open fun onViewChange(mode: ViewMode) { viewMode = mode }
-    open fun onToggleRenderer() { use3DEngine = !use3DEngine }
+    // ── Surfaces ──────────────────────────────────────────────────────────────
     open fun onShowAddFurniture() { showAddFurnitureSheet = true }
     open fun onDismissAddFurniture() { showAddFurnitureSheet = false }
     open fun onShowSurfaceSheet() { showSurfaceSheet = true }

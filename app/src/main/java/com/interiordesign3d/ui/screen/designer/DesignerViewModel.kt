@@ -163,11 +163,6 @@ class DesignerViewModel(
             }
         }
 
-        override fun onMoveWallFurniture(id: String, x: Float, z: Float, height: Float) {
-            placedFurniture = placedFurniture.map {
-                if (it.id == id) it.copy(posX = x, posZ = z, wallMountHeight = height) else it
-            }
-        }
 
         override fun onAddFurniture(key: String, wallMounted: Boolean) {
             val centerX = floorPlan.nodes.map { it.x }.average().toFloat().takeIf { !it.isNaN() } ?: 190f
