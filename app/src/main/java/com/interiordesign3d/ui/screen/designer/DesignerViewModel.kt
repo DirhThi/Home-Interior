@@ -11,6 +11,7 @@ import com.interiordesign3d.data.models.ColorPalette
 import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.PlacedFurniture
+import com.interiordesign3d.data.models.Stair
 import com.interiordesign3d.data.models.WallOpening
 import com.interiordesign3d.data.models.WallPoint
 import com.interiordesign3d.data.repository.AppDatabase
@@ -175,6 +176,44 @@ class DesignerViewModel(
             )
             placedFurniture = placedFurniture.filterNot { it.id == furnitureId }
             if (selectedId == furnitureId) selectedId = null
+        }
+
+        // ── Stairs ────────────────────────────────────────────────────────────
+
+        override fun onPlaceStair(x: Float, y: Float) {
+            val stair = floorPlan.fitStair(
+                Stair(id = UUID.randomUUID().toString(), level = activeLevel, x = x, y = y)
+            )
+            floorPlan = floorPlan.copy(stairs = floorPlan.stairs + stair)
+            selectedStairId = stair.id
+            placementTool = PlacementTool.NONE
+        }
+
+        override fun onMoveStair(id: String, x: Float, y: Float) =
+            updateStairById(id) { it.copy(x = x, y = y) }
+
+        override fun onStairWidth(cm: Float) = updateStair { it.copy(widthCm = cm) }
+
+        override fun onStairLength(cm: Float) = updateStair { it.copy(lengthCm = cm) }
+
+        override fun onStairRotate(deg: Float) = updateStair { it.copy(rotationDeg = deg) }
+
+        override fun onRemoveSelectedStair() {
+            val id = selectedStairId ?: return
+            floorPlan = floorPlan.copy(stairs = floorPlan.stairs.filter { it.id != id })
+            selectedStairId = null
+        }
+
+        private inline fun updateStair(transform: (Stair) -> Stair) {
+            updateStairById(selectedStairId ?: return, transform)
+        }
+
+        private inline fun updateStairById(id: String, transform: (Stair) -> Stair) {
+            floorPlan = floorPlan.copy(
+                stairs = floorPlan.stairs.map {
+                    if (it.id == id) floorPlan.fitStair(transform(it)) else it
+                }
+            )
         }
 
         // ── Furniture ─────────────────────────────────────────────────────────

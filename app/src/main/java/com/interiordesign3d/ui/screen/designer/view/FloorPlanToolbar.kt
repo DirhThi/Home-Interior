@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.DoorFront
 import androidx.compose.material.icons.outlined.GridOn
+import androidx.compose.material.icons.outlined.Stairs
 import androidx.compose.material.icons.outlined.Window
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconToggleButton
@@ -81,6 +82,13 @@ private fun OpeningToolRow(state: DesignerState) {
             accent = accents.window,
             checked = state.placementTool == PlacementTool.WINDOW,
             onCheck = { state.onToolChange(state.placementTool.toggled(PlacementTool.WINDOW)) },
+        )
+        OpeningChip(
+            icon = Icons.Outlined.Stairs,
+            label = stringResource(R.string.stairs),
+            accent = MaterialTheme.colorScheme.primary,
+            checked = state.placementTool == PlacementTool.STAIRS,
+            onCheck = { state.onToolChange(state.placementTool.toggled(PlacementTool.STAIRS)) },
         )
         AnimatedVisibility(visible = state.placementTool != PlacementTool.NONE) {
             Text(

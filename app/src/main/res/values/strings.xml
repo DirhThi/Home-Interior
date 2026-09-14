@@ -46,6 +46,12 @@
     <string name="show_frame">Frame</string>
     <string name="door_open">Open</string>
     <string name="opening_width">width</string>
+    <string name="stairs">Stairs</string>
+    <string name="stair_no_opening">No opening upstairs — the whole flight has to sit inside one room on the storey above.</string>
+    <string name="stair_width">W %1$d</string>
+    <string name="stair_length">L %1$d</string>
+    <string name="stair_width_label">stair width</string>
+    <string name="stair_length_label">stair length</string>
     <string name="opening_hint">Tap a wall to place · tap a marker to remove</string>
     <string name="design_room">Design room</string>
     <string name="add_level">Add storey</string>

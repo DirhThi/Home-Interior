@@ -3,6 +3,7 @@ package com.interiordesign3d.ui.screen.designer.view.viewport
 import com.interiordesign3d.data.catalog.*
 import androidx.compose.ui.graphics.Color
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import com.interiordesign3d.ui.screen.designer.*
 
 import android.content.Context
@@ -51,6 +52,7 @@ private val filamentReady: Boolean by lazy { Utils.init(); true }
 
 private const val CM = 0.01f
 private const val WALL_THICK_CM = 10f
+private const val BRIDGE_NUDGE_CM = 0.15f
 private const val FLOOR_SLAB_M = 0.05f   // a storey sits on the slab of the one below, not on its wall tops
 private const val OPENING_CASED = "doorway"      // cased opening: hole and reveal, no leaf
 private const val DOOR_OPEN_DEG = 78f
@@ -292,7 +294,7 @@ private class RoomScene(
         val spanX = (maxX - minX).coerceAtLeast(1f); val spanZ = (maxZ - minZ).coerceAtLeast(1f)
 
         val sSig = roomPolygons.joinToString(";") { p -> p.joinToString(",") { "${it.x.toInt()}/${it.y.toInt()}" } } +
-                "|$activeLevel|${roomHeightCm.toInt()}|$wallModel|$wallColorHex|$wallTileM|$floorModel|$floorColorHex|$floorTileM" +
+                "|$activeLevel|${plan.stairs.joinToString(",") { "${it.level}/${it.x.toInt()}/${it.y.toInt()}/${it.widthCm}/${it.lengthCm}/${it.rotationDeg}" }}|${roomHeightCm.toInt()}|$wallModel|$wallColorHex|$wallTileM|$floorModel|$floorColorHex|$floorTileM" +
                 "|" + openings.joinToString(",") { "${it.nodeA}/${it.nodeB}/${it.t}/${it.type}/${it.widthCm}/${it.style}/${it.leafHidden}/${it.leafOpen}" }
         if (sSig != structSig) {
             structSig = sSig
@@ -348,12 +350,14 @@ private class RoomScene(
             val baseY = level * (hM + floorT)
             val rooms = plan.roomsOnLevel(level).map { plan.rooms[it] }
             if (rooms.isEmpty()) continue
-            for (room in rooms) buildFloorMesh(room.map { nodes[it] }, floorMi, floorTileM, baseY)
+            val holes = plan.floorHoles(level)
+            for (room in rooms) buildFloorMesh(room.map { nodes[it] }, floorMi, floorTileM, baseY, holes)
             // A storey with another above it needs a ceiling, or you see straight down through any
             // part of the footprint the upper storey does not cover. Sits just under the upper
             // floor slab rather than level with it, so the two never fight for the same plane.
             if (level < activeLevel) {
-                for (room in rooms) buildFloorMesh(room.map { nodes[it] }, wallMi, wallTileM, baseY + hM + 0.01f)
+                val ceilHoles = plan.floorHoles(level + 1)
+                for (room in rooms) buildFloorMesh(room.map { nodes[it] }, wallMi, wallTileM, baseY + hM + 0.01f, ceilHoles)
             }
 
             // ONE wall per unique edge. Two rooms sharing an edge used to build a slab each, offset
@@ -462,6 +466,24 @@ private class RoomScene(
                 if (tPrev < 1f - 1e-3f) { slab(tPrev, 1f, -floorT, hM); baseboard(tPrev, 1f) }
                 wallSegs.add(WallSeg(n0, n1, exterior, nx, nz, off,
                     wx((a.x + b.x) / 2f + nx * off), wz((a.y + b.y) / 2f + nz * off), edgeEnts.toIntArray()))
+            }
+
+            // Stairs rising from this storey to the next. The hole they need overhead is cut by
+            // floorHoles(level + 1), from the very same footprint.
+            plan.stairs.filter { it.level == level }.forEach { st ->
+                val rise = hM + floorT
+                val count = (rise / 0.17f).roundToInt().coerceIn(10, 24)
+                val riser = rise / count
+                val treadCm = st.lengthCm / count
+                val rad = Math.toRadians(st.rotationDeg.toDouble())
+                val cs = cos(rad).toFloat(); val sn = sin(rad).toFloat()
+                for (k in 0 until count) {
+                    val along = -st.lengthCm / 2f + treadCm * (k + 0.5f)
+                    val px = st.x + (-sn) * along
+                    val pz = st.y + cs * along
+                    buildBox(floorMi, st.widthCm * CM, (k + 1) * riser, treadCm * CM,
+                        wx(px), baseY, wz(pz), -st.rotationDeg, 1f)
+                }
             }
 
             // One post per plan corner. It has to sit where its walls actually are: an exterior wall is
@@ -740,9 +762,15 @@ private class RoomScene(
     }
 
     /** Flat floor at y = 0 covering the room polygon (grown outward by the wall thickness). */
-    private fun buildFloorMesh(poly: List<WallPoint>, mi: MaterialInstance, tileM: Float, baseY: Float = 0f) {
+    private fun buildFloorMesh(
+        poly: List<WallPoint>, mi: MaterialInstance, tileM: Float, baseY: Float = 0f,
+        holes: List<List<WallPoint>> = emptyList(),
+    ) {
         if (poly.size < 3) return
-        val pts = outset(poly, WALL_THICK_CM)
+        var pts = outset(poly, WALL_THICK_CM)
+        // Only holes lying WHOLLY inside this room. Bridging a hole that pokes past the outer ring
+        // produces a self-crossing polygon, which the ear clipper abandons half-done.
+        holes.filter { h -> h.all { pointInPoly(it, pts) } }.forEach { pts = bridgeHole(pts, it) }
         val tris = triangulate(pts); if (tris.isEmpty()) return
         val qUp = floatArrayOf(-0.70710678f, 0f, 0f, 0.70710678f)
         val vbData = ByteBuffer.allocateDirect(pts.size * VSTRIDE).order(ByteOrder.nativeOrder())
@@ -756,6 +784,19 @@ private class RoomScene(
         addMesh(vbData, pts.size, ibData, tris.size, mi,
             Box(((minX + maxX) / 2f - houseCx) * CM, baseY, ((minZ + maxZ) / 2f - houseCz) * CM,
                 (maxX - minX) * CM / 2f + 0.01f, 0.01f, (maxZ - minZ) * CM / 2f + 0.01f), null, false)
+    }
+
+    private fun pointInPoly(pt: WallPoint, poly: List<WallPoint>): Boolean {
+        var inside = false
+        var j = poly.size - 1
+        for (i in poly.indices) {
+            val a = poly[i]; val b = poly[j]
+            if ((a.y > pt.y) != (b.y > pt.y) &&
+                pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x
+            ) inside = !inside
+            j = i
+        }
+        return inside
     }
 
     /** Offset every edge outward by [cm] (corners = intersection of the two offset lines), so the
@@ -781,6 +822,73 @@ private class RoomScene(
         }
     }
 
+    /** Signed area; positive is counter-clockwise in plan coordinates. */
+    private fun signedArea(p: List<WallPoint>): Float {
+        var a = 0f
+        for (i in p.indices) { val u = p[i]; val v = p[(i + 1) % p.size]; a += u.x * v.y - v.x * u.y }
+        return a / 2f
+    }
+
+    private fun wound(p: List<WallPoint>, ccw: Boolean): List<WallPoint> =
+        if ((signedArea(p) > 0f) == ccw) p else p.reversed()
+
+    private fun segmentsCross(a: WallPoint, b: WallPoint, c: WallPoint, d: WallPoint): Boolean {
+        fun side(p: WallPoint, q: WallPoint, r: WallPoint) =
+            (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)
+        val d1 = side(a, b, c); val d2 = side(a, b, d)
+        val d3 = side(c, d, a); val d4 = side(c, d, b)
+        return ((d1 > 0f) != (d2 > 0f)) && ((d3 > 0f) != (d4 > 0f))
+    }
+
+    /**
+     * Joins [hole] into [outer] with a two-sided bridge, producing one simple ring the ear clipper
+     * can triangulate. The bridge runs from the hole's rightmost corner to the nearest outer corner
+     * it can reach without crossing an edge.
+     */
+    private fun bridgeHole(outer: List<WallPoint>, hole: List<WallPoint>): List<WallPoint> {
+        if (hole.size < 3 || outer.size < 3) return outer
+        val out = wound(outer, ccw = true)
+        val hol = wound(hole, ccw = false)
+        val mi = hol.indices.maxByOrNull { hol[it].x } ?: return out
+        val m = hol[mi]
+
+        fun clear(to: WallPoint, skipOuter: Int): Boolean {
+            for (i in out.indices) {
+                if (i == skipOuter || (i + 1) % out.size == skipOuter) continue
+                if (segmentsCross(m, to, out[i], out[(i + 1) % out.size])) return false
+            }
+            for (i in hol.indices) {
+                if (i == mi || (i + 1) % hol.size == mi) continue
+                if (segmentsCross(m, to, hol[i], hol[(i + 1) % hol.size])) return false
+            }
+            return true
+        }
+
+        var best = -1; var bestD = Float.MAX_VALUE
+        for (i in out.indices) {
+            val d = hypot(out[i].x - m.x, out[i].y - m.y)
+            if (d < bestD && clear(out[i], i)) { bestD = d; best = i }
+        }
+        if (best < 0) return out
+
+        // The bridge is walked in both directions. Repeating M and P exactly leaves two coincident
+        // edges, and the ear clipper then finds no ear and gives up half-triangulated — which shows
+        // up as whole triangles missing from the slab. Nudging the return pair keeps the ring simple.
+        val p = out[best]
+        val bx = p.x - m.x; val by = p.y - m.y
+        val bl = hypot(bx, by).coerceAtLeast(1e-3f)
+        val ex = -by / bl * BRIDGE_NUDGE_CM
+        val ey = bx / bl * BRIDGE_NUDGE_CM
+
+        val ring = mutableListOf<WallPoint>()
+        for (i in 0..best) ring += out[i]
+        for (k in 0 until hol.size) ring += hol[(mi + k) % hol.size]
+        ring += WallPoint(m.x + ex, m.y + ey)
+        ring += WallPoint(p.x + ex, p.y + ey)
+        for (i in best + 1 until out.size) ring += out[i]
+        return ring
+    }
+
     private fun triangulate(p: List<WallPoint>): List<Int> {
         val n = p.size
         var area2 = 0f
@@ -788,7 +896,7 @@ private class RoomScene(
         val idx = if (area2 > 0f) (0 until n).toMutableList() else (n - 1 downTo 0).toMutableList()   // CCW in plan
         val out = mutableListOf<Int>()
         var guard = 0
-        while (idx.size > 2 && guard++ < 4 * n + 16) {
+        while (idx.size > 2 && guard++ < 8 * n + 64) {
             var clipped = false
             for (k in idx.indices) {
                 val i0 = idx[(k - 1 + idx.size) % idx.size]; val i1 = idx[k]; val i2 = idx[(k + 1) % idx.size]

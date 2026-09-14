@@ -12,6 +12,7 @@ import com.interiordesign3d.data.models.ColorPalette
 import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.PlacedFurniture
+import com.interiordesign3d.data.models.Stair
 import com.interiordesign3d.data.models.WallOpening
 import com.interiordesign3d.data.models.WallPoint
 import com.interiordesign3d.ui.screen.designer.DrawingPhase
@@ -32,6 +33,7 @@ open class DesignerState : BaseScreenState() {
     var placedFurniture by mutableStateOf(emptyList<PlacedFurniture>())
     var selectedId by mutableStateOf<String?>(null)
     var selectedOpeningId by mutableStateOf<String?>(null)
+    var selectedStairId by mutableStateOf<String?>(null)
 
     var editorMode by mutableStateOf(EditorMode.DRAW_WALLS)
     var activeLevel by mutableStateOf(0)
@@ -72,6 +74,10 @@ open class DesignerState : BaseScreenState() {
         floorPlan.openings.firstOrNull { it.id == selectedOpeningId }
     }
 
+    val selectedStair: Stair? by derivedStateOf {
+        floorPlan.stairs.firstOrNull { it.id == selectedStairId }
+    }
+
     val wallPreset get() = WALL_PRESETS[wallPresetIdx.coerceIn(WALL_PRESETS.indices)]
     val floorPreset get() = FLOOR_PRESETS[floorPresetIdx.coerceIn(FLOOR_PRESETS.indices)]
     val wallColorHex get() = wallColorOverride ?: wallPreset.colorHex
@@ -85,6 +91,7 @@ open class DesignerState : BaseScreenState() {
         activeLevel = level
         selectedId = null
         selectedOpeningId = null
+        selectedStairId = null
         currentPath = emptyList()
     }
     open fun onAddLevel() { onSelectLevel(levelCount) }
@@ -111,6 +118,13 @@ open class DesignerState : BaseScreenState() {
     open fun onSetLeafHidden(hidden: Boolean) {}
     open fun onSetLeafOpen(open: Boolean) {}
     open fun onRemoveSelectedOpening() {}
+    open fun onPlaceStair(x: Float, y: Float) {}
+    open fun onMoveStair(id: String, x: Float, y: Float) {}
+    open fun onSelectStair(id: String?) { selectedStairId = id; if (id != null) { selectedId = null; selectedOpeningId = null } }
+    open fun onStairWidth(cm: Float) {}
+    open fun onStairLength(cm: Float) {}
+    open fun onStairRotate(deg: Float) {}
+    open fun onRemoveSelectedStair() {}
     open fun onDropOpening(nodeA: Int, nodeB: Int, t: Float, widthCm: Float, furnitureId: String) {}
 
     // ── Furniture ─────────────────────────────────────────────────────────────

@@ -60,6 +60,10 @@ fun WallDrawingCanvas(
     onRemoveOpening: (id: String) -> Unit = {},
     onTapOpening: (id: String) -> Unit = {},
     activeLevel: Int = 0,
+    onPlaceStair: (x: Float, y: Float) -> Unit = { _, _ -> },
+    onMoveStair: (id: String, x: Float, y: Float) -> Unit = { _, _, _ -> },
+    onTapStair: (id: String) -> Unit = {},
+    selectedStairId: String? = null,
     placedFurniture: List<PlacedFurniture> = emptyList(),
     onMoveFurnitureInPlan: (id: String, posX: Float, posZ: Float) -> Unit = { _, _, _ -> },
     onTapFurniture: (id: String) -> Unit = {},
@@ -67,6 +71,7 @@ fun WallDrawingCanvas(
 ) {
     val accents = LocalInteriorAccents.current
     val textMeasurer = rememberTextMeasurer()
+    val errorColor = MaterialTheme.colorScheme.error
     val dimensionStyle = MaterialTheme.typography.labelSmall.copy(color = accents.dimensionText)
     val panOffset = remember { mutableStateOf(Offset.Zero) }
     val scale     = remember { mutableFloatStateOf(1.5f) }
@@ -97,6 +102,9 @@ fun WallDrawingCanvas(
     val onRemoveOp      = rememberUpdatedState(onRemoveOpening)
     val onTapOp         = rememberUpdatedState(onTapOpening)
     val levelRef        = rememberUpdatedState(activeLevel)
+    val onPlaceStairRef = rememberUpdatedState(onPlaceStair)
+    val onMoveStairRef  = rememberUpdatedState(onMoveStair)
+    val onTapStairRef   = rememberUpdatedState(onTapStair)
     val placedFurRef    = rememberUpdatedState(placedFurniture)
     val onMoveFurRef    = rememberUpdatedState(onMoveFurnitureInPlan)
     val onTapFurRef     = rememberUpdatedState(onTapFurniture)
@@ -166,6 +174,14 @@ fun WallDrawingCanvas(
                         }
                     }
 
+                    // Stair under the finger (for drag/tap)
+                    var nearStair: Stair? = null
+                    for (st in plan0.stairs) {
+                        if (st.level != levelRef.value) continue
+                        val poly = st.footprint().map { Offset(pan0.x + it.x * sc0, pan0.y + it.y * sc0) }
+                        if (pointInScreenPoly(downPos, poly)) { nearStair = st; break }
+                    }
+
                     // Find nearest furniture item (for drag/tap in EDITING phase)
                     var nearFurniture: PlacedFurniture? = null
                     if (phaseRef.value == DrawingPhase.EDITING) {
@@ -206,6 +222,10 @@ fun WallDrawingCanvas(
                             prevPinchDist = 0f
                             if (totalMove > 8f) {
                                 when {
+                                    nearStair != null -> {
+                                        val c = toCm(main.position)
+                                        onMoveStairRef.value(nearStair!!.id, c.x, c.y)
+                                    }
                                     nearFurniture != null -> {
                                         // Move furniture in 2D plan
                                         val sc = scale.floatValue
@@ -252,6 +272,11 @@ fun WallDrawingCanvas(
 
                     // ── Tap logic ─────────────────────────────────────────────
                     if (totalMove < 8f) {
+                        val stair = nearStair
+                        if (stair != null && toolRef.value == PlacementTool.NONE) {
+                            onTapStairRef.value(stair.id)
+                            return@awaitEachGesture
+                        }
                         // Furniture tap takes priority in EDITING phase
                         if (nearFurniture != null && phaseRef.value == DrawingPhase.EDITING) {
                             onTapFurRef.value(nearFurniture!!.id)
@@ -284,7 +309,9 @@ fun WallDrawingCanvas(
                             DrawingPhase.CLOSED -> Unit  // wait for Done button
 
                             DrawingPhase.EDITING -> {
-                                if (toolRef.value != PlacementTool.NONE) {
+                                if (toolRef.value == PlacementTool.STAIRS) {
+                                    onPlaceStairRef.value(tapCm.x, tapCm.y)
+                                } else if (toolRef.value != PlacementTool.NONE) {
                                     // Placement tool: tap near existing opening → remove; tap wall → place
                                     var removedId: String? = null
                                     val plan = planRef.value
@@ -457,6 +484,38 @@ fun WallDrawingCanvas(
                 }
             }
 
+            // ── Stairs on this storey ────────────────────────────────────────
+            floorPlan.stairs.forEach { st ->
+                if (st.level != activeLevel) return@forEach
+                val corners = st.footprint().map { toScreen(it) }
+                val outline = Path().apply {
+                    moveTo(corners.first().x, corners.first().y)
+                    corners.drop(1).forEach { lineTo(it.x, it.y) }
+                    close()
+                }
+                val selected = st.id == selectedStairId
+                val tone = if (floorPlan.stairFits(st)) accents.dimensionText else errorColor
+                drawPath(outline, tone.copy(alpha = 0.16f))
+                drawPath(
+                    outline,
+                    tone.copy(alpha = if (selected) 1f else 0.7f),
+                    style = Stroke(if (selected) 3f else 2f),
+                )
+                // Treads, drawn across the run so the direction of travel is readable.
+                val steps = 12
+                val a0 = corners[0]; val a1 = corners[1]
+                val b0 = corners[3]; val b1 = corners[2]
+                for (k in 1 until steps) {
+                    val t = k / steps.toFloat()
+                    drawLine(
+                        tone.copy(alpha = 0.5f),
+                        Offset(a0.x + (b0.x - a0.x) * t, a0.y + (b0.y - a0.y) * t),
+                        Offset(a1.x + (b1.x - a1.x) * t, a1.y + (b1.y - a1.y) * t),
+                        1.5f,
+                    )
+                }
+            }
+
             // ── Current open path ─────────────────────────────────────────────
             if (currentPath.size >= 2) {
                 for (i in 0 until currentPath.size - 1) {
@@ -482,7 +541,12 @@ fun WallDrawingCanvas(
             }
 
             // ── All nodes ─────────────────────────────────────────────────────
+            val nodesOnLevel = floorPlan.rooms.indices
+                .filter { floorPlan.levelOf(it) == activeLevel }
+                .flatMap { floorPlan.rooms[it] }
+                .toSet() + currentPath
             floorPlan.nodes.forEachIndexed { idx, pt ->
+                if (floorPlan.rooms.isNotEmpty() && idx !in nodesOnLevel) return@forEachIndexed
                 val screen   = toScreen(pt)
                 val inPath   = idx in currentPath
                 val isFirst  = currentPath.firstOrNull() == idx
@@ -723,4 +787,15 @@ private fun DrawScope.drawDimension(
         cornerRadius = CornerRadius(h / 2f + padY),
     )
     drawText(measured, topLeft = Offset(center.x - w / 2f, center.y - h / 2f))
+}
+
+private fun pointInScreenPoly(p: Offset, poly: List<Offset>): Boolean {
+    var inside = false
+    var j = poly.size - 1
+    for (i in poly.indices) {
+        val a = poly[i]; val b = poly[j]
+        if ((a.y > p.y) != (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) inside = !inside
+        j = i
+    }
+    return inside
 }

@@ -13,7 +13,7 @@ enum class EditorMode { DRAW_WALLS, DESIGN }
  */
 enum class DrawingPhase { PLACING, CLOSED, EDITING }
 
-enum class PlacementTool { NONE, DOOR, WINDOW }
+enum class PlacementTool { NONE, DOOR, WINDOW, STAIRS }
 
 enum class OpeningHitZone { CENTER, END }
 

@@ -63,6 +63,33 @@ data class WallOpening(
     val leafOpen: Boolean = false,     // render the leaf swung open
 )
 
+/**
+ * A flight rising from [level] to the storey above. Its footprint is the rectangle that gets cut
+ * out of the floor overhead — place the stair and the hole follows from its own coordinates.
+ */
+@Serializable
+data class Stair(
+    val id: String = "",
+    val level: Int = 0,
+    val x: Float = 0f,          // centre of the run, cm
+    val y: Float = 0f,
+    val widthCm: Float = 100f,
+    val lengthCm: Float = 240f,
+    val rotationDeg: Float = 0f,
+) {
+    /** The four corners of the run, in plan centimetres. */
+    fun footprint(marginCm: Float = 0f): List<WallPoint> {
+        val hw = widthCm / 2f + marginCm
+        val hl = lengthCm / 2f + marginCm
+        val r = Math.toRadians(rotationDeg.toDouble())
+        val c = kotlin.math.cos(r).toFloat()
+        val s = kotlin.math.sin(r).toFloat()
+        return listOf(-hw to -hl, hw to -hl, hw to hl, -hw to hl).map { (u, v) ->
+            WallPoint(x + u * c - v * s, y + u * s + v * c)
+        }
+    }
+}
+
 @Serializable
 data class FloorPlan(
     // Nodes are shared across storeys on purpose: upper walls land on lower ones, and the storey
@@ -71,7 +98,8 @@ data class FloorPlan(
     val rooms: List<List<Int>> = emptyList(),
     val openings: List<WallOpening> = emptyList(),
     /** Parallel to [rooms]; an empty list means every room is on the ground floor. */
-    val roomLevels: List<Int> = emptyList()
+    val roomLevels: List<Int> = emptyList(),
+    val stairs: List<Stair> = emptyList()
 ) {
     fun roomPolygon(idx: Int): List<WallPoint> = rooms[idx].map { nodes[it] }
 
@@ -81,6 +109,63 @@ data class FloorPlan(
 
     /** Indices into [rooms] for one storey. */
     fun roomsOnLevel(level: Int): List<Int> = rooms.indices.filter { levelOf(it) == level }
+
+    /** Holes that the floor of [level] must carry: the stairs coming up from the storey below. */
+    fun floorHoles(level: Int): List<List<WallPoint>> =
+        stairs.filter { it.level == level - 1 }.map { it.footprint(HOLE_MARGIN_CM) }
+
+    /**
+     * Whether [stair] can actually open onto the storey above. The hole is cut out of ONE room's
+     * slab, so the whole footprint has to sit inside one room up there — a flight straddling a wall,
+     * hanging over the edge, or with nothing above it gets no opening.
+     */
+    /**
+     * Shrinks and nudges [stair] until its whole footprint sits inside ONE room of the storey it
+     * opens onto — the hole is cut from a single slab, so a flight spanning two rooms cannot work.
+     * Width and length give way; the height is always the storey, so it is not ours to change.
+     */
+    fun fitStair(stair: Stair): Stair {
+        val candidates = roomsOnLevel(stair.level + 1).ifEmpty { roomsOnLevel(stair.level) }
+        val centre = WallPoint(stair.x, stair.y)
+        val target = candidates.firstOrNull { pointInPolygon(centre, rooms[it].map { n -> nodes[n] }) }
+            ?: candidates.firstOrNull() ?: return stair
+        val poly = rooms[target].map { nodes[it] }
+
+        // Work in the flight's own frame, where its footprint is axis-aligned.
+        val rad = Math.toRadians(-stair.rotationDeg.toDouble())
+        val c = kotlin.math.cos(rad).toFloat()
+        val sn = kotlin.math.sin(rad).toFloat()
+        fun toLocal(p: WallPoint) = WallPoint(p.x * c - p.y * sn, p.x * sn + p.y * c)
+        fun toWorld(p: WallPoint) = WallPoint(p.x * c + p.y * sn, -p.x * sn + p.y * c)
+
+        val local = poly.map { toLocal(it) }
+        val minX = local.minOf { it.x } + HOLE_MARGIN_CM
+        val maxX = local.maxOf { it.x } - HOLE_MARGIN_CM
+        val minY = local.minOf { it.y } + HOLE_MARGIN_CM
+        val maxY = local.maxOf { it.y } - HOLE_MARGIN_CM
+        if (maxX - minX < MIN_STAIR_WIDTH_CM || maxY - minY < MIN_STAIR_LENGTH_CM) return stair
+
+        val w = stair.widthCm.coerceIn(MIN_STAIR_WIDTH_CM, maxX - minX)
+        val l = stair.lengthCm.coerceIn(MIN_STAIR_LENGTH_CM, maxY - minY)
+        val lc = toLocal(centre)
+        val fitted = toWorld(
+            WallPoint(
+                lc.x.coerceIn(minX + w / 2f, maxX - w / 2f),
+                lc.y.coerceIn(minY + l / 2f, maxY - l / 2f),
+            )
+        )
+        return stair.copy(x = fitted.x, y = fitted.y, widthCm = w, lengthCm = l)
+    }
+
+    fun stairFits(stair: Stair): Boolean {
+        val above = roomsOnLevel(stair.level + 1)
+        if (above.isEmpty()) return false
+        val fp = stair.footprint(HOLE_MARGIN_CM)
+        return above.any { ri ->
+            val poly = rooms[ri].map { nodes[it] }
+            fp.all { pointInPolygon(it, poly) }
+        }
+    }
 
     /** Appends a room on [level], keeping [roomLevels] aligned with [rooms]. */
     fun addRoom(polygon: List<Int>, level: Int): FloorPlan {
@@ -188,3 +273,22 @@ data class ColorPalette(
     val background: String,
     val style: DesignStyle
 )
+
+/** Stair holes are cut a little wider than the run so the flight is not pinched by the slab edge. */
+const val HOLE_MARGIN_CM = 4f
+
+fun pointInPolygon(pt: WallPoint, poly: List<WallPoint>): Boolean {
+    var inside = false
+    var j = poly.size - 1
+    for (i in poly.indices) {
+        val a = poly[i]; val b = poly[j]
+        if ((a.y > pt.y) != (b.y > pt.y) &&
+            pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x
+        ) inside = !inside
+        j = i
+    }
+    return inside
+}
+
+const val MIN_STAIR_WIDTH_CM = 70f
+const val MIN_STAIR_LENGTH_CM = 150f
