@@ -82,10 +82,10 @@ private val DarkColorScheme = darkColorScheme(
     surfaceTint             = C.Moss80,
 
     surfaceContainerLowest  = C.Ink4,
-    surfaceContainerLow     = Color(0xFF141E19),
-    surfaceContainer        = Color(0xFF1A2721),
-    surfaceContainerHigh    = Color(0xFF22312A),
-    surfaceContainerHighest = Color(0xFF2C3D35),
+    surfaceContainerLow     = C.Ink12,
+    surfaceContainer        = C.Ink14,
+    surfaceContainerHigh    = C.Ink18,
+    surfaceContainerHighest = C.Ink22,
 
     inverseSurface          = C.OnInk,
     inverseOnSurface        = C.Ink24,
