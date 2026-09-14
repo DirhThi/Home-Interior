@@ -3,6 +3,15 @@ package com.interiordesign3d.ui.screen.designer.view.viewport
 import com.interiordesign3d.data.catalog.*
 import com.interiordesign3d.ui.screen.designer.*
 import com.interiordesign3d.ui.theme.LocalInteriorAccents
+import kotlin.math.hypot
+import kotlin.math.roundToInt
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.drawText
 import com.interiordesign3d.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
@@ -54,6 +63,8 @@ fun WallDrawingCanvas(
     modifier: Modifier = Modifier
 ) {
     val accents = LocalInteriorAccents.current
+    val textMeasurer = rememberTextMeasurer()
+    val dimensionStyle = MaterialTheme.typography.labelSmall.copy(color = accents.dimensionText)
     val panOffset = remember { mutableStateOf(Offset.Zero) }
     val scale     = remember { mutableFloatStateOf(1.5f) }
     var initialized by remember { mutableStateOf(false) }
@@ -365,6 +376,10 @@ fun WallDrawingCanvas(
                 val floorC = accents.canvasRoomFill
                 val wallC = accents.canvasWall
                 val pts = room.map { toScreen(floorPlan.nodes[it]) }
+                val roomCentroid = Offset(
+                    pts.map { it.x }.average().toFloat(),
+                    pts.map { it.y }.average().toFloat(),
+                )
                 val path = Path().apply {
                     moveTo(pts.first().x, pts.first().y)
                     pts.drop(1).forEach { lineTo(it.x, it.y) }
@@ -383,6 +398,17 @@ fun WallDrawingCanvas(
                     val ny =  (b.x - a.x) / dist * 7f
                     drawLine(wallC.copy(alpha = 0.4f),
                         Offset(mid.x - nx, mid.y - ny), Offset(mid.x + nx, mid.y + ny), 1.5f)
+
+                    drawDimension(
+                        textMeasurer = textMeasurer,
+                        style = dimensionStyle,
+                        chip = accents.dimensionChip,
+                        from = floorPlan.nodes[room[i]],
+                        to = floorPlan.nodes[room[(i + 1) % room.size]],
+                        screenFrom = a,
+                        screenTo = b,
+                        awayFrom = roomCentroid,
+                    )
                 }
             }
 
@@ -392,6 +418,15 @@ fun WallDrawingCanvas(
                     val a = toScreen(floorPlan.nodes[currentPath[i]])
                     val b = toScreen(floorPlan.nodes[currentPath[i + 1]])
                     drawLine(accents.canvasWall.copy(alpha = 0.9f), a, b, 2.5f)
+                    drawDimension(
+                        textMeasurer = textMeasurer,
+                        style = dimensionStyle,
+                        chip = accents.dimensionChip,
+                        from = floorPlan.nodes[currentPath[i]],
+                        to = floorPlan.nodes[currentPath[i + 1]],
+                        screenFrom = a,
+                        screenTo = b,
+                    )
                 }
             }
 
@@ -583,4 +618,58 @@ private fun PlanStatusPill(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
         )
     }
+}
+
+// ─── Wall dimensions ──────────────────────────────────────────────────────────
+
+/** Centimetres between two plan nodes. */
+private fun distanceCm(from: WallPoint, to: WallPoint): Float =
+    hypot(to.x - from.x, to.y - from.y)
+
+private fun formatLength(cm: Float): String =
+    if (cm >= 100f) String.format("%.2f m", cm / 100f) else "${cm.roundToInt()} cm"
+
+/**
+ * Draws the wall length on a chip at the segment midpoint, nudged onto the outside of the
+ * wall so it never sits on top of the stroke. Skipped for segments too short to read.
+ */
+private fun DrawScope.drawDimension(
+    textMeasurer: TextMeasurer,
+    style: TextStyle,
+    chip: Color,
+    from: WallPoint,
+    to: WallPoint,
+    screenFrom: Offset,
+    screenTo: Offset,
+    awayFrom: Offset? = null,
+) {
+    val screenLen = (screenTo - screenFrom).getDistance()
+    if (screenLen < 48f) return
+
+    val label = formatLength(distanceCm(from, to))
+    val measured = textMeasurer.measure(label, style)
+    val w = measured.size.width.toFloat()
+    val h = measured.size.height.toFloat()
+    if (w + 12f > screenLen) return
+
+    val mid = Offset((screenFrom.x + screenTo.x) / 2f, (screenFrom.y + screenTo.y) / 2f)
+    var nx = -(screenTo.y - screenFrom.y) / screenLen
+    var ny = (screenTo.x - screenFrom.x) / screenLen
+    val mid0 = Offset((screenFrom.x + screenTo.x) / 2f, (screenFrom.y + screenTo.y) / 2f)
+    if (awayFrom != null && nx * (awayFrom.x - mid0.x) + ny * (awayFrom.y - mid0.y) > 0f) {
+        nx = -nx
+        ny = -ny
+    }
+    val offset = h * 0.9f
+    val center = Offset(mid.x + nx * offset, mid.y + ny * offset)
+
+    val padX = 6f
+    val padY = 2f
+    drawRoundRect(
+        color = chip,
+        topLeft = Offset(center.x - w / 2f - padX, center.y - h / 2f - padY),
+        size = Size(w + padX * 2, h + padY * 2),
+        cornerRadius = CornerRadius(h / 2f + padY),
+    )
+    drawText(measured, topLeft = Offset(center.x - w / 2f, center.y - h / 2f))
 }
