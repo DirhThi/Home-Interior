@@ -50,12 +50,16 @@ enum class OpeningType { DOOR, WINDOW }
 @Serializable
 data class WallOpening(
     val id: String = "",
-    val roomIdx: Int,
-    val edgeIdx: Int,
-    val t: Float,              // position along edge [0, 1]
+    // The wall this opening cuts, as the pair of plan nodes it runs between. Addressing it this way
+    // rather than by (room, edge index) is what lets ONE opening cut a wall two rooms share.
+    val nodeA: Int = -1,
+    val nodeB: Int = -1,
+    val t: Float,              // position along nodeA → nodeB [0, 1]
     val type: OpeningType,
-    val widthCm: Float = 90f, // 90 cm door, 100 cm window default
-    val style: String = ""    // door leaf model key ("doorway" = frame only); "" = default open leaf
+    val widthCm: Float = 90f, // 90 cm door, 120 cm window default
+    val style: String = "",   // door leaf model key ("doorway" = cased opening, no leaf); "" = default leaf
+    val leafHidden: Boolean = false,   // show the hole, not the door
+    val leafOpen: Boolean = false,     // render the leaf swung open
 )
 
 @Serializable
@@ -65,6 +69,12 @@ data class FloorPlan(
     val openings: List<WallOpening> = emptyList()
 ) {
     fun roomPolygon(idx: Int): List<WallPoint> = rooms[idx].map { nodes[it] }
+
+    /** Openings on the wall between two nodes, whichever order they were stored in. */
+    fun openingsOn(a: Int, b: Int): List<WallOpening> = openings.filter {
+        (it.nodeA == a && it.nodeB == b) || (it.nodeA == b && it.nodeB == a)
+    }
+
 }
 
 // ─── DesignRoom ───────────────────────────────────────────────────────────────

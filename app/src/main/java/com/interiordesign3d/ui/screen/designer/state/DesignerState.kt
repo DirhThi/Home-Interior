@@ -12,6 +12,7 @@ import com.interiordesign3d.data.models.ColorPalette
 import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.PlacedFurniture
+import com.interiordesign3d.data.models.WallOpening
 import com.interiordesign3d.data.models.WallPoint
 import com.interiordesign3d.ui.screen.designer.DrawingPhase
 import com.interiordesign3d.ui.screen.designer.EditorMode
@@ -30,6 +31,7 @@ open class DesignerState : BaseScreenState() {
     // ── Furniture ─────────────────────────────────────────────────────────────
     var placedFurniture by mutableStateOf(emptyList<PlacedFurniture>())
     var selectedId by mutableStateOf<String?>(null)
+    var selectedOpeningId by mutableStateOf<String?>(null)
 
     var editorMode by mutableStateOf(EditorMode.DRAW_WALLS)
 
@@ -55,6 +57,10 @@ open class DesignerState : BaseScreenState() {
 
     val selectedItem: PlacedFurniture? by derivedStateOf {
         placedFurniture.firstOrNull { it.id == selectedId }
+    }
+
+    val selectedOpening: WallOpening? by derivedStateOf {
+        floorPlan.openings.firstOrNull { it.id == selectedOpeningId }
     }
 
     val wallPreset get() = WALL_PRESETS[wallPresetIdx.coerceIn(WALL_PRESETS.indices)]
@@ -85,10 +91,14 @@ open class DesignerState : BaseScreenState() {
     open fun onMoveOpening(id: String, t: Float) {}
     open fun onResizeOpening(id: String, widthCm: Float) {}
     open fun onRemoveOpening(id: String) {}
-    open fun onDropOpening(roomIdx: Int, edgeIdx: Int, t: Float, widthCm: Float, furnitureId: String) {}
+    open fun onSelectOpening(id: String?) { selectedOpeningId = id; if (id != null) selectedId = null }
+    open fun onSetLeafHidden(hidden: Boolean) {}
+    open fun onSetLeafOpen(open: Boolean) {}
+    open fun onRemoveSelectedOpening() {}
+    open fun onDropOpening(nodeA: Int, nodeB: Int, t: Float, widthCm: Float, furnitureId: String) {}
 
     // ── Furniture ─────────────────────────────────────────────────────────────
-    open fun onSelectFurniture(id: String?) { selectedId = id }
+    open fun onSelectFurniture(id: String?) { selectedId = id; if (id != null) selectedOpeningId = null }
     open fun onMoveFurniture(id: String, x: Float, z: Float) {}
     open fun onAddFurniture(key: String, wallMounted: Boolean) {}
     open fun onRotate(degrees: Float) {}

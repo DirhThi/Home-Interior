@@ -116,10 +116,15 @@ class DesignerViewModel(
         // ── Openings ──────────────────────────────────────────────────────────
 
         override fun onPlaceOpening(roomIdx: Int, edgeIdx: Int, t: Float, type: OpeningType) {
+            // The canvas reports the room and edge it was tapped on; the opening is stored against
+            // the wall's node pair so it cuts that wall once, for every room touching it.
+            val room = floorPlan.rooms.getOrNull(roomIdx) ?: return
+            val nodeA = room.getOrNull(edgeIdx) ?: return
+            val nodeB = room.getOrNull((edgeIdx + 1) % room.size) ?: return
             val opening = WallOpening(
                 id = UUID.randomUUID().toString(),
-                roomIdx = roomIdx, edgeIdx = edgeIdx, t = t, type = type,
-                widthCm = if (type == OpeningType.DOOR) 90f else 100f,
+                nodeA = nodeA, nodeB = nodeB, t = t, type = type,
+                widthCm = if (type == OpeningType.DOOR) DEFAULT_DOOR_CM else DEFAULT_WINDOW_CM,
             )
             floorPlan = floorPlan.copy(openings = floorPlan.openings + opening)
         }
@@ -132,20 +137,37 @@ class DesignerViewModel(
 
         override fun onResizeOpening(id: String, widthCm: Float) {
             floorPlan = floorPlan.copy(openings = floorPlan.openings.map {
-                if (it.id == id) it.copy(widthCm = widthCm.coerceIn(40f, 300f)) else it
+                if (it.id == id) it.copy(widthCm = snapOpeningWidth(widthCm, it.type)) else it
             })
         }
 
         override fun onRemoveOpening(id: String) {
             floorPlan = floorPlan.copy(openings = floorPlan.openings.filter { it.id != id })
+            if (selectedOpeningId == id) selectedOpeningId = null
+        }
+
+        override fun onSetLeafHidden(hidden: Boolean) = updateOpening { it.copy(leafHidden = hidden) }
+
+        override fun onSetLeafOpen(open: Boolean) = updateOpening { it.copy(leafOpen = open) }
+
+        override fun onRemoveSelectedOpening() {
+            val id = selectedOpeningId ?: return
+            onRemoveOpening(id)
+        }
+
+        private inline fun updateOpening(transform: (WallOpening) -> WallOpening) {
+            val id = selectedOpeningId ?: return
+            floorPlan = floorPlan.copy(
+                openings = floorPlan.openings.map { if (it.id == id) transform(it) else it }
+            )
         }
 
         /** A door prop dropped on a wall becomes a real opening; the prop itself goes away. */
-        override fun onDropOpening(roomIdx: Int, edgeIdx: Int, t: Float, widthCm: Float, furnitureId: String) {
+        override fun onDropOpening(nodeA: Int, nodeB: Int, t: Float, widthCm: Float, furnitureId: String) {
             floorPlan = floorPlan.copy(
                 openings = floorPlan.openings + WallOpening(
                     id = UUID.randomUUID().toString(),
-                    roomIdx = roomIdx, edgeIdx = edgeIdx, t = t,
+                    nodeA = nodeA, nodeB = nodeB, t = t,
                     type = OpeningType.DOOR,
                     widthCm = widthCm.coerceIn(60f, 200f),
                     style = furnitureId,
@@ -363,9 +385,17 @@ class DesignerViewModel(
         return !usedElsewhere && index == floorPlan.nodes.lastIndex
     }
 
+    /** Openings land on 5 cm steps inside the range real joinery comes in. */
+    private fun snapOpeningWidth(raw: Float, type: OpeningType): Float {
+        val range = if (type == OpeningType.DOOR) 60f..200f else 40f..300f
+        return (kotlin.math.round(raw / 5f) * 5f).coerceIn(range)
+    }
+
     companion object {
         /** Sentinel kept in DesignRoom.wallColor when the wall tint comes from the preset, not a custom pick. */
         const val WALL_PRESET_DEFAULT_MARKER = ""
+        private const val DEFAULT_DOOR_CM = 90f
+        private const val DEFAULT_WINDOW_CM = 120f
     }
 }
 

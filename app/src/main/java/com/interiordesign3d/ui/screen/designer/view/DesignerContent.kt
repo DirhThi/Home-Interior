@@ -75,8 +75,9 @@ fun DesignerContent(
 @Composable
 private fun DesignerFab(state: DesignerState) {
     when (state.editorMode) {
+        // Hidden while an opening is selected: it would float over that panel's controls.
         EditorMode.DRAW_WALLS -> AnimatedVisibility(
-            visible = state.hasRooms,
+            visible = state.hasRooms && state.selectedOpening == null,
             enter = scaleIn() + fadeIn(),
             exit = scaleOut() + fadeOut(),
         ) {
@@ -92,7 +93,7 @@ private fun DesignerFab(state: DesignerState) {
 
         // Hidden while an item is selected: it would float over the control panel.
         EditorMode.DESIGN -> AnimatedVisibility(
-            visible = state.selectedItem == null,
+            visible = state.selectedItem == null && state.selectedOpening == null,
             enter = scaleIn() + fadeIn(),
             exit = scaleOut() + fadeOut(),
         ) {
@@ -110,6 +111,7 @@ private fun DesignerFab(state: DesignerState) {
 
 @Composable
 private fun PlanEditor(state: DesignerState, modifier: Modifier) {
+    Box(modifier.fillMaxSize()) {
     WallDrawingCanvas(
         floorPlan = state.floorPlan,
         drawingPhase = state.drawingPhase,
@@ -126,11 +128,22 @@ private fun PlanEditor(state: DesignerState, modifier: Modifier) {
         onMoveOpening = state::onMoveOpening,
         onResizeOpening = state::onResizeOpening,
         onRemoveOpening = state::onRemoveOpening,
+        onTapOpening = { state.onSelectOpening(it) },
         placedFurniture = state.placedFurniture,
         onMoveFurnitureInPlan = state::onMoveFurniture,
         onTapFurniture = state::onSelectFurniture,
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
     )
+
+    AnimatedVisibility(
+        visible = state.selectedOpening != null,
+        enter = slideInVertically { it },
+        exit = slideOutVertically { it },
+        modifier = Modifier.align(Alignment.BottomCenter),
+    ) {
+        state.selectedOpening?.let { OpeningControlPanel(opening = it, state = state) }
+    }
+    }
 }
 
 @Composable
@@ -152,17 +165,19 @@ private fun RoomDesignView(state: DesignerState, modifier: Modifier) {
             backgroundColor = LocalInteriorAccents.current.viewportBackground,
             onDropOpening = state::onDropOpening,
             onSelectFurniture = state::onSelectFurniture,
+            onSelectOpening = { state.onSelectOpening(it) },
             onMoveFurniture = state::onMoveFurniture,
             modifier = Modifier.fillMaxSize(),
         )
 
         AnimatedVisibility(
-            visible = state.selectedItem != null,
+            visible = state.selectedItem != null || state.selectedOpening != null,
             enter = slideInVertically { it },
             exit = slideOutVertically { it },
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             state.selectedItem?.let { FurnitureControlPanel(item = it, state = state) }
+                ?: state.selectedOpening?.let { OpeningControlPanel(opening = it, state = state) }
         }
     }
 }

@@ -3,6 +3,7 @@ package com.interiordesign3d.ui.screen.designer.view.viewport
 import com.interiordesign3d.data.catalog.*
 import com.interiordesign3d.ui.screen.designer.*
 import com.interiordesign3d.ui.theme.LocalInteriorAccents
+import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Size
@@ -57,6 +58,7 @@ fun WallDrawingCanvas(
     onMoveOpening: (id: String, t: Float) -> Unit = { _, _ -> },
     onResizeOpening: (id: String, newWidthCm: Float) -> Unit = { _, _ -> },
     onRemoveOpening: (id: String) -> Unit = {},
+    onTapOpening: (id: String) -> Unit = {},
     placedFurniture: List<PlacedFurniture> = emptyList(),
     onMoveFurnitureInPlan: (id: String, posX: Float, posZ: Float) -> Unit = { _, _, _ -> },
     onTapFurniture: (id: String) -> Unit = {},
@@ -92,6 +94,7 @@ fun WallDrawingCanvas(
     val onMoveOp        = rememberUpdatedState(onMoveOpening)
     val onResizeOp      = rememberUpdatedState(onResizeOpening)
     val onRemoveOp      = rememberUpdatedState(onRemoveOpening)
+    val onTapOp         = rememberUpdatedState(onTapOpening)
     val placedFurRef    = rememberUpdatedState(placedFurniture)
     val onMoveFurRef    = rememberUpdatedState(onMoveFurnitureInPlan)
     val onTapFurRef     = rememberUpdatedState(onTapFurniture)
@@ -135,9 +138,8 @@ fun WallDrawingCanvas(
                     if (plan0.openings.isNotEmpty()) {
                         var bestOpDist = hitPx * 2f
                         for (op in plan0.openings) {
-                            val room  = plan0.rooms.getOrNull(op.roomIdx) ?: continue
-                            val aIdx  = room.getOrNull(op.edgeIdx) ?: continue
-                            val bIdx  = room.getOrNull((op.edgeIdx + 1) % room.size) ?: continue
+                            val aIdx  = op.nodeA
+                            val bIdx  = op.nodeB
                             val a     = plan0.nodes.getOrNull(aIdx) ?: continue
                             val b     = plan0.nodes.getOrNull(bIdx) ?: continue
                             val aS    = Offset(pan0.x + a.x * sc0, pan0.y + a.y * sc0)
@@ -285,9 +287,8 @@ fun WallDrawingCanvas(
                                     var removedId: String? = null
                                     val plan = planRef.value
                                     for (op in plan.openings) {
-                                        val room = plan.rooms.getOrNull(op.roomIdx) ?: continue
-                                        val aIdx = room.getOrNull(op.edgeIdx) ?: continue
-                                        val bIdx = room.getOrNull((op.edgeIdx + 1) % room.size) ?: continue
+                                        val aIdx = op.nodeA
+                                        val bIdx = op.nodeB
                                         val a = plan.nodes.getOrNull(aIdx) ?: continue
                                         val b = plan.nodes.getOrNull(bIdx) ?: continue
                                         val aS = Offset(panOffset.value.x + a.x * scale.floatValue,
@@ -333,10 +334,22 @@ fun WallDrawingCanvas(
                                         }
                                     }
                                 } else {
-                                    if (nearNodeIdx >= 0) {
-                                        onFromNode.value(nearNodeIdx)
-                                    } else {
-                                        onNewPt.value(tapCm)
+                                    // No tool: an opening under the finger is being selected, not replaced.
+                                    var tappedId: String? = null
+                                    for (op in plan.openings) {
+                                        val a = plan.nodes.getOrNull(op.nodeA) ?: continue
+                                        val b = plan.nodes.getOrNull(op.nodeB) ?: continue
+                                        val aS = screenOf(a); val bS = screenOf(b)
+                                        val opS = Offset(aS.x + (bS.x - aS.x) * op.t,
+                                                         aS.y + (bS.y - aS.y) * op.t)
+                                        if ((opS - downPos).getDistance() < hitPx * 1.4f) {
+                                            tappedId = op.id; break
+                                        }
+                                    }
+                                    when {
+                                        tappedId != null -> onTapOp.value(tappedId!!)
+                                        nearNodeIdx >= 0 -> onFromNode.value(nearNodeIdx)
+                                        else -> onNewPt.value(tapCm)
                                     }
                                 }
                             }
@@ -371,6 +384,10 @@ fun WallDrawingCanvas(
                     Offset(0f, sy), Offset(size.width, sy), if (major) 1f else 0.5f)
             }
 
+            // A shared wall belongs to two rooms; without this both label it and the two
+            // dimensions land on top of each other.
+            val labelledEdges = HashSet<Long>()
+
             // ── Committed rooms ───────────────────────────────────────────────
             floorPlan.rooms.forEachIndexed { idx, room ->
                 val floorC = accents.canvasRoomFill
@@ -399,16 +416,21 @@ fun WallDrawingCanvas(
                     drawLine(wallC.copy(alpha = 0.4f),
                         Offset(mid.x - nx, mid.y - ny), Offset(mid.x + nx, mid.y + ny), 1.5f)
 
-                    drawDimension(
-                        textMeasurer = textMeasurer,
-                        style = dimensionStyle,
-                        chip = accents.dimensionChip,
-                        from = floorPlan.nodes[room[i]],
-                        to = floorPlan.nodes[room[(i + 1) % room.size]],
-                        screenFrom = a,
-                        screenTo = b,
-                        awayFrom = roomCentroid,
-                    )
+                    val n0 = room[i]
+                    val n1 = room[(i + 1) % room.size]
+                    val edgeKey = minOf(n0, n1).toLong() * 100_000L + maxOf(n0, n1)
+                    if (labelledEdges.add(edgeKey)) {
+                        drawDimension(
+                            textMeasurer = textMeasurer,
+                            style = dimensionStyle,
+                            chip = accents.dimensionChip,
+                            from = floorPlan.nodes[n0],
+                            to = floorPlan.nodes[n1],
+                            screenFrom = a,
+                            screenTo = b,
+                            awayFrom = roomCentroid,
+                        )
+                    }
                 }
             }
 
@@ -462,9 +484,8 @@ fun WallDrawingCanvas(
 
             // ── Openings (doors & windows) ─────────────────────────────────────
             floorPlan.openings.forEach { op ->
-                val room = floorPlan.rooms.getOrNull(op.roomIdx) ?: return@forEach
-                val aIdx = room.getOrNull(op.edgeIdx) ?: return@forEach
-                val bIdx = room.getOrNull((op.edgeIdx + 1) % room.size) ?: return@forEach
+                val aIdx = op.nodeA
+                val bIdx = op.nodeB
                 val a    = floorPlan.nodes.getOrNull(aIdx) ?: return@forEach
                 val b    = floorPlan.nodes.getOrNull(bIdx) ?: return@forEach
                 val aS   = toScreen(a); val bS = toScreen(b)
@@ -660,11 +681,12 @@ private fun DrawScope.drawDimension(
         nx = -nx
         ny = -ny
     }
-    val offset = h * 0.9f
-    val center = Offset(mid.x + nx * offset, mid.y + ny * offset)
-
+    // Clear the wall by the chip's own half-extent along the normal: a vertical wall has to be
+    // cleared by half the chip's WIDTH, a horizontal one by half its height.
     val padX = 6f
     val padY = 2f
+    val clearance = abs(nx) * (w / 2f + padX) + abs(ny) * (h / 2f + padY) + 7f
+    val center = Offset(mid.x + nx * clearance, mid.y + ny * clearance)
     drawRoundRect(
         color = chip,
         topLeft = Offset(center.x - w / 2f - padX, center.y - h / 2f - padY),

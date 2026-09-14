@@ -20,5 +20,7 @@ fun DesignerScreen(roomId: String, navigator: Navigator) {
     CollectMessages(viewModel, snackbarHostState)
     DesignerContent(state = state, snackbarHostState = snackbarHostState)
 
-    BackHandler(enabled = state.selectedId != null) { state.onDeselect() }
+    BackHandler(enabled = state.selectedId != null || state.selectedOpeningId != null) {
+        if (state.selectedId != null) state.onDeselect() else state.onSelectOpening(null)
+    }
 }
