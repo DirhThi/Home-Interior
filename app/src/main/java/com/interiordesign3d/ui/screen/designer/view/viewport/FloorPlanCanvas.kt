@@ -2,6 +2,11 @@ package com.interiordesign3d.ui.screen.designer.view.viewport
 
 import com.interiordesign3d.data.catalog.*
 import com.interiordesign3d.ui.screen.designer.*
+import com.interiordesign3d.ui.theme.LocalInteriorAccents
+import com.interiordesign3d.R
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.foundation.shape.CircleShape
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -48,6 +53,7 @@ fun WallDrawingCanvas(
     onTapFurniture: (id: String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val accents = LocalInteriorAccents.current
     val panOffset = remember { mutableStateOf(Offset.Zero) }
     val scale     = remember { mutableFloatStateOf(1.5f) }
     var initialized by remember { mutableStateOf(false) }
@@ -82,7 +88,7 @@ fun WallDrawingCanvas(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF12121F))
+            .background(accents.canvasBackground)
             .onSizeChanged { sz ->
                 if (!initialized && sz.width > 0) {
                     scale.floatValue = sz.width * 0.8f / 600f
@@ -344,27 +350,28 @@ fun WallDrawingCanvas(
             for (xi in startXi..endXi) {
                 val sx    = pan.x + xi * gridStep * sc
                 val major = xi % majorEvery == 0
-                drawLine(Color.White.copy(alpha = if (major) 0.10f else 0.04f),
+                drawLine(if (major) accents.canvasGridMajor else accents.canvasGrid,
                     Offset(sx, 0f), Offset(sx, size.height), if (major) 1f else 0.5f)
             }
             for (yi in startYi..endYi) {
                 val sy    = pan.y + yi * gridStep * sc
                 val major = yi % majorEvery == 0
-                drawLine(Color.White.copy(alpha = if (major) 0.10f else 0.04f),
+                drawLine(if (major) accents.canvasGridMajor else accents.canvasGrid,
                     Offset(0f, sy), Offset(size.width, sy), if (major) 1f else 0.5f)
             }
 
             // ── Committed rooms ───────────────────────────────────────────────
             floorPlan.rooms.forEachIndexed { idx, room ->
-                val (floorC, wallC) = ROOM_PALETTES[idx % ROOM_PALETTES.size]
+                val floorC = accents.canvasRoomFill
+                val wallC = accents.canvasWall
                 val pts = room.map { toScreen(floorPlan.nodes[it]) }
                 val path = Path().apply {
                     moveTo(pts.first().x, pts.first().y)
                     pts.drop(1).forEach { lineTo(it.x, it.y) }
                     close()
                 }
-                drawPath(path, floorC.copy(alpha = 0.22f))
-                drawPath(path, wallC.copy(alpha = 0.8f), style = Stroke(2.5f))
+                drawPath(path, floorC)
+                drawPath(path, wallC.copy(alpha = 0.85f), style = Stroke(2.5f))
 
                 // Wall mid-ticks
                 for (i in room.indices) {
@@ -384,7 +391,7 @@ fun WallDrawingCanvas(
                 for (i in 0 until currentPath.size - 1) {
                     val a = toScreen(floorPlan.nodes[currentPath[i]])
                     val b = toScreen(floorPlan.nodes[currentPath[i + 1]])
-                    drawLine(Color.White.copy(alpha = 0.9f), a, b, 2.5f)
+                    drawLine(accents.canvasWall.copy(alpha = 0.9f), a, b, 2.5f)
                 }
             }
 
@@ -398,22 +405,22 @@ fun WallDrawingCanvas(
                 when {
                     canClose -> {
                         // Pulsing green ring = tap to close
-                        drawCircle(Color(0xFF4CAF50).copy(alpha = 0.3f), pulseRadius, screen)
-                        drawCircle(Color(0xFF4CAF50), 13f, screen)
-                        drawCircle(Color.White, 6f, screen)
+                        drawCircle(accents.canvasNodeStart.copy(alpha = 0.3f), pulseRadius, screen)
+                        drawCircle(accents.canvasNodeStart, 13f, screen)
+                        drawCircle(accents.canvasBackground, 6f, screen)
                     }
                     inPath -> {
-                        drawCircle(Color.White, 11f, screen)
-                        drawCircle(Color(0xFF2196F3), 8f, screen)
+                        drawCircle(accents.canvasBackground, 11f, screen)
+                        drawCircle(accents.canvasNodeActive, 8f, screen)
                     }
                     drawingPhase == DrawingPhase.EDITING -> {
                         // Tappable corner in edit mode — small with ring
-                        drawCircle(Color.White.copy(alpha = 0.5f), 9f, screen)
-                        drawCircle(Color(0xFF78909C), 5f, screen)
+                        drawCircle(accents.canvasBackground.copy(alpha = 0.8f), 9f, screen)
+                        drawCircle(accents.canvasNodeIdle, 5f, screen)
                     }
                     else -> {
-                        drawCircle(Color.White.copy(alpha = 0.4f), 7f, screen)
-                        drawCircle(Color(0xFF546E7A), 4f, screen)
+                        drawCircle(accents.canvasBackground.copy(alpha = 0.7f), 7f, screen)
+                        drawCircle(accents.canvasNodeIdle.copy(alpha = 0.7f), 4f, screen)
                     }
                 }
             }
@@ -434,20 +441,20 @@ fun WallDrawingCanvas(
                 val eLenCm = sqrt((b.x - a.x).pow(2) + (b.y - a.y).pow(2)).coerceAtLeast(0.001f)
                 val halfWPx = (op.widthCm / 2f) / eLenCm * eLen
                 val perpLen = (14f * sc).coerceAtLeast(8f)
-                val color = if (op.type == OpeningType.DOOR) Color(0xFFE53935) else Color(0xFF1976D2)
+                val color = if (op.type == OpeningType.DOOR) accents.door else accents.window
                 val endL = Offset(cx2 - dirX * halfWPx, cy2 - dirY * halfWPx)
                 val endR = Offset(cx2 + dirX * halfWPx, cy2 + dirY * halfWPx)
                 // Gap (dark fill over wall line)
-                drawLine(Color(0xFF12121F), endL, endR, 5f)
+                drawLine(accents.canvasBackground, endL, endR, 5f)
                 // End marks (wall stops)
                 drawLine(color, Offset(endL.x - perpX * perpLen * .4f, endL.y - perpY * perpLen * .4f),
                     Offset(endL.x + perpX * perpLen * .4f, endL.y + perpY * perpLen * .4f), 2.5f)
                 drawLine(color, Offset(endR.x - perpX * perpLen * .4f, endR.y - perpY * perpLen * .4f),
                     Offset(endR.x + perpX * perpLen * .4f, endR.y + perpY * perpLen * .4f), 2.5f)
                 // Resize handle dots at each end
-                drawCircle(Color.White, 6f, endL)
+                drawCircle(accents.canvasBackground, 6f, endL)
                 drawCircle(color, 4.5f, endL)
-                drawCircle(Color.White, 6f, endR)
+                drawCircle(accents.canvasBackground, 6f, endR)
                 drawCircle(color, 4.5f, endR)
                 // Center perpendicular line (thick indicator)
                 drawLine(color, Offset(cx2 - perpX * perpLen, cy2 - perpY * perpLen),
@@ -466,7 +473,7 @@ fun WallDrawingCanvas(
 
             // ── Furniture footprints (floor + wall items) ─────────────────────
             if (drawingPhase == DrawingPhase.EDITING) {
-                val baseColor = Color(0xFF8B7355)
+                val baseColor = accents.canvasFurniture
                 placedFurniture.forEach { item ->
                     val fcx = pan.x + item.posX * sc
                     val fcy = pan.y + item.posZ * sc
@@ -507,8 +514,8 @@ fun WallDrawingCanvas(
                                 moveTo(corners[0].x, corners[0].y)
                                 corners.drop(1).forEach { lineTo(it.x, it.y) }; close()
                             }
-                            drawPath(footPath, Color(0xFF1976D2).copy(alpha = 0.30f))
-                            drawPath(footPath, Color(0xFF1976D2).copy(alpha = 0.80f), style = Stroke(1.5f))
+                            drawPath(footPath, accents.canvasNodeActive.copy(alpha = 0.30f))
+                            drawPath(footPath, accents.canvasNodeActive.copy(alpha = 0.80f), style = Stroke(1.5f))
                         }
                     } else {
                         val hw = ((if (item.customWidthCm > 0f) item.customWidthCm else 60f) / 2f) * sc
@@ -534,92 +541,46 @@ fun WallDrawingCanvas(
             }
         }
 
-        // ── Instruction overlay ───────────────────────────────────────────────
-        if (floorPlan.nodes.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Surface(shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f),
-                    tonalElevation = 4.dp) {
-                    Column(Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.TouchApp, null,
-                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
-                        Text("Tap to place wall corners",
-                            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                        Text("Tap the first point (green pulse) to close",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("Hold & drag any corner to reshape",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
+        PlanStatusPill(
+            floorPlan = floorPlan,
+            currentPath = currentPath,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
+        )
+    }
+}
 
-        // ── Phase badge ───────────────────────────────────────────────────────
-        AnimatedVisibility(
-            visible = drawingPhase == DrawingPhase.EDITING && floorPlan.rooms.isNotEmpty(),
-            modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
-            enter = fadeIn(), exit = fadeOut()
-        ) {
-            Surface(shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primaryContainer, tonalElevation = 4.dp) {
-                Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(Icons.Filled.Edit, null, Modifier.size(13.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                    Text("Tap corner → new room  •  Hold → move",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer)
-                }
-            }
+/** The canvas's only chrome: room count + area once a room exists, otherwise the next thing to do. */
+@Composable
+private fun PlanStatusPill(
+    floorPlan: FloorPlan,
+    currentPath: List<Int>,
+    modifier: Modifier = Modifier,
+) {
+    val roomCount = floorPlan.rooms.size
+    val text = when {
+        roomCount > 0 -> {
+            val area = floorPlan.rooms.sumOf { room ->
+                polygonArea(room.map { floorPlan.nodes[it] }).toDouble()
+            } / 10_000.0
+            pluralStringResource(R.plurals.plan_rooms_area, roomCount, roomCount, area)
         }
+        currentPath.size >= 3 -> stringResource(R.string.plan_hint_close)
+        currentPath.isNotEmpty() ->
+            pluralStringResource(R.plurals.plan_hint_more, 3 - currentPath.size, 3 - currentPath.size)
+        else -> stringResource(R.string.plan_hint_empty)
+    }
 
-        // ── Stats chip ────────────────────────────────────────────────────────
-        AnimatedVisibility(
-            visible = floorPlan.nodes.isNotEmpty(),
-            modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
-            enter = fadeIn() + slideInHorizontally { it }, exit = fadeOut()
-        ) {
-            Surface(shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f), tonalElevation = 4.dp) {
-                Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    Text("${floorPlan.rooms.size} room(s)",
-                        style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                    if (floorPlan.rooms.isNotEmpty()) {
-                        val totalArea = floorPlan.rooms.sumOf { room ->
-                            polygonArea(room.map { floorPlan.nodes[it] }).toDouble()
-                        }
-                        Text("%.1f m² total".format(totalArea / 10_000f),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary)
-                    } else if (currentPath.size >= 3) {
-                        Text("Tap first point to close",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else {
-                        Text("${3 - currentPath.size} more corners needed",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
-
-        // ── Zoom controls ─────────────────────────────────────────────────────
-        Column(Modifier.align(Alignment.BottomStart).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SmallFloatingActionButton(
-                onClick = { scale.floatValue = (scale.floatValue * 1.3f).coerceAtMost(12f) },
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-            ) { Icon(Icons.Filled.ZoomIn, "Zoom In", Modifier.size(18.dp)) }
-            SmallFloatingActionButton(
-                onClick = { scale.floatValue = (scale.floatValue * 0.77f).coerceAtLeast(0.2f) },
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-            ) { Icon(Icons.Filled.ZoomOut, "Zoom Out", Modifier.size(18.dp)) }
-        }
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+        tonalElevation = 2.dp,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+        )
     }
 }

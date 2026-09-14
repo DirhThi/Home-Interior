@@ -4,87 +4,112 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-// ─── Brand ramps ──────────────────────────────────────────────────────────────
+// ─── Moss & Bone ramps ────────────────────────────────────────────────────────
 
 object InteriorColors {
-    val Terracotta10  = Color(0xFF3B1105)
-    val Terracotta20  = Color(0xFF5B1C06)
-    val Terracotta30  = Color(0xFF7E2E0F)
-    val Terracotta40  = Color(0xFFA8431C)
-    val Terracotta80  = Color(0xFFFFB59B)
-    val Terracotta90  = Color(0xFFFFDBCF)
+    // Moss — the primary
+    val Moss10 = Color(0xFF0B2019)
+    val Moss20 = Color(0xFF0B3427)
+    val Moss30 = Color(0xFF1C4A3C)
+    val Moss40 = Color(0xFF2F5D50)
+    val Moss80 = Color(0xFF86C7B0)
+    val Moss90 = Color(0xFFA2E3CB)
+    val Moss95 = Color(0xFFCCE8DC)
 
-    val Sage10        = Color(0xFF0C2716)
-    val Sage20        = Color(0xFF1D3728)
-    val Sage30        = Color(0xFF33503E)
-    val Sage40        = Color(0xFF4A7C59)
-    val Sage80        = Color(0xFFB1CFBB)
-    val Sage90        = Color(0xFFCDEBD6)
+    // Stone — the quiet secondary
+    val Stone10 = Color(0xFF171D1A)
+    val Stone20 = Color(0xFF21332A)
+    val Stone30 = Color(0xFF374A40)
+    val Stone40 = Color(0xFF5A6B62)
+    val Stone80 = Color(0xFFB6C6BC)
+    val Stone90 = Color(0xFFDDE6E0)
 
-    val Gold10        = Color(0xFF261A00)
-    val Gold20        = Color(0xFF3D2F05)
-    val Gold30        = Color(0xFF5C4718)
-    val Gold40        = Color(0xFF7A5C1F)
-    val Gold80        = Color(0xFFDCC48D)
-    val Gold90        = Color(0xFFF7E3AE)
+    // Copper — the accent
+    val Copper10 = Color(0xFF351A06)
+    val Copper20 = Color(0xFF4A2409)
+    val Copper30 = Color(0xFF683A17)
+    val Copper40 = Color(0xFFA15A2C)
+    val Copper60 = Color(0xFFC97B4A)
+    val Copper80 = Color(0xFFE09A6B)
+    val Copper90 = Color(0xFFFFDCC6)
 
-    val Neutral6      = Color(0xFF130E0B)
-    val Neutral10     = Color(0xFF191310)
-    val Neutral12     = Color(0xFF211A16)
-    val Neutral17     = Color(0xFF261E1A)
-    val Neutral22     = Color(0xFF312824)
-    val Neutral24     = Color(0xFF372F2A)
-    val Neutral27     = Color(0xFF3C332E)
-    val Neutral50     = Color(0xFF85736A)
-    val Neutral60     = Color(0xFFA08D83)
-    val Neutral90     = Color(0xFFEDE0DA)
-    val Neutral94     = Color(0xFFF2EAE4)
-    val Neutral96     = Color(0xFFF7F0EB)
-    val Neutral98     = Color(0xFFFBF7F4)
+    // Bone — surfaces
+    val Bone98 = Color(0xFFF7F5EF)
+    val Bone96 = Color(0xFFF2F0E9)
+    val Bone94 = Color(0xFFECEAE3)
+    val Bone92 = Color(0xFFE6E4DC)
+    val Bone90 = Color(0xFFE0DED6)
 
-    val NeutralVar30  = Color(0xFF52443C)
-    val NeutralVar80  = Color(0xFFD7C4B9)
-    val NeutralVar90  = Color(0xFFF0E4DC)
-    val NeutralVar92  = Color(0xFFECE3DC)
-    val NeutralVar88  = Color(0xFFE6DCD5)
+    // Ink — dark surfaces
+    val Ink4  = Color(0xFF070D0A)
+    val Ink8  = Color(0xFF0D1411)
+    val Ink12 = Color(0xFF16201C)
+    val Ink14 = Color(0xFF1A2521)
+    val Ink18 = Color(0xFF24302B)
+    val Ink22 = Color(0xFF2E3A35)
+    val Ink24 = Color(0xFF2A302C)
 
-    val Error10       = Color(0xFF410E0B)
-    val Error20       = Color(0xFF601410)
-    val Error30       = Color(0xFF8C1D18)
-    val Error40       = Color(0xFFB3261E)
-    val Error80       = Color(0xFFF2B8B5)
-    val Error90       = Color(0xFFF9DEDC)
+    val OnBone = Color(0xFF14201C)
+    val OnInk  = Color(0xFFE8EDE9)
+
+    val NeutralVar30 = Color(0xFF434A45)
+    val NeutralVar80 = Color(0xFFC3C9C0)
+    val NeutralVar90 = Color(0xFFDFE5DF)
+    val Outline      = Color(0xFF73796F)
+    val OutlineDark  = Color(0xFF8D938A)
+
+    val Error10 = Color(0xFF410E0B)
+    val Error20 = Color(0xFF601410)
+    val Error30 = Color(0xFF8C1D18)
+    val Error40 = Color(0xFFB3261E)
+    val Error80 = Color(0xFFF2B8B5)
+    val Error90 = Color(0xFFF9DEDC)
 }
 
-// ─── Accents the Material scheme has no slot for ──────────────────────────────
+// ─── Colours the Material scheme has no slot for ──────────────────────────────
 
-/** Door / window markers on the floor-plan toolbar and canvas. */
+/** Openings and the 2D floor-plan canvas, which paints outside the Material palette. */
 @Immutable
 data class InteriorAccents(
     val door: Color,
-    val onDoor: Color,
     val window: Color,
-    val onWindow: Color,
+    val canvasBackground: Color,
     val canvasGrid: Color,
+    val canvasGridMajor: Color,
+    val canvasWall: Color,
     val canvasRoomFill: Color,
+    val canvasNodeActive: Color,
+    val canvasNodeStart: Color,
+    val canvasNodeIdle: Color,
+    val canvasFurniture: Color,
 )
 
 val LightAccents = InteriorAccents(
-    door           = Color(0xFFA8431C),
-    onDoor         = Color.White,
-    window         = Color(0xFF2A6099),
-    onWindow       = Color.White,
-    canvasGrid     = Color(0xFFD7C4B9),
-    canvasRoomFill = Color(0x1AA8431C),
+    door             = InteriorColors.Copper40,
+    window           = InteriorColors.Moss40,
+    canvasBackground = InteriorColors.Bone98,
+    canvasGrid       = Color(0xFFE1E5DC),
+    canvasGridMajor  = Color(0xFFC9D0C5),
+    canvasWall       = InteriorColors.OnBone,
+    canvasRoomFill   = Color(0x1A2F5D50),
+    canvasNodeActive = InteriorColors.Moss40,
+    canvasNodeStart  = InteriorColors.Copper60,
+    canvasNodeIdle   = Color(0xFF9AA79E),
+    canvasFurniture  = InteriorColors.Moss40,
 )
 
 val DarkAccents = InteriorAccents(
-    door           = Color(0xFFFFB59B),
-    onDoor         = Color(0xFF5B1C06),
-    window         = Color(0xFF9CC8F5),
-    onWindow       = Color(0xFF06304F),
-    canvasGrid     = Color(0xFF52443C),
-    canvasRoomFill = Color(0x26FFB59B),
+    door             = InteriorColors.Copper80,
+    window           = InteriorColors.Moss80,
+    canvasBackground = InteriorColors.Ink8,
+    canvasGrid       = Color(0xFF1D2823),
+    canvasGridMajor  = Color(0xFF2B3830),
+    canvasWall       = InteriorColors.OnInk,
+    canvasRoomFill   = Color(0x2686C7B0),
+    canvasNodeActive = InteriorColors.Moss80,
+    canvasNodeStart  = InteriorColors.Copper80,
+    canvasNodeIdle   = Color(0xFF6E7A73),
+    canvasFurniture  = InteriorColors.Moss80,
 )
 
 val LocalInteriorAccents = staticCompositionLocalOf { LightAccents }
