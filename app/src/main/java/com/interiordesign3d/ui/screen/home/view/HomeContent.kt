@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -53,6 +54,9 @@ fun HomeContent(
                     }
                 },
                 actions = {
+                    IconButton(onClick = state::onShowPlans) {
+                        Icon(Icons.Outlined.Dashboard, stringResource(R.string.sample_plans))
+                    }
                     IconButton(onClick = state::onShowCredits) {
                         Icon(Icons.Outlined.Info, stringResource(R.string.model_credits))
                     }
@@ -75,7 +79,11 @@ fun HomeContent(
         },
     ) { modifier ->
         if (state.rooms.isEmpty()) {
-            HomeEmptyState(onCreate = state::onCreateRoom, modifier = modifier)
+            HomeEmptyState(
+                onCreate = state::onCreateRoom,
+                onBrowsePlans = state::onShowPlans,
+                modifier = modifier,
+            )
         } else {
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
@@ -96,5 +104,9 @@ fun HomeContent(
 
     if (state.showCredits) {
         ModelCreditsDialog(onDismiss = state::onDismissCredits)
+    }
+
+    if (state.showPlans) {
+        SamplePlanSheet(onPick = state::onCreateFromPlan, onDismiss = state::onDismissPlans)
     }
 }

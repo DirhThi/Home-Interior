@@ -6,15 +6,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.interiordesign3d.common.base.BaseScreenState
 import com.interiordesign3d.data.models.DesignRoom
+import com.interiordesign3d.data.plans.SamplePlan
 
 @Stable
 open class HomeState : BaseScreenState() {
     var rooms by mutableStateOf<List<DesignRoom>>(emptyList())
     var showCredits by mutableStateOf(false)
+    var showPlans by mutableStateOf(false)
 
     open fun onCreateRoom() {}
     open fun onOpenRoom(roomId: String) {}
     open fun onDeleteRoom(room: DesignRoom) {}
+    open fun onShowPlans() { showPlans = true }
+    open fun onDismissPlans() { showPlans = false }
+    open fun onCreateFromPlan(plan: SamplePlan) {}
     open fun onShowCredits() { showCredits = true }
     open fun onDismissCredits() { showCredits = false }
 }

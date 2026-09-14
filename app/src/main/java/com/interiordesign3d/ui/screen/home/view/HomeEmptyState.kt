@@ -16,6 +16,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,7 +27,11 @@ import com.interiordesign3d.R
 import com.interiordesign3d.ui.properties.CenterBox
 
 @Composable
-fun HomeEmptyState(onCreate: () -> Unit, modifier: Modifier = Modifier) {
+fun HomeEmptyState(
+    onCreate: () -> Unit,
+    onBrowsePlans: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier.fillMaxSize().padding(horizontal = 40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -62,6 +67,10 @@ fun HomeEmptyState(onCreate: () -> Unit, modifier: Modifier = Modifier) {
             Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
             Spacer(Modifier.size(8.dp))
             Text(stringResource(R.string.home_empty_cta))
+        }
+        Spacer(Modifier.height(6.dp))
+        TextButton(onClick = onBrowsePlans) {
+            Text(stringResource(R.string.start_from_plan))
         }
     }
 }

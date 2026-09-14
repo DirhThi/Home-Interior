@@ -7,6 +7,8 @@ import com.interiordesign3d.common.base.BaseViewModel
 import com.interiordesign3d.common.base.Navigator
 import com.interiordesign3d.data.models.DesignRoom
 import com.interiordesign3d.data.models.PlacedFurniture
+import com.interiordesign3d.data.plans.SamplePlan
+import com.interiordesign3d.data.plans.readSamplePlanJson
 import com.interiordesign3d.data.repository.AppDatabase
 import com.interiordesign3d.ui.Screen
 import com.interiordesign3d.ui.screen.home.state.HomeState
@@ -19,7 +21,8 @@ class HomeViewModel(app: Application, navigator: Navigator) : BaseViewModel(app,
     private val db = AppDatabase.getInstance(app)
 
     val screenState: HomeState = object : HomeState() {
-        override fun onCreateRoom() = createRoom()
+        override fun onCreateRoom() = createRoom(null)
+        override fun onCreateFromPlan(plan: SamplePlan) = createRoom(plan)
         override fun onOpenRoom(roomId: String) = navigateTo(Screen.RoomDesigner.createRoute(roomId))
         override fun onDeleteRoom(room: DesignRoom) = deleteRoom(room)
     }
@@ -34,18 +37,21 @@ class HomeViewModel(app: Application, navigator: Navigator) : BaseViewModel(app,
         }
     }
 
-    private fun createRoom() {
+    private fun createRoom(plan: SamplePlan?) {
         val id = UUID.randomUUID().toString()
         viewModelScope.launch {
+            val planJson = plan?.let { readSamplePlanJson(app, it) }.orEmpty()
             db.roomDao().insertRoom(
                 DesignRoom(
                     id = id,
-                    name = app.getString(R.string.new_room),
+                    name = plan?.label ?: app.getString(R.string.new_room),
                     widthCm = 380f,
                     lengthCm = 520f,
                     heightCm = 260f,
+                    floorPlanJson = planJson,
                 )
             )
+            screenState.showPlans = false
             navigateTo(Screen.RoomDesigner.createRoute(id))
         }
     }
