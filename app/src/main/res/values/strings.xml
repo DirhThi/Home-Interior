@@ -15,7 +15,6 @@
     <string name="room_deleted">%1$s deleted</string>
     <string name="undo">Undo</string>
     <string name="delete">Delete</string>
-    <string name="open_room">Open %1$s</string>
 
     <!-- Model credits -->
     <string name="model_credits">3D model credits</string>
@@ -33,7 +32,6 @@
     <string name="saved">Saved</string>
     <string name="edit_floor_plan">Edit floor plan</string>
     <string name="surfaces">Walls and floor</string>
-    <string name="toggle_renderer">Switch renderer</string>
 
     <!-- Designer · floor plan toolbar -->
     <string name="done">Done</string>
@@ -43,6 +41,16 @@
     <string name="window">Window</string>
     <string name="opening_hint">Tap a wall to place · tap a marker to remove</string>
     <string name="design_room">Design room</string>
+    <string name="plan_hint_empty">Tap to place wall corners</string>
+    <string name="plan_hint_close">Tap the first corner to close the room</string>
+    <plurals name="plan_hint_more">
+        <item quantity="one">%d more corner</item>
+        <item quantity="other">%d more corners</item>
+    </plurals>
+    <plurals name="plan_rooms_area">
+        <item quantity="one">%1$d room · %2$.1f m²</item>
+        <item quantity="other">%1$d rooms · %2$.1f m²</item>
+    </plurals>
 
     <!-- Designer · furniture -->
     <string name="add_furniture">Add furniture</string>
@@ -64,11 +72,7 @@
     <string name="floor">Floor</string>
     <string name="wall_colour">Wall colour</string>
     <string name="palettes">Palettes</string>
-    <string name="apply">Apply</string>
     <string name="shadows">Shadows</string>
-    <string name="shadows_on">On — richer, heavier</string>
-    <string name="shadows_off">Off — smoother</string>
     <string name="hide_front_walls">Hide front walls</string>
-    <string name="hide_front_walls_desc">Fades the two walls blocking the camera</string>
     <string name="palette_applied">%1$s applied</string>
 </resources>

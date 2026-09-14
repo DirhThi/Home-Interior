@@ -18,12 +18,11 @@ import androidx.compose.material.icons.outlined.DoorFront
 import androidx.compose.material.icons.outlined.GridOn
 import androidx.compose.material.icons.outlined.Window
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FilledTonalIconToggleButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,10 +34,10 @@ import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.ui.properties.CenterRow
 import com.interiordesign3d.ui.properties.MinTouchTarget
-import com.interiordesign3d.ui.theme.LocalInteriorAccents
 import com.interiordesign3d.ui.screen.designer.DrawingPhase
 import com.interiordesign3d.ui.screen.designer.PlacementTool
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
+import com.interiordesign3d.ui.theme.LocalInteriorAccents
 
 @Composable
 fun FloorPlanToolbar(state: DesignerState, modifier: Modifier = Modifier) {
@@ -48,7 +47,7 @@ fun FloorPlanToolbar(state: DesignerState, modifier: Modifier = Modifier) {
         tonalElevation = 3.dp,
         shadowElevation = 6.dp,
     ) {
-        Column(Modifier.navigationBarsPadding()) {
+        Column(Modifier.navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp)) {
             AnimatedVisibility(visible = state.drawingPhase == DrawingPhase.EDITING) {
                 OpeningToolRow(state)
             }
@@ -57,33 +56,34 @@ fun FloorPlanToolbar(state: DesignerState, modifier: Modifier = Modifier) {
     }
 }
 
+/** Door / window are modes, not one-shot actions, so they stay as toggles on their own line. */
 @Composable
 private fun OpeningToolRow(state: DesignerState) {
     val accents = LocalInteriorAccents.current
 
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
-        CenterRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OpeningChip(
-                label = stringResource(R.string.door),
-                icon = Icons.Outlined.DoorFront,
-                accent = accents.door,
-                selected = state.placementTool == PlacementTool.DOOR,
-                onClick = { state.onToolChange(state.placementTool.toggled(PlacementTool.DOOR)) },
-            )
-            OpeningChip(
-                label = stringResource(R.string.window),
-                icon = Icons.Outlined.Window,
-                accent = accents.window,
-                selected = state.placementTool == PlacementTool.WINDOW,
-                onClick = { state.onToolChange(state.placementTool.toggled(PlacementTool.WINDOW)) },
-            )
-        }
+    CenterRow(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OpeningToggle(
+            icon = Icons.Outlined.DoorFront,
+            label = stringResource(R.string.door),
+            accent = accents.door,
+            checked = state.placementTool == PlacementTool.DOOR,
+            onCheck = { state.onToolChange(state.placementTool.toggled(PlacementTool.DOOR)) },
+        )
+        OpeningToggle(
+            icon = Icons.Outlined.Window,
+            label = stringResource(R.string.window),
+            accent = accents.window,
+            checked = state.placementTool == PlacementTool.WINDOW,
+            onCheck = { state.onToolChange(state.placementTool.toggled(PlacementTool.WINDOW)) },
+        )
         AnimatedVisibility(visible = state.placementTool != PlacementTool.NONE) {
             Text(
                 stringResource(R.string.opening_hint),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp),
             )
         }
     }
@@ -93,74 +93,72 @@ private fun PlacementTool.toggled(target: PlacementTool) =
     if (this == target) PlacementTool.NONE else target
 
 @Composable
-private fun OpeningChip(
-    label: String,
+private fun OpeningToggle(
     icon: ImageVector,
+    label: String,
     accent: Color,
-    selected: Boolean,
-    onClick: () -> Unit,
+    checked: Boolean,
+    onCheck: () -> Unit,
 ) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        modifier = Modifier.height(MinTouchTarget),
-        label = { Text(label, style = MaterialTheme.typography.labelLarge) },
-        leadingIcon = {
-            Icon(icon, null, Modifier.size(18.dp), tint = if (selected) accent else MaterialTheme.colorScheme.onSurfaceVariant)
-        },
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = accent.copy(alpha = 0.16f),
-            selectedLabelColor = accent,
+    FilledTonalIconToggleButton(
+        checked = checked,
+        onCheckedChange = { onCheck() },
+        modifier = Modifier.size(MinTouchTarget),
+        colors = IconButtonDefaults.filledTonalIconToggleButtonColors(
+            containerColor = Color.Transparent,
+            checkedContainerColor = accent.copy(alpha = 0.18f),
+            checkedContentColor = accent,
         ),
-    )
+    ) {
+        Icon(icon, label, Modifier.size(22.dp))
+    }
 }
 
+/**
+ * Icon-only Undo / Clear / Snap. Labelled buttons used to share the row with Done under
+ * `weight(1f)`, which squeezed them until the text wrapped and clipped.
+ */
 @Composable
 private fun ActionRow(state: DesignerState) {
     CenterRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
+        IconButton(
+            onClick = state::onUndo,
+            enabled = state.currentPath.isNotEmpty() || state.drawingPhase == DrawingPhase.CLOSED,
+            modifier = Modifier.size(MinTouchTarget),
+        ) {
+            Icon(Icons.AutoMirrored.Outlined.Undo, stringResource(R.string.undo))
+        }
+
+        IconButton(
+            onClick = state::onClear,
+            enabled = state.hasRooms || state.currentPath.isNotEmpty(),
+            modifier = Modifier.size(MinTouchTarget),
+            colors = IconButtonDefaults.iconButtonColors(
+                contentColor = MaterialTheme.colorScheme.error,
+            ),
+        ) {
+            Icon(Icons.Outlined.DeleteSweep, stringResource(R.string.clear))
+        }
+
+        FilledTonalIconToggleButton(
+            checked = state.snapEnabled,
+            onCheckedChange = { state.onToggleSnap() },
+            modifier = Modifier.size(MinTouchTarget),
+        ) {
+            Icon(Icons.Outlined.GridOn, stringResource(R.string.snap_to_grid), Modifier.size(20.dp))
+        }
+
+        Spacer(Modifier.weight(1f))
+
         AnimatedVisibility(visible = state.drawingPhase == DrawingPhase.CLOSED) {
-            Button(
-                onClick = state::onDone,
-                modifier = Modifier.height(MinTouchTarget),
-            ) {
+            Button(onClick = state::onDone, modifier = Modifier.height(MinTouchTarget)) {
                 Icon(Icons.Outlined.Check, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.done))
             }
         }
-
-        OutlinedButton(
-            onClick = state::onUndo,
-            enabled = state.currentPath.isNotEmpty() || state.drawingPhase == DrawingPhase.CLOSED,
-            modifier = Modifier.weight(1f).height(MinTouchTarget),
-        ) {
-            Icon(Icons.AutoMirrored.Outlined.Undo, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(stringResource(R.string.undo))
-        }
-
-        OutlinedButton(
-            onClick = state::onClear,
-            enabled = state.hasRooms || state.currentPath.isNotEmpty(),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.error,
-            ),
-            modifier = Modifier.weight(1f).height(MinTouchTarget),
-        ) {
-            Icon(Icons.Outlined.DeleteSweep, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(stringResource(R.string.clear))
-        }
-
-        FilterChip(
-            selected = state.snapEnabled,
-            onClick = state::onToggleSnap,
-            modifier = Modifier.height(MinTouchTarget),
-            label = { Text(stringResource(R.string.snap_to_grid)) },
-            leadingIcon = { Icon(Icons.Outlined.GridOn, null, Modifier.size(16.dp)) },
-        )
     }
 }
