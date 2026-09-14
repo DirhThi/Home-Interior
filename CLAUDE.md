@@ -94,9 +94,10 @@ Other screens: `ui/screen/home/` (room list, swipe-to-delete with snackbar undo,
 
 ### Theme (`ui/theme/`)
 
-- `Color.kt` — the **Moss & Bone** ramps (`InteriorColors`: moss primary, stone secondary, copper accent, bone/ink surfaces) plus `InteriorAccents`, a `staticCompositionLocalOf` for the door/window and 2D-canvas colours Material has no slot for. **Don't hardcode colours in a composable**; add a token here. `FloorPlanCanvas` used to paint a fixed `#12121F` ground with `Color.White` strokes, which ignored light mode entirely — it now reads `LocalInteriorAccents`.
+- `Color.kt` — the **Clay on white** ramps (`InteriorColors`: clay primary, neutral-grey secondary, teal accent, white/near-black surfaces) plus `InteriorAccents`, a `staticCompositionLocalOf` for the door/window and 2D-canvas colours Material has no slot for. **Don't hardcode colours in a composable**; add a token here. `FloorPlanCanvas` used to paint a fixed `#12121F` ground with `Color.White` strokes, which ignored light mode entirely — it now reads `LocalInteriorAccents`. Wall lengths are drawn there too, in the accent colour, pushed to the outside of each room.
 - `Type.kt` — `AppFont` is Plus Jakarta Sans, one **variable** TTF in `res/font/`; Compose derives each weight from the `wght` axis (API 26+, which matches minSdk).
-- `Theme.kt` — full light *and* dark `ColorScheme`s. Both define every slot, including `tertiary`, `error` and the `surfaceContainer*` family; leaving one out silently falls back to the default M3 purple.
+- `Theme.kt` — full light *and* dark `ColorScheme`s. Both define every slot, including `tertiary`, `error` and the `surfaceContainer*` family; leaving one out silently falls back to the default M3 purple. **Every value here must be a `C.` token** — hardcoding a hex in this file survives palette swaps and silently tints one mode (a moss-green `#141E19` did exactly that to dark mode).
+- The ground is **pure white**, so surfaces cannot separate by value. Cards, sheets, the toolbar and the furniture tiles separate with a 1 dp `outlineVariant` border; the contrast in the app comes from the near-black 3D viewport, not from a darkened background.
 - Strings live in `res/values/strings.xml` and the UI is English. Catalog item labels are plain strings in `FurnitureCatalog.kt`, not string resources.
 
 ## Key Constraints

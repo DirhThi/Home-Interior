@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Mirrors ui/theme/Color.kt; used by the window + splash themes only. -->
-    <color name="window_background">#F7F5EF</color>
-    <color name="splash_background">#2F5D50</color>
+    <color name="window_background">#FFFFFF</color>
+    <color name="splash_background">#B4472A</color>
 </resources>
