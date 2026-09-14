@@ -42,7 +42,7 @@ ui/screen/<feature>/
 
 **ViewModels own the database.** Composables never touch `AppDatabase` — that is the rule the refactor established; don't reintroduce direct DB reads in a `@Composable`.
 
-> ⚠️ **The README is partly wrong.** There is no AR and no camera capture (`ar:core`, CameraX are dead deps). The real 3D view **is** Google Filament (`FilamentRoomViewport.kt`); the older Canvas renderer (`Room3DViewport.kt`) is still reachable via a toggle.
+> ⚠️ **The README is partly wrong.** There is no AR and no camera capture. ARCore, CameraX, Coil, colorpicker-compose, accompanist, Gson and DataStore were all declared but referenced by zero files, and have been removed from `build.gradle`. The real 3D view **is** Google Filament (`FilamentRoomViewport.kt`).
 
 ### 3D viewport (`ui/screen/designer/view/viewport/FilamentRoomViewport.kt`)
 
@@ -77,9 +77,9 @@ The old `color_picker/{roomId}` route and `ColorPickerScreen` are **gone** — t
 `DesignerViewModel` owns everything: the `FloorPlan`, `placedFurniture`, the surface picks, and all DB reads/writes. `DesignerContent` only renders `DesignerState` and calls its callbacks; it toggles between two `EditorMode`s (`DesignerModels.kt`):
 
 - **`DRAW_WALLS`** → `view/viewport/FloorPlanCanvas.kt` — 2D top-down editor: place nodes, form room polygons, add/drag/resize wall openings, drag furniture footprints. All hit-testing & pointer logic here.
-- **`DESIGN`** → `view/viewport/FilamentRoomViewport.kt` (default, `use3DEngine`) or `view/viewport/Room3DViewport.kt` (legacy Canvas renderer). Furniture moves/selection/door drops call back into `DesignerState`, which the ViewModel auto-saves (debounced).
+- **`DESIGN`** → `view/viewport/FilamentRoomViewport.kt`. Furniture moves/selection/door drops call back into `DesignerState`, which the ViewModel auto-saves (debounced). The old Canvas renderer (`Room3DViewport.kt`), its toggle and the `ViewMode` enum were **deleted** — Filament is the only renderer, so there is no fallback if it fails on a device.
 
-The three viewport files are **carried over untouched** apart from their package line — they are the riskiest code in the app (Filament lifecycle, pointer maths). Change them deliberately, not as collateral.
+The two viewport files are **carried over untouched** apart from their package line — they are the riskiest code in the app (Filament lifecycle, pointer maths). Change them deliberately, not as collateral.
 
 Supporting files:
 - `DesignerModels.kt` — enums (`EditorMode`, `ViewMode`, `PlacementTool`, …), `ROOM_PALETTES`, hit-test helper classes. Data only.
@@ -94,7 +94,7 @@ Other screens: `ui/screen/home/` (room list, swipe-to-delete with snackbar undo,
 
 ### Theme (`ui/theme/`)
 
-- `Color.kt` — tonal ramps (`InteriorColors`) plus `InteriorAccents`, a `staticCompositionLocalOf` for the door/window/canvas colours Material has no slot for. **Don't hardcode colours in a composable**; add a token here.
+- `Color.kt` — the **Moss & Bone** ramps (`InteriorColors`: moss primary, stone secondary, copper accent, bone/ink surfaces) plus `InteriorAccents`, a `staticCompositionLocalOf` for the door/window and 2D-canvas colours Material has no slot for. **Don't hardcode colours in a composable**; add a token here. `FloorPlanCanvas` used to paint a fixed `#12121F` ground with `Color.White` strokes, which ignored light mode entirely — it now reads `LocalInteriorAccents`.
 - `Type.kt` — `AppFont` is Plus Jakarta Sans, one **variable** TTF in `res/font/`; Compose derives each weight from the `wght` axis (API 26+, which matches minSdk).
 - `Theme.kt` — full light *and* dark `ColorScheme`s. Both define every slot, including `tertiary`, `error` and the `surfaceContainer*` family; leaving one out silently falls back to the default M3 purple.
 - Strings live in `res/values/strings.xml` and the UI is English. Catalog item labels are plain strings in `FurnitureCatalog.kt`, not string resources.
@@ -108,7 +108,7 @@ Other screens: `ui/screen/home/` (room list, swipe-to-delete with snackbar undo,
 - **No tests** — `test`/`androidTest` dirs are empty though JUnit/Espresso/Compose-test deps are wired. `./gradlew test` passes trivially.
 - **No linter** (`kotlin.code.style=official` only; no detekt/ktlint).
 - **ProGuard disabled** for release (`minifyEnabled false`).
-- **Unused deps:** ARCore, CameraX are declared but dead. Filament/gltfio are live — verify rendering changes on a real device (the emulator GPU differs).
+- **Filament/gltfio are live** — verify rendering changes on a real device (the emulator GPU differs).
 - **Images:** previews in `assets/previews` are WebP; `res/mipmap-*/ic_launcher.png` are 14-byte placeholders, not real images.
 - **No emoji as icons** — use `Icons.Outlined.*`. The toolbar and floor-material list used to use 🚪🪟🪵; they don't any more.
 - **Touch targets ≥ 48 dp** — `ui/properties/MinTouchTarget`. Draw a swatch smaller if you like, but keep the tappable box at 48 dp.
