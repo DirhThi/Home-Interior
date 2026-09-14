@@ -33,6 +33,7 @@ import com.interiordesign3d.common.base.BaseScreen
 import com.interiordesign3d.ui.screen.designer.DrawingPhase
 import com.interiordesign3d.ui.screen.designer.EditorMode
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
+import com.interiordesign3d.ui.theme.LocalInteriorAccents
 import com.interiordesign3d.ui.screen.designer.view.viewport.FilamentRoomViewport
 import com.interiordesign3d.ui.screen.designer.view.viewport.WallDrawingCanvas
 
@@ -76,27 +77,13 @@ private fun DesignerFab(state: DesignerState) {
             enter = scaleIn() + fadeIn(),
             exit = scaleOut() + fadeOut(),
         ) {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                if (state.drawingPhase == DrawingPhase.EDITING) {
-                    SmallFloatingActionButton(
-                        onClick = state::onShowAddFurniture,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ) {
-                        Icon(Icons.Outlined.AddCircle, stringResource(R.string.add_furniture))
-                    }
-                }
-                ExtendedFloatingActionButton(
-                    onClick = state::onEnterDesign,
-                    icon = { Icon(Icons.Outlined.Chair, null) },
-                    text = { Text(stringResource(R.string.design_room)) },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                )
-            }
+            ExtendedFloatingActionButton(
+                onClick = state::onEnterDesign,
+                icon = { Icon(Icons.Outlined.Chair, null) },
+                text = { Text(stringResource(R.string.design_room)) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            )
         }
 
         // Hidden while an item is selected: it would float over the control panel.
@@ -107,8 +94,8 @@ private fun DesignerFab(state: DesignerState) {
         ) {
             FloatingActionButton(
                 onClick = state::onShowAddFurniture,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+                containerColor = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary,
             ) {
                 Icon(Icons.Outlined.AddCircle, stringResource(R.string.add_furniture))
             }
@@ -157,6 +144,7 @@ private fun RoomDesignView(state: DesignerState, modifier: Modifier) {
             floorTileM = state.floorPreset.tileM,
             shadows = state.shadowsOn,
             autoHideWalls = state.autoHideWalls,
+            backgroundColor = LocalInteriorAccents.current.viewportBackground,
             onDropOpening = state::onDropOpening,
             onSelectFurniture = state::onSelectFurniture,
             onMoveFurniture = state::onMoveFurniture,

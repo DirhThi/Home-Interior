@@ -19,6 +19,8 @@ import androidx.compose.material.icons.outlined.GridOn
 import androidx.compose.material.icons.outlined.Window
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconToggleButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -65,14 +67,14 @@ private fun OpeningToolRow(state: DesignerState) {
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        OpeningToggle(
+        OpeningChip(
             icon = Icons.Outlined.DoorFront,
             label = stringResource(R.string.door),
             accent = accents.door,
             checked = state.placementTool == PlacementTool.DOOR,
             onCheck = { state.onToolChange(state.placementTool.toggled(PlacementTool.DOOR)) },
         )
-        OpeningToggle(
+        OpeningChip(
             icon = Icons.Outlined.Window,
             label = stringResource(R.string.window),
             accent = accents.window,
@@ -92,26 +94,27 @@ private fun OpeningToolRow(state: DesignerState) {
 private fun PlacementTool.toggled(target: PlacementTool) =
     if (this == target) PlacementTool.NONE else target
 
+/** Labelled, because two bare icons on the toolbar gave no hint that they were placement modes. */
 @Composable
-private fun OpeningToggle(
+private fun OpeningChip(
     icon: ImageVector,
     label: String,
     accent: Color,
     checked: Boolean,
     onCheck: () -> Unit,
 ) {
-    FilledTonalIconToggleButton(
-        checked = checked,
-        onCheckedChange = { onCheck() },
-        modifier = Modifier.size(MinTouchTarget),
-        colors = IconButtonDefaults.filledTonalIconToggleButtonColors(
-            containerColor = Color.Transparent,
-            checkedContainerColor = accent.copy(alpha = 0.18f),
-            checkedContentColor = accent,
+    FilterChip(
+        selected = checked,
+        onClick = onCheck,
+        modifier = Modifier.height(MinTouchTarget),
+        leadingIcon = { Icon(icon, null, Modifier.size(18.dp)) },
+        label = { Text(label, style = MaterialTheme.typography.labelLarge) },
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = accent.copy(alpha = 0.18f),
+            selectedLabelColor = accent,
+            selectedLeadingIconColor = accent,
         ),
-    ) {
-        Icon(icon, label, Modifier.size(22.dp))
-    }
+    )
 }
 
 /**
@@ -136,9 +139,6 @@ private fun ActionRow(state: DesignerState) {
             onClick = state::onClear,
             enabled = state.hasRooms || state.currentPath.isNotEmpty(),
             modifier = Modifier.size(MinTouchTarget),
-            colors = IconButtonDefaults.iconButtonColors(
-                contentColor = MaterialTheme.colorScheme.error,
-            ),
         ) {
             Icon(Icons.Outlined.DeleteSweep, stringResource(R.string.clear))
         }
