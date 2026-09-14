@@ -57,7 +57,9 @@
     <string name="furniture_scale">Size</string>
     <string name="furniture_color">Colour</string>
     <string name="furniture_rotation">Rotation</string>
-    <string name="wall_mount">Wall mounted</string>
+    <string name="wall_mount">Wall</string>
+    <string name="wall_mount_on">Hangs on the nearest wall</string>
+    <string name="wall_mount_off">Stands on the floor</string>
     <string name="height_from_floor">Height from floor</string>
     <string name="remove_item">Remove</string>
     <string name="deselect">Deselect</string>

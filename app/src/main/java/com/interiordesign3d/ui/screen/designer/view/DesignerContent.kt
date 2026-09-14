@@ -99,12 +99,19 @@ private fun DesignerFab(state: DesignerState) {
             }
         }
 
-        EditorMode.DESIGN -> FloatingActionButton(
-            onClick = state::onShowAddFurniture,
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+        // Hidden while an item is selected: it would float over the control panel.
+        EditorMode.DESIGN -> AnimatedVisibility(
+            visible = state.selectedItem == null,
+            enter = scaleIn() + fadeIn(),
+            exit = scaleOut() + fadeOut(),
         ) {
-            Icon(Icons.Outlined.AddCircle, stringResource(R.string.add_furniture))
+            FloatingActionButton(
+                onClick = state::onShowAddFurniture,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Icon(Icons.Outlined.AddCircle, stringResource(R.string.add_furniture))
+            }
         }
     }
 }
