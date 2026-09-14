@@ -48,8 +48,7 @@ fun FloorPlanToolbar(state: DesignerState, modifier: Modifier = Modifier) {
         modifier = modifier,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 8.dp,
     ) {
         Column(Modifier.navigationBarsPadding().padding(horizontal = 8.dp, vertical = 6.dp)) {
             AnimatedVisibility(visible = state.drawingPhase == DrawingPhase.EDITING) {

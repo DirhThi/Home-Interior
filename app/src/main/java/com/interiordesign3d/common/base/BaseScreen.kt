@@ -1,11 +1,13 @@
 package com.interiordesign3d.common.base
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
@@ -22,6 +24,7 @@ fun BaseScreen(
     bottomBar: @Composable () -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     contentAlignment: Alignment = Alignment.TopStart,
+    contentWindowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     content: @Composable (Modifier) -> Unit,
 ) {
     Scaffold(
@@ -31,6 +34,7 @@ fun BaseScreen(
         floatingActionButton = floatingActionButton,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = contentWindowInsets,
     ) { padding ->
         Box(
             modifier = Modifier.fillMaxSize().padding(padding),

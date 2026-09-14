@@ -10,7 +10,9 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddCircle
@@ -50,6 +52,7 @@ fun DesignerContent(
             if (state.editorMode == EditorMode.DRAW_WALLS) FloorPlanToolbar(state)
         },
         floatingActionButton = { DesignerFab(state) },
+        contentWindowInsets = WindowInsets(0),
     ) { modifier ->
         when (state.editorMode) {
             EditorMode.DRAW_WALLS -> PlanEditor(state, modifier)
@@ -78,6 +81,7 @@ private fun DesignerFab(state: DesignerState) {
             exit = scaleOut() + fadeOut(),
         ) {
             ExtendedFloatingActionButton(
+                modifier = Modifier.navigationBarsPadding(),
                 onClick = state::onEnterDesign,
                 icon = { Icon(Icons.Outlined.Chair, null) },
                 text = { Text(stringResource(R.string.design_room)) },
@@ -93,6 +97,7 @@ private fun DesignerFab(state: DesignerState) {
             exit = scaleOut() + fadeOut(),
         ) {
             FloatingActionButton(
+                modifier = Modifier.navigationBarsPadding(),
                 onClick = state::onShowAddFurniture,
                 containerColor = MaterialTheme.colorScheme.tertiary,
                 contentColor = MaterialTheme.colorScheme.onTertiary,
