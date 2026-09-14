@@ -69,7 +69,7 @@ private val PAINT_COLORS = listOf(
 @Composable
 fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
     var tab by remember { mutableIntStateOf(0) }
-    val tabs = listOf(R.string.walls, R.string.floor, R.string.wall_colour, R.string.palettes)
+    val tabs = listOf(R.string.walls, R.string.floor, R.string.stairs, R.string.wall_colour, R.string.palettes)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -118,7 +118,8 @@ fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
             when (tab) {
                 0 -> PresetRow(WALL_PRESETS, state.wallPresetIdx, state::onWallPreset)
                 1 -> PresetRow(FLOOR_PRESETS, state.floorPresetIdx, state::onFloorPreset)
-                2 -> PaintRow(state.wallColorOverride, state::onWallColor)
+                2 -> PresetRow(FLOOR_PRESETS, state.stairPresetIdx, state::onStairPreset)
+                3 -> PaintRow(state.wallColorOverride, state::onWallColor)
                 else -> PaletteRow(onApply = state::onApplyPalette)
             }
         }

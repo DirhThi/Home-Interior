@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.data.models.Stair
+import com.interiordesign3d.data.models.StairShape
 import com.interiordesign3d.ui.properties.CenterRow
 import com.interiordesign3d.ui.properties.MinTouchTarget
 import com.interiordesign3d.ui.properties.NumberInputDialog
@@ -79,6 +80,28 @@ fun StairControlPanel(stair: Stair, state: DesignerState) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
+            }
+
+            CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(6.dp)) {
+                StairShape.entries.forEach { shape ->
+                    FilterChip(
+                        selected = stair.shape == shape,
+                        onClick = { state.onStairShape(shape) },
+                        modifier = Modifier.height(MinTouchTarget),
+                        label = {
+                            Text(
+                                stringResource(
+                                    when (shape) {
+                                        StairShape.STRAIGHT -> R.string.stair_straight
+                                        StairShape.L_SHAPED -> R.string.stair_l
+                                        StairShape.U_SHAPED -> R.string.stair_u
+                                    }
+                                ),
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        },
+                    )
+                }
             }
 
             CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(6.dp)) {

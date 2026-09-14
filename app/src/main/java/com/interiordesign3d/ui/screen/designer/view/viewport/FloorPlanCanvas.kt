@@ -501,18 +501,25 @@ fun WallDrawingCanvas(
                     tone.copy(alpha = if (selected) 1f else 0.7f),
                     style = Stroke(if (selected) 3f else 2f),
                 )
-                // Treads, drawn across the run so the direction of travel is readable.
-                val steps = 12
-                val a0 = corners[0]; val a1 = corners[1]
-                val b0 = corners[3]; val b1 = corners[2]
-                for (k in 1 until steps) {
-                    val t = k / steps.toFloat()
-                    drawLine(
-                        tone.copy(alpha = 0.5f),
-                        Offset(a0.x + (b0.x - a0.x) * t, a0.y + (b0.y - a0.y) * t),
-                        Offset(a1.x + (b1.x - a1.x) * t, a1.y + (b1.y - a1.y) * t),
-                        1.5f,
-                    )
+                // Treads belong to the straight runs; the landing between them stays blank,
+                // which is how a turning flight reads on a drawing.
+                val halfW = st.widthCm * sc / 2f
+                st.runs().forEach { (ra, rb) ->
+                    val p = toScreen(ra); val q = toScreen(rb)
+                    val len = hypot(q.x - p.x, q.y - p.y)
+                    if (len < 1f) return@forEach
+                    val ux = (q.x - p.x) / len; val uy = (q.y - p.y) / len
+                    val treads = (len / (26f * sc / 1.5f)).toInt().coerceIn(3, 14)
+                    for (k in 1 until treads) {
+                        val d = len * k / treads
+                        val cxp = p.x + ux * d; val cyp = p.y + uy * d
+                        drawLine(
+                            tone.copy(alpha = 0.5f),
+                            Offset(cxp - uy * halfW, cyp + ux * halfW),
+                            Offset(cxp + uy * halfW, cyp - ux * halfW),
+                            1.5f,
+                        )
+                    }
                 }
             }
 

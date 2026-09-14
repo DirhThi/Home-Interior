@@ -13,6 +13,7 @@ import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.PlacedFurniture
 import com.interiordesign3d.data.models.Stair
+import com.interiordesign3d.data.models.StairShape
 import com.interiordesign3d.data.models.WallOpening
 import com.interiordesign3d.data.models.WallPoint
 import com.interiordesign3d.ui.screen.designer.DrawingPhase
@@ -39,10 +40,12 @@ open class DesignerState : BaseScreenState() {
     var activeLevel by mutableStateOf(0)
 
     // ── Surfaces ──────────────────────────────────────────────────────────────
-    var wallPresetIdx by mutableStateOf(0)
-    var floorPresetIdx by mutableStateOf(0)
-    /** Custom paint chosen in the surfaces sheet; overrides the wall preset tint when set. */
-    var wallColorOverride by mutableStateOf<String?>(null)
+    var stairPresetIdx by mutableStateOf(2)
+
+    // Wall and floor finishes belong to the storey, so they are read straight off the plan.
+    val wallPresetIdx: Int get() = floorPlan.surfaceOf(activeLevel).wallPresetIdx
+    val floorPresetIdx: Int get() = floorPlan.surfaceOf(activeLevel).floorPresetIdx
+    val wallColorOverride: String? get() = floorPlan.surfaceOf(activeLevel).wallColor.ifBlank { null }
     var shadowsOn by mutableStateOf(false)
     var autoHideWalls by mutableStateOf(false)
 
@@ -80,6 +83,7 @@ open class DesignerState : BaseScreenState() {
 
     val wallPreset get() = WALL_PRESETS[wallPresetIdx.coerceIn(WALL_PRESETS.indices)]
     val floorPreset get() = FLOOR_PRESETS[floorPresetIdx.coerceIn(FLOOR_PRESETS.indices)]
+    val stairPreset get() = FLOOR_PRESETS[stairPresetIdx.coerceIn(FLOOR_PRESETS.indices)]
     val wallColorHex get() = wallColorOverride ?: wallPreset.colorHex
 
     // ── Navigation / persistence ──────────────────────────────────────────────
@@ -124,6 +128,7 @@ open class DesignerState : BaseScreenState() {
     open fun onStairWidth(cm: Float) {}
     open fun onStairLength(cm: Float) {}
     open fun onStairRotate(deg: Float) {}
+    open fun onStairShape(shape: StairShape) {}
     open fun onRemoveSelectedStair() {}
     open fun onDropOpening(nodeA: Int, nodeB: Int, t: Float, widthCm: Float, furnitureId: String) {}
 
@@ -146,6 +151,7 @@ open class DesignerState : BaseScreenState() {
     open fun onDismissSurfaceSheet() { showSurfaceSheet = false }
     open fun onWallPreset(index: Int) {}
     open fun onFloorPreset(index: Int) {}
+    open fun onStairPreset(index: Int) {}
     open fun onWallColor(hex: String?) {}
     open fun onApplyPalette(palette: ColorPalette) {}
     open fun onRoomHeight(cm: Float) {}

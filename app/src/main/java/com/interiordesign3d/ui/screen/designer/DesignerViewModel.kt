@@ -12,6 +12,7 @@ import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.PlacedFurniture
 import com.interiordesign3d.data.models.Stair
+import com.interiordesign3d.data.models.StairShape
 import com.interiordesign3d.data.models.WallOpening
 import com.interiordesign3d.data.models.WallPoint
 import com.interiordesign3d.data.repository.AppDatabase
@@ -198,6 +199,8 @@ class DesignerViewModel(
 
         override fun onStairRotate(deg: Float) = updateStair { it.copy(rotationDeg = deg) }
 
+        override fun onStairShape(shape: StairShape) = updateStair { it.copy(shape = shape) }
+
         override fun onRemoveSelectedStair() {
             val id = selectedStairId ?: return
             floorPlan = floorPlan.copy(stairs = floorPlan.stairs.filter { it.id != id })
@@ -278,24 +281,26 @@ class DesignerViewModel(
         // ── Surfaces ──────────────────────────────────────────────────────────
 
         override fun onWallPreset(index: Int) {
-            wallPresetIdx = index
-            wallColorOverride = null
-            persistSurfaces()
+            floorPlan = floorPlan.withSurface(activeLevel) {
+                it.copy(wallPresetIdx = index, wallColor = "")
+            }
         }
 
         override fun onFloorPreset(index: Int) {
-            floorPresetIdx = index
+            floorPlan = floorPlan.withSurface(activeLevel) { it.copy(floorPresetIdx = index) }
+        }
+
+        override fun onStairPreset(index: Int) {
+            stairPresetIdx = index
             persistSurfaces()
         }
 
         override fun onWallColor(hex: String?) {
-            wallColorOverride = hex
-            persistSurfaces()
+            floorPlan = floorPlan.withSurface(activeLevel) { it.copy(wallColor = hex.orEmpty()) }
         }
 
         override fun onApplyPalette(palette: ColorPalette) {
-            wallColorOverride = palette.background
-            persistSurfaces(floorColor = palette.primary)
+            floorPlan = floorPlan.withSurface(activeLevel) { it.copy(wallColor = palette.background) }
             notify(app.getString(R.string.palette_applied, palette.name))
         }
 
@@ -336,12 +341,9 @@ class DesignerViewModel(
                     screenState.editorMode = EditorMode.DRAW_WALLS
                 }
                 screenState.roomHeightCm = room.heightCm
-                screenState.wallPresetIdx = room.wallPresetIdx
-                screenState.floorPresetIdx = room.floorPresetIdx
+                screenState.stairPresetIdx = room.stairPresetIdx
                 screenState.shadowsOn = room.shadowsEnabled
                 screenState.autoHideWalls = room.autoHideWalls
-                screenState.wallColorOverride =
-                    room.wallColor.takeIf { it != WALL_PRESET_DEFAULT_MARKER }
             }
             // Items whose pack was removed would render as nothing — drop them on load.
             screenState.placedFurniture = db.placedFurnitureDao()
@@ -378,18 +380,15 @@ class DesignerViewModel(
         items.forEach { db.placedFurnitureDao().insertPlacedFurniture(it.copy(roomId = roomId)) }
     }
 
-    private fun persistSurfaces(floorColor: String? = null) {
+    private fun persistSurfaces() {
         val state: DesignerState = screenState
         viewModelScope.launch {
             db.roomDao().getRoomById(roomId)?.let { existing ->
                 db.roomDao().updateRoom(
                     existing.copy(
-                        wallPresetIdx = state.wallPresetIdx,
-                        floorPresetIdx = state.floorPresetIdx,
+                        stairPresetIdx = state.stairPresetIdx,
                         shadowsEnabled = state.shadowsOn,
                         autoHideWalls = state.autoHideWalls,
-                        wallColor = state.wallColorOverride ?: WALL_PRESET_DEFAULT_MARKER,
-                        floorColor = floorColor ?: existing.floorColor,
                         updatedAt = System.currentTimeMillis(),
                     )
                 )
@@ -442,8 +441,6 @@ class DesignerViewModel(
     }
 
     companion object {
-        /** Sentinel kept in DesignRoom.wallColor when the wall tint comes from the preset, not a custom pick. */
-        const val WALL_PRESET_DEFAULT_MARKER = ""
         private const val DEFAULT_DOOR_CM = 90f
         private const val DEFAULT_WINDOW_CM = 120f
     }

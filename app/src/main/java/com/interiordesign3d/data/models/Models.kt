@@ -63,32 +63,155 @@ data class WallOpening(
     val leafOpen: Boolean = false,     // render the leaf swung open
 )
 
+@Serializable
+enum class StairShape { STRAIGHT, L_SHAPED, U_SHAPED }
+
 /**
- * A flight rising from [level] to the storey above. Its footprint is the rectangle that gets cut
- * out of the floor overhead — place the stair and the hole follows from its own coordinates.
+ * A flight rising from [level] to the storey above. Every shape is described by one centre-line
+ * polyline plus a run width, so steps, footprint and floor opening all come from the same numbers.
+ * Height is never a parameter — a flight always spans exactly one storey.
  */
 @Serializable
 data class Stair(
     val id: String = "",
     val level: Int = 0,
-    val x: Float = 0f,          // centre of the run, cm
+    val x: Float = 0f,          // centre of the bounding box, cm
     val y: Float = 0f,
-    val widthCm: Float = 100f,
-    val lengthCm: Float = 240f,
+    val shape: StairShape = StairShape.STRAIGHT,
+    val widthCm: Float = 100f,  // width of one run
+    val lengthCm: Float = 240f, // length of the first run, along the direction of travel
+    val legCm: Float = 160f,    // L only: the second run
+    val wellCm: Float = 20f,    // U only: the gap between the two runs
     val rotationDeg: Float = 0f,
 ) {
-    /** The four corners of the run, in plan centimetres. */
+    /** Size of the footprint's bounding box, before rotation. */
+    val boxWidth: Float get() = when (shape) {
+        StairShape.STRAIGHT -> widthCm
+        StairShape.L_SHAPED -> widthCm + legCm
+        StairShape.U_SHAPED -> widthCm * 2f + wellCm
+    }
+    val boxLength: Float get() = lengthCm
+
+    /**
+     * The flight broken into straight runs and the flat landings between them. Steps belong to the
+     * runs only — railing them continuously through a turn left the corner steps fanned out with
+     * gaps between them instead of a platform.
+     */
+    fun runs(): List<Pair<WallPoint, WallPoint>> {
+        val w = widthCm
+        val half = w / 2f
+        val l = lengthCm
+        val local = when (shape) {
+            StairShape.STRAIGHT -> listOf(WallPoint(half, 0f) to WallPoint(half, l))
+            StairShape.L_SHAPED -> listOf(
+                WallPoint(half, 0f) to WallPoint(half, l - w),
+                WallPoint(w, l - half) to WallPoint(w + legCm, l - half),
+            )
+            StairShape.U_SHAPED -> listOf(
+                WallPoint(half, 0f) to WallPoint(half, l - w),
+                WallPoint(w + wellCm + half, l - w) to WallPoint(w + wellCm + half, 0f),
+            )
+        }
+        return local.map { (a, b) -> toPlanFromBox(a) to toPlanFromBox(b) }
+    }
+
+    /** Flat platforms where runs meet: centre in plan, plus size along the box's own axes. */
+    fun landings(): List<Triple<WallPoint, Float, Float>> {
+        val w = widthCm
+        val l = lengthCm
+        return when (shape) {
+            StairShape.STRAIGHT -> emptyList()
+            StairShape.L_SHAPED ->
+                listOf(Triple(toPlanFromBox(WallPoint(w / 2f, l - w / 2f)), w, w))
+            StairShape.U_SHAPED ->
+                listOf(Triple(toPlanFromBox(WallPoint(boxWidth / 2f, l - w / 2f)), boxWidth, w))
+        }
+    }
+
+    private fun toPlanFromBox(p: WallPoint) =
+        toPlan(WallPoint(p.x - boxWidth / 2f, p.y - boxLength / 2f))
+
+    /** Centre line in bounding-box coordinates, origin at the box's bottom-left corner. */
+    fun centreLine(): List<WallPoint> {
+        val w = widthCm
+        val half = w / 2f
+        return when (shape) {
+            StairShape.STRAIGHT -> listOf(WallPoint(half, 0f), WallPoint(half, lengthCm))
+            StairShape.L_SHAPED -> listOf(
+                WallPoint(half, 0f),
+                WallPoint(half, lengthCm - half),
+                WallPoint(w + legCm, lengthCm - half),
+            )
+            StairShape.U_SHAPED -> listOf(
+                WallPoint(half, 0f),
+                WallPoint(half, lengthCm - half),
+                WallPoint(w + wellCm + half, lengthCm - half),
+                WallPoint(w + wellCm + half, 0f),
+            )
+        }
+    }
+
+    /** Outline in bounding-box coordinates, counter-clockwise. */
+    private fun outline(): List<WallPoint> {
+        val w = widthCm
+        val l = lengthCm
+        return when (shape) {
+            StairShape.STRAIGHT -> listOf(
+                WallPoint(0f, 0f), WallPoint(w, 0f), WallPoint(w, l), WallPoint(0f, l),
+            )
+            StairShape.L_SHAPED -> listOf(
+                WallPoint(0f, 0f), WallPoint(w, 0f), WallPoint(w, l - w),
+                WallPoint(w + legCm, l - w), WallPoint(w + legCm, l), WallPoint(0f, l),
+            )
+            StairShape.U_SHAPED -> listOf(
+                WallPoint(0f, 0f), WallPoint(w, 0f), WallPoint(w, l - w),
+                WallPoint(w + wellCm, l - w), WallPoint(w + wellCm, 0f),
+                WallPoint(w * 2f + wellCm, 0f), WallPoint(w * 2f + wellCm, l), WallPoint(0f, l),
+            )
+        }
+    }
+
+    /**
+     * The stairwell: the rectangle cut out of the slab above. A real opening is rectangular even
+     * when the flight turns, and a rectangle always triangulates — the L and U outlines are concave
+     * and made the ear clipper give up, which showed as a ragged hole.
+     */
+    fun wellOpening(marginCm: Float = 0f): List<WallPoint> {
+        val hw = boxWidth / 2f + marginCm
+        val hl = boxLength / 2f + marginCm
+        return listOf(-hw to -hl, hw to -hl, hw to hl, -hw to hl)
+            .map { (u, v) -> toPlan(WallPoint(u, v)) }
+    }
+
+    /** The footprint in plan centimetres; [marginCm] grows it so the opening is not pinched. */
     fun footprint(marginCm: Float = 0f): List<WallPoint> {
-        val hw = widthCm / 2f + marginCm
-        val hl = lengthCm / 2f + marginCm
+        val bw = boxWidth
+        val bl = boxLength
+        val sx = if (bw > 1f) (bw + marginCm * 2f) / bw else 1f
+        val sy = if (bl > 1f) (bl + marginCm * 2f) / bl else 1f
+        return outline().map { toPlan(WallPoint((it.x - bw / 2f) * sx, (it.y - bl / 2f) * sy)) }
+    }
+
+    /** Bounding-box coordinates → plan coordinates. */
+    fun toPlan(local: WallPoint): WallPoint {
         val r = Math.toRadians(rotationDeg.toDouble())
         val c = kotlin.math.cos(r).toFloat()
         val s = kotlin.math.sin(r).toFloat()
-        return listOf(-hw to -hl, hw to -hl, hw to hl, -hw to hl).map { (u, v) ->
-            WallPoint(x + u * c - v * s, y + u * s + v * c)
-        }
+        return WallPoint(x + local.x * c - local.y * s, y + local.x * s + local.y * c)
     }
+
+    /** Centre line in plan coordinates. */
+    fun centreLinePlan(): List<WallPoint> =
+        centreLine().map { toPlan(WallPoint(it.x - boxWidth / 2f, it.y - boxLength / 2f)) }
 }
+
+/** Wall and floor finish for one storey. Lives in the plan because it is per-storey data. */
+@Serializable
+data class LevelSurface(
+    val wallPresetIdx: Int = 0,
+    val floorPresetIdx: Int = 0,
+    val wallColor: String = "",   // blank = take the tint from the wall preset
+)
 
 @Serializable
 data class FloorPlan(
@@ -99,11 +222,21 @@ data class FloorPlan(
     val openings: List<WallOpening> = emptyList(),
     /** Parallel to [rooms]; an empty list means every room is on the ground floor. */
     val roomLevels: List<Int> = emptyList(),
-    val stairs: List<Stair> = emptyList()
+    val stairs: List<Stair> = emptyList(),
+    val levelSurfaces: List<LevelSurface> = emptyList()
 ) {
     fun roomPolygon(idx: Int): List<WallPoint> = rooms[idx].map { nodes[it] }
 
     fun levelOf(roomIdx: Int): Int = roomLevels.getOrElse(roomIdx) { 0 }
+
+    fun surfaceOf(level: Int): LevelSurface = levelSurfaces.getOrElse(level) { LevelSurface() }
+
+    fun withSurface(level: Int, transform: (LevelSurface) -> LevelSurface): FloorPlan {
+        val list = levelSurfaces.toMutableList()
+        while (list.size <= level) list += LevelSurface()
+        list[level] = transform(list[level])
+        return copy(levelSurfaces = list)
+    }
 
     val levelCount: Int get() = (roomLevels.maxOrNull() ?: 0) + 1
 
@@ -112,7 +245,7 @@ data class FloorPlan(
 
     /** Holes that the floor of [level] must carry: the stairs coming up from the storey below. */
     fun floorHoles(level: Int): List<List<WallPoint>> =
-        stairs.filter { it.level == level - 1 }.map { it.footprint(HOLE_MARGIN_CM) }
+        stairs.filter { it.level == level - 1 }.map { it.wellOpening(HOLE_MARGIN_CM) }
 
     /**
      * Whether [stair] can actually open onto the storey above. The hole is cut out of ONE room's
@@ -131,7 +264,7 @@ data class FloorPlan(
             ?: candidates.firstOrNull() ?: return stair
         val poly = rooms[target].map { nodes[it] }
 
-        // Work in the flight's own frame, where its footprint is axis-aligned.
+        // Work in the flight's own frame, where its bounding box is axis-aligned.
         val rad = Math.toRadians(-stair.rotationDeg.toDouble())
         val c = kotlin.math.cos(rad).toFloat()
         val sn = kotlin.math.sin(rad).toFloat()
@@ -143,24 +276,32 @@ data class FloorPlan(
         val maxX = local.maxOf { it.x } - HOLE_MARGIN_CM
         val minY = local.minOf { it.y } + HOLE_MARGIN_CM
         val maxY = local.maxOf { it.y } - HOLE_MARGIN_CM
-        if (maxX - minX < MIN_STAIR_WIDTH_CM || maxY - minY < MIN_STAIR_LENGTH_CM) return stair
+        val availW = maxX - minX
+        val availL = maxY - minY
+        if (availW < MIN_STAIR_WIDTH_CM || availL < MIN_STAIR_LENGTH_CM) return stair
 
-        val w = stair.widthCm.coerceIn(MIN_STAIR_WIDTH_CM, maxX - minX)
-        val l = stair.lengthCm.coerceIn(MIN_STAIR_LENGTH_CM, maxY - minY)
-        val lc = toLocal(centre)
-        val fitted = toWorld(
-            WallPoint(
-                lc.x.coerceIn(minX + w / 2f, maxX - w / 2f),
-                lc.y.coerceIn(minY + l / 2f, maxY - l / 2f),
-            )
+        // Shrink every run together so the shape keeps its proportions.
+        val k = minOf(availW / stair.boxWidth, availL / stair.boxLength, 1f)
+        var fitted = if (k >= 1f) stair else stair.copy(
+            widthCm = (stair.widthCm * k).coerceAtLeast(MIN_STAIR_WIDTH_CM),
+            lengthCm = (stair.lengthCm * k).coerceAtLeast(MIN_STAIR_LENGTH_CM),
+            legCm = stair.legCm * k,
+            wellCm = stair.wellCm * k,
         )
-        return stair.copy(x = fitted.x, y = fitted.y, widthCm = w, lengthCm = l)
+
+        val hw = fitted.boxWidth / 2f
+        val hl = fitted.boxLength / 2f
+        val lc = toLocal(centre)
+        val cx = if (availW < fitted.boxWidth) (minX + maxX) / 2f else lc.x.coerceIn(minX + hw, maxX - hw)
+        val cy = if (availL < fitted.boxLength) (minY + maxY) / 2f else lc.y.coerceIn(minY + hl, maxY - hl)
+        val world = toWorld(WallPoint(cx, cy))
+        return fitted.copy(x = world.x, y = world.y)
     }
 
     fun stairFits(stair: Stair): Boolean {
         val above = roomsOnLevel(stair.level + 1)
         if (above.isEmpty()) return false
-        val fp = stair.footprint(HOLE_MARGIN_CM)
+        val fp = stair.wellOpening(HOLE_MARGIN_CM)
         return above.any { ri ->
             val poly = rooms[ri].map { nodes[it] }
             fp.all { pointInPolygon(it, poly) }
@@ -209,6 +350,7 @@ data class DesignRoom(
     val wallPointsJson: String = "",
     val wallPresetIdx: Int = 0,
     val floorPresetIdx: Int = 0,
+    val stairPresetIdx: Int = 2,   // a different timber from the floor by default, so a flight reads
     val shadowsEnabled: Boolean = false,
     val autoHideWalls: Boolean = false,
     // JSON-encoded FloorPlan (multi-room with shared nodes)

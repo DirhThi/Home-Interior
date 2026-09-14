@@ -71,12 +71,9 @@ fun FilamentRoomViewport(
     placedFurniture: List<PlacedFurniture>,
     roomHeight: Float,
     activeLevel: Int = 0,
-    wallModel: String = "mat_paintedplaster017",
-    wallColorHex: String = "#F2E6D3",
-    wallTileM: Float = 2f,
-    floorModel: String = "mat_woodfloor051",
-    floorColorHex: String = "#FFFFFF",
-    floorTileM: Float = 1f,
+    stairModel: String = "mat_woodfloor007",
+    stairColorHex: String = "#FFFFFF",
+    stairTileM: Float = 1f,
     shadows: Boolean = false,
     autoHideWalls: Boolean = true,
     backgroundColor: Color = Color(0xFFDAD5C8),
@@ -123,7 +120,7 @@ fun FilamentRoomViewport(
                 s.onDropOpening = { r, e, t, w, id -> onDrop.value(r, e, t, w, id) }
                 s.onSelectOpening = { id -> onPickOpening.value(id) }
                 s.update(floorPlan, activeLevel, roomPolygons, floorPlan.openings, placedFurniture, roomHeight,
-                    wallModel, wallColorHex, wallTileM, floorModel, floorColorHex, floorTileM)
+                    stairModel, stairColorHex, stairTileM)
             }
         },
         onRelease = { sceneRef.value?.destroy(); sceneRef.value = null }
@@ -279,8 +276,7 @@ private class RoomScene(
         activeLevel: Int,
         roomPolygons: List<List<WallPoint>>, openings: List<WallOpening>,
         furniture: List<PlacedFurniture>, roomHeightCm: Float,
-        wallModel: String, wallColorHex: String, wallTileM: Float,
-        floorModel: String, floorColorHex: String, floorTileM: Float,
+        stairModel: String, stairColorHex: String, stairTileM: Float,
     ) {
         val allPts = roomPolygons.flatten()
         if (allPts.isEmpty()) return
@@ -294,14 +290,19 @@ private class RoomScene(
         val spanX = (maxX - minX).coerceAtLeast(1f); val spanZ = (maxZ - minZ).coerceAtLeast(1f)
 
         val sSig = roomPolygons.joinToString(";") { p -> p.joinToString(",") { "${it.x.toInt()}/${it.y.toInt()}" } } +
-                "|$activeLevel|${plan.stairs.joinToString(",") { "${it.level}/${it.x.toInt()}/${it.y.toInt()}/${it.widthCm}/${it.lengthCm}/${it.rotationDeg}" }}|${roomHeightCm.toInt()}|$wallModel|$wallColorHex|$wallTileM|$floorModel|$floorColorHex|$floorTileM" +
+                "|$activeLevel|${plan.stairs.joinToString(",") { "${it.level}/${it.x.toInt()}/${it.y.toInt()}/${it.widthCm}/${it.lengthCm}/${it.rotationDeg}" }}|${roomHeightCm.toInt()}|$stairModel|$stairColorHex" +
+                "|" + plan.levelSurfaces.joinToString(",") { "${it.wallPresetIdx}/${it.floorPresetIdx}/${it.wallColor}" } +
+                "|" + plan.stairs.joinToString(",") { "${it.shape}/${it.legCm}/${it.wellCm}" } +
                 "|" + openings.joinToString(",") { "${it.nodeA}/${it.nodeB}/${it.t}/${it.type}/${it.widthCm}/${it.style}/${it.leafHidden}/${it.leafOpen}" }
         if (sSig != structSig) {
             structSig = sSig
-            rebuildStructure(plan, activeLevel, roomHeightCm, wallModel, wallColorHex, wallTileM, floorModel, floorColorHex, floorTileM)
+            rebuildStructure(plan, activeLevel, roomHeightCm, stairModel, stairColorHex, stairTileM)
             // frame the room only when its geometry changes (keeps user's orbit otherwise)
-            centerX = 0f; centerZ = 0f; centerY = roomHeightCm * CM * 0.35f
-            radius = maxOf(spanX, spanZ) * CM * 1.3f + roomHeightCm * CM
+            // Frame the whole stack, not one storey — otherwise a two-storey plan opens with the
+            // camera parked inside the upper floor.
+            val stackH = (activeLevel + 1).coerceAtLeast(1) * (roomHeightCm * CM + FLOOR_SLAB_M)
+            centerX = 0f; centerZ = 0f; centerY = stackH * 0.45f
+            radius = maxOf(spanX, spanZ) * CM * 1.3f + stackH
         }
 
         roomHeightM = roomHeightCm * CM
@@ -324,8 +325,7 @@ private class RoomScene(
         plan: FloorPlan,
         activeLevel: Int,
         roomHeightCm: Float,
-        wallModel: String, wallColorHex: String, wallTileM: Float,
-        floorModel: String, floorColorHex: String, floorTileM: Float,
+        stairModel: String, stairColorHex: String, stairTileM: Float,
     ) {
         structureAssets.forEach { runCatching { assetLoader.destroyAsset(it) } }
         structureAssets.clear()
@@ -337,9 +337,7 @@ private class RoomScene(
         val wt = WALL_THICK_CM * CM
         val hM = roomHeightCm * CM
         val floorT = FLOOR_SLAB_M
-        val wallMi = materialOf("wall", wallModel, wallColorHex) ?: return
-        val trimMi = materialOf("trim", "mat_paint", wallColorHex, 0.72f) ?: return
-        val floorMi = materialOf("floor", floorModel, floorColorHex) ?: return
+        val stairMi = materialOf("stair", stairModel, stairColorHex) ?: return
 
         // One floor per room, built from the room polygon itself and grown outward by the wall
         // thickness so it runs under the walls (a bbox slab would poke past off-square edges).
@@ -348,6 +346,16 @@ private class RoomScene(
         // each storey's floor slab doubles as the ceiling of the one below.
         for (level in 0..activeLevel.coerceAtMost(plan.levelCount - 1)) {
             val baseY = level * (hM + floorT)
+            // Finishes are per storey, so each gets its own material slot.
+            val surf = plan.surfaceOf(level)
+            val wp = WALL_PRESETS[surf.wallPresetIdx.coerceIn(WALL_PRESETS.indices)]
+            val fp = FLOOR_PRESETS[surf.floorPresetIdx.coerceIn(FLOOR_PRESETS.indices)]
+            val wallTint = surf.wallColor.ifBlank { wp.colorHex }
+            val wallTileM = wp.tileM
+            val floorTileM = fp.tileM
+            val wallMi = materialOf("wall$level", wp.model, wallTint) ?: continue
+            val trimMi = materialOf("trim$level", "mat_paint", wallTint, 0.72f) ?: continue
+            val floorMi = materialOf("floor$level", fp.model, fp.colorHex) ?: continue
             val rooms = plan.roomsOnLevel(level).map { plan.rooms[it] }
             if (rooms.isEmpty()) continue
             val holes = plan.floorHoles(level)
@@ -472,17 +480,40 @@ private class RoomScene(
             // floorHoles(level + 1), from the very same footprint.
             plan.stairs.filter { it.level == level }.forEach { st ->
                 val rise = hM + floorT
-                val count = (rise / 0.17f).roundToInt().coerceIn(10, 24)
+                val count = (rise / 0.17f).roundToInt().coerceIn(10, 28)
                 val riser = rise / count
-                val treadCm = st.lengthCm / count
-                val rad = Math.toRadians(st.rotationDeg.toDouble())
-                val cs = cos(rad).toFloat(); val sn = sin(rad).toFloat()
-                for (k in 0 until count) {
-                    val along = -st.lengthCm / 2f + treadCm * (k + 0.5f)
-                    val px = st.x + (-sn) * along
-                    val pz = st.y + cs * along
-                    buildBox(floorMi, st.widthCm * CM, (k + 1) * riser, treadCm * CM,
-                        wx(px), baseY, wz(pz), -st.rotationDeg, 1f)
+                val runs = st.runs()
+                val runLen = runs.map { (a, b) -> hypot(b.x - a.x, b.y - a.y) }
+                val totalRun = runLen.sum().coerceAtLeast(1f)
+
+                // Steps share out across the runs by length; the landing between them is flat and
+                // sits level with the last step of the run feeding it.
+                var stepIndex = 0
+                runs.forEachIndexed { ri, (a, b) ->
+                    val isLast = ri == runs.lastIndex
+                    val n = if (isLast) count - stepIndex
+                            else ((count * runLen[ri] / totalRun).roundToInt()).coerceIn(1, count - stepIndex - 1)
+                    if (n <= 0) return@forEachIndexed
+                    val len = runLen[ri].coerceAtLeast(1e-3f)
+                    val ux = (b.x - a.x) / len; val uy = (b.y - a.y) / len
+                    val tread = len / n
+                    val rot = Math.toDegrees(atan2(-uy.toDouble(), ux.toDouble())).toFloat()
+                    for (k in 0 until n) {
+                        val d = (k + 0.5f) * tread
+                        val h = stepIndex + k
+                        buildBox(stairMi, tread * CM, riser, st.widthCm * CM,
+                            wx(a.x + ux * d), baseY + h * riser, wz(a.y + uy * d), rot, stairTileM)
+                    }
+                    stepIndex += n
+
+                    // Landing at the top of every run but the last.
+                    if (!isLast) {
+                        st.landings().getOrNull(ri)?.let { (c, su, sv) ->
+                            buildBox(stairMi, su * CM, riser, sv * CM,
+                                wx(c.x), baseY + (stepIndex - 1) * riser, wz(c.y),
+                                -st.rotationDeg, stairTileM)
+                        }
+                    }
                 }
             }
 

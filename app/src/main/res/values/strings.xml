@@ -47,6 +47,9 @@
     <string name="door_open">Open</string>
     <string name="opening_width">width</string>
     <string name="stairs">Stairs</string>
+    <string name="stair_straight">Straight</string>
+    <string name="stair_l">L</string>
+    <string name="stair_u">U</string>
     <string name="stair_no_opening">No opening upstairs — the whole flight has to sit inside one room on the storey above.</string>
     <string name="stair_width">W %1$d</string>
     <string name="stair_length">L %1$d</string>
