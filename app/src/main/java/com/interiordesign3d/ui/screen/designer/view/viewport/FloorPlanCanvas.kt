@@ -1,4 +1,7 @@
-package com.interiordesign3d.ui.screens
+package com.interiordesign3d.ui.screen.designer.view.viewport
+
+import com.interiordesign3d.data.catalog.*
+import com.interiordesign3d.ui.screen.designer.*
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -618,113 +621,5 @@ fun WallDrawingCanvas(
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
             ) { Icon(Icons.Filled.ZoomOut, "Zoom Out", Modifier.size(18.dp)) }
         }
-    }
-}
-
-// ─── Floor Plan Toolbar ───────────────────────────────────────────────────────
-
-@Composable
-internal fun FloorPlanToolbar(
-    phase: DrawingPhase,
-    currentPath: List<Int>,
-    hasRooms: Boolean,
-    snapEnabled: Boolean,
-    placementTool: PlacementTool,
-    onDone: () -> Unit,
-    onUndo: () -> Unit,
-    onClear: () -> Unit,
-    onToggleSnap: () -> Unit,
-    onToolChange: (PlacementTool) -> Unit
-) {
-    Surface(tonalElevation = 4.dp, shadowElevation = 4.dp) {
-        Column {
-            // Door / Window tool row — only in EDITING phase
-            if (phase == DrawingPhase.EDITING) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = placementTool == PlacementTool.DOOR,
-                        onClick = { onToolChange(if (placementTool == PlacementTool.DOOR) PlacementTool.NONE else PlacementTool.DOOR) },
-                        label = { Text("Door", style = MaterialTheme.typography.labelSmall) },
-                        leadingIcon = { Text("🚪", style = MaterialTheme.typography.labelSmall) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Color(0xFFE53935).copy(alpha = 0.22f),
-                            selectedLabelColor = Color(0xFFE53935)
-                        )
-                    )
-                    FilterChip(
-                        selected = placementTool == PlacementTool.WINDOW,
-                        onClick = { onToolChange(if (placementTool == PlacementTool.WINDOW) PlacementTool.NONE else PlacementTool.WINDOW) },
-                        label = { Text("Window", style = MaterialTheme.typography.labelSmall) },
-                        leadingIcon = { Text("🪟", style = MaterialTheme.typography.labelSmall) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Color(0xFF1976D2).copy(alpha = 0.22f),
-                            selectedLabelColor = Color(0xFF1976D2)
-                        )
-                    )
-                    if (placementTool != PlacementTool.NONE) {
-                        Text(
-                            "Tap wall to place • tap marker to remove",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                        )
-                    }
-                }
-            }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Done — only visible when polygon just closed
-            AnimatedVisibility(visible = phase == DrawingPhase.CLOSED) {
-                Button(
-                    onClick = onDone,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.weight(1.2f)
-                ) {
-                    Icon(Icons.Filled.Check, null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Done")
-                }
-            }
-
-            OutlinedButton(
-                onClick = onUndo,
-                enabled = currentPath.isNotEmpty() || phase == DrawingPhase.CLOSED,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Filled.Undo, null, Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Undo")
-            }
-
-            FilterChip(
-                selected = snapEnabled,
-                onClick = onToggleSnap,
-                label = { Text("Snap") },
-                leadingIcon = { Icon(Icons.Filled.GridOn, null, Modifier.size(14.dp)) }
-            )
-
-            OutlinedButton(
-                onClick = onClear,
-                enabled = hasRooms || currentPath.isNotEmpty(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Filled.DeleteSweep, null, Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Clear")
-            }
-        }
-        } // end Column
     }
 }

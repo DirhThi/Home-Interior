@@ -1,7 +1,8 @@
-package com.interiordesign3d.ui.screens
+package com.interiordesign3d.ui.screen.designer
 
 import androidx.compose.ui.graphics.Color
 import com.interiordesign3d.data.models.WallPoint
+import com.interiordesign3d.ui.properties.parseHexColor
 import kotlin.math.*
 
 // ─── Grid snap ───────────────────────────────────────────────────────────────
@@ -10,9 +11,7 @@ fun Float.snapTo(grid: Float) = if (grid > 0f) (this / grid).roundToInt() * grid
 
 // ─── Color helpers ────────────────────────────────────────────────────────────
 
-fun parseColor(hex: String, fallback: Color): Color = try {
-    Color(android.graphics.Color.parseColor(hex))
-} catch (e: Exception) { fallback }
+fun parseColor(hex: String, fallback: Color): Color = parseHexColor(hex, fallback)
 
 operator fun Color.times(f: Float) = Color(red * f, green * f, blue * f, alpha)
 

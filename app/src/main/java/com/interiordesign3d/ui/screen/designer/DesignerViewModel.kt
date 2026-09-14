@@ -1,0 +1,401 @@
+package com.interiordesign3d.ui.screen.designer
+
+import android.app.Application
+import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.viewModelScope
+import com.interiordesign3d.R
+import com.interiordesign3d.common.base.BaseViewModel
+import com.interiordesign3d.common.base.Navigator
+import com.interiordesign3d.data.catalog.catalogItem
+import com.interiordesign3d.data.models.ColorPalette
+import com.interiordesign3d.data.models.FloorPlan
+import com.interiordesign3d.data.models.OpeningType
+import com.interiordesign3d.data.models.PlacedFurniture
+import com.interiordesign3d.data.models.WallOpening
+import com.interiordesign3d.data.models.WallPoint
+import com.interiordesign3d.data.repository.AppDatabase
+import com.interiordesign3d.ui.screen.designer.state.DesignerState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.util.UUID
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.sin
+
+private const val AUTO_SAVE_DELAY_MS = 400L
+
+class DesignerViewModel(
+    app: Application,
+    navigator: Navigator,
+    private val roomId: String,
+) : BaseViewModel(app, navigator) {
+
+    private val db = AppDatabase.getInstance(app)
+    private var loaded = false
+
+    val screenState: DesignerState = object : DesignerState() {
+
+        override fun onBack() = pops()
+
+        override fun onSave() {
+            viewModelScope.launch {
+                persistPlan()
+                persistFurniture(placedFurniture)
+                notify(app.getString(R.string.saved))
+            }
+        }
+
+        override fun onEditFloorPlan() {
+            viewModelScope.launch {
+                persistFurniture(placedFurniture)
+                editorMode = EditorMode.DRAW_WALLS
+            }
+        }
+
+        override fun onEnterDesign() {
+            viewModelScope.launch {
+                persistPlan()
+                editorMode = EditorMode.DESIGN
+            }
+        }
+
+        // ── Wall drawing ──────────────────────────────────────────────────────
+
+        override fun onAddNewPoint(point: WallPoint) {
+            val index = floorPlan.nodes.size
+            floorPlan = floorPlan.copy(nodes = floorPlan.nodes + point)
+            currentPath = currentPath + index
+        }
+
+        override fun onSnapToNode(index: Int) {
+            currentPath = currentPath + index
+        }
+
+        override fun onClosePath() {
+            if (currentPath.size >= 3) {
+                floorPlan = floorPlan.copy(rooms = floorPlan.rooms + listOf(currentPath))
+                drawingPhase = DrawingPhase.CLOSED
+            }
+        }
+
+        override fun onMoveNode(index: Int, point: WallPoint) {
+            floorPlan = floorPlan.copy(
+                nodes = floorPlan.nodes.toMutableList().also { it[index] = point }
+            )
+        }
+
+        override fun onStartFromNode(index: Int) {
+            currentPath = listOf(index)
+            drawingPhase = DrawingPhase.PLACING
+        }
+
+        override fun onStartNewPoint(point: WallPoint) {
+            val index = floorPlan.nodes.size
+            floorPlan = floorPlan.copy(nodes = floorPlan.nodes + point)
+            currentPath = listOf(index)
+            drawingPhase = DrawingPhase.PLACING
+        }
+
+        override fun onDone() {
+            currentPath = emptyList()
+            drawingPhase = DrawingPhase.EDITING
+        }
+
+        override fun onUndo() = undoLastStep()
+
+        override fun onClear() {
+            floorPlan = FloorPlan()
+            currentPath = emptyList()
+            drawingPhase = DrawingPhase.PLACING
+        }
+
+        // ── Openings ──────────────────────────────────────────────────────────
+
+        override fun onPlaceOpening(roomIdx: Int, edgeIdx: Int, t: Float, type: OpeningType) {
+            val opening = WallOpening(
+                id = UUID.randomUUID().toString(),
+                roomIdx = roomIdx, edgeIdx = edgeIdx, t = t, type = type,
+                widthCm = if (type == OpeningType.DOOR) 90f else 100f,
+            )
+            floorPlan = floorPlan.copy(openings = floorPlan.openings + opening)
+        }
+
+        override fun onMoveOpening(id: String, t: Float) {
+            floorPlan = floorPlan.copy(openings = floorPlan.openings.map {
+                if (it.id == id) it.copy(t = t.coerceIn(0.05f, 0.95f)) else it
+            })
+        }
+
+        override fun onResizeOpening(id: String, widthCm: Float) {
+            floorPlan = floorPlan.copy(openings = floorPlan.openings.map {
+                if (it.id == id) it.copy(widthCm = widthCm.coerceIn(40f, 300f)) else it
+            })
+        }
+
+        override fun onRemoveOpening(id: String) {
+            floorPlan = floorPlan.copy(openings = floorPlan.openings.filter { it.id != id })
+        }
+
+        /** A door prop dropped on a wall becomes a real opening; the prop itself goes away. */
+        override fun onDropOpening(roomIdx: Int, edgeIdx: Int, t: Float, widthCm: Float, furnitureId: String) {
+            floorPlan = floorPlan.copy(
+                openings = floorPlan.openings + WallOpening(
+                    id = UUID.randomUUID().toString(),
+                    roomIdx = roomIdx, edgeIdx = edgeIdx, t = t,
+                    type = OpeningType.DOOR,
+                    widthCm = widthCm.coerceIn(60f, 200f),
+                    style = furnitureId,
+                )
+            )
+            placedFurniture = placedFurniture.filterNot { it.id == furnitureId }
+            if (selectedId == furnitureId) selectedId = null
+        }
+
+        // ── Furniture ─────────────────────────────────────────────────────────
+
+        override fun onMoveFurniture(id: String, x: Float, z: Float) {
+            placedFurniture = placedFurniture.map {
+                if (it.id == id) it.copy(posX = x, posZ = z) else it
+            }
+        }
+
+        override fun onMoveWallFurniture(id: String, x: Float, z: Float, height: Float) {
+            placedFurniture = placedFurniture.map {
+                if (it.id == id) it.copy(posX = x, posZ = z, wallMountHeight = height) else it
+            }
+        }
+
+        override fun onAddFurniture(key: String, wallMounted: Boolean) {
+            val centerX = floorPlan.nodes.map { it.x }.average().toFloat().takeIf { !it.isNaN() } ?: 190f
+            val centerZ = floorPlan.nodes.map { it.y }.average().toFloat().takeIf { !it.isNaN() } ?: 260f
+            val (x, z) = findFreeSpot(centerX, centerZ, placedFurniture, floorPlan.nodes)
+            val item = catalogItem(key)
+            val placed = PlacedFurniture(
+                id = UUID.randomUUID().toString(),
+                roomId = roomId,
+                furnitureId = key,
+                furnitureName = item?.label ?: key,
+                modelUrl = "",
+                posX = x, posZ = z,
+                isWallMounted = wallMounted,
+                wallMountHeight = item?.wallHeightCm ?: 120f,
+            )
+            placedFurniture = placedFurniture + placed
+            selectedId = placed.id
+            showAddFurnitureSheet = false
+        }
+
+        override fun onRotate(degrees: Float) = updateSelected { it.copy(rotationY = degrees) }
+
+        override fun onScale(scale: Float) = updateSelected { it.copy(scale = scale) }
+
+        override fun onColorChange(hex: String?) = updateSelected { it.copy(colorOverride = hex) }
+
+        override fun onChangeHeight(heightCm: Float) = updateSelected { it.copy(wallMountHeight = heightCm) }
+
+        override fun onToggleWallMount(mounted: Boolean) = updateSelected { item ->
+            if (!mounted) return@updateSelected item.copy(isWallMounted = false)
+            val wall = findNearestWall(item.posX, item.posZ, roomPolygons)
+            item.copy(
+                isWallMounted = true,
+                posX = wall?.snappedX ?: item.posX,
+                posZ = wall?.snappedZ ?: item.posZ,
+            )
+        }
+
+        override fun onDeleteSelected() {
+            val id = selectedId ?: return
+            placedFurniture = placedFurniture.filterNot { it.id == id }
+            selectedId = null
+        }
+
+        private inline fun updateSelected(transform: (PlacedFurniture) -> PlacedFurniture) {
+            val id = selectedId ?: return
+            placedFurniture = placedFurniture.map { if (it.id == id) transform(it) else it }
+        }
+
+        // ── Surfaces ──────────────────────────────────────────────────────────
+
+        override fun onWallPreset(index: Int) {
+            wallPresetIdx = index
+            wallColorOverride = null
+            persistSurfaces()
+        }
+
+        override fun onFloorPreset(index: Int) {
+            floorPresetIdx = index
+            persistSurfaces()
+        }
+
+        override fun onWallColor(hex: String?) {
+            wallColorOverride = hex
+            persistSurfaces()
+        }
+
+        override fun onApplyPalette(palette: ColorPalette) {
+            wallColorOverride = palette.background
+            persistSurfaces(floorColor = palette.primary)
+            notify(app.getString(R.string.palette_applied, palette.name))
+        }
+
+        override fun onShadows(enabled: Boolean) {
+            shadowsOn = enabled
+            persistSurfaces()
+        }
+
+        override fun onAutoHideWalls(enabled: Boolean) {
+            autoHideWalls = enabled
+            persistSurfaces()
+        }
+    }
+
+    init {
+        load()
+        observeFurnitureForAutoSave()
+    }
+
+    // ── Loading ───────────────────────────────────────────────────────────────
+
+    private fun load() {
+        screenState.loading = true
+        viewModelScope.launch {
+            db.roomDao().getRoomById(roomId)?.let { room ->
+                if (room.floorPlanJson.isNotBlank()) {
+                    screenState.floorPlan = Json.decodeFromString(room.floorPlanJson)
+                    screenState.drawingPhase = DrawingPhase.EDITING
+                    screenState.editorMode = EditorMode.DRAW_WALLS
+                }
+                screenState.wallPresetIdx = room.wallPresetIdx
+                screenState.floorPresetIdx = room.floorPresetIdx
+                screenState.shadowsOn = room.shadowsEnabled
+                screenState.autoHideWalls = room.autoHideWalls
+                screenState.wallColorOverride =
+                    room.wallColor.takeIf { it != WALL_PRESET_DEFAULT_MARKER }
+            }
+            // Items whose pack was removed would render as nothing — drop them on load.
+            screenState.placedFurniture = db.placedFurnitureDao()
+                .getFurnitureForRoom(roomId).first()
+                .filter { catalogItem(it.furnitureId) != null }
+            screenState.loading = false
+            loaded = true
+        }
+    }
+
+    private fun observeFurnitureForAutoSave() {
+        viewModelScope.launch {
+            snapshotFlow { screenState.placedFurniture }.collectLatest { items ->
+                if (!loaded) return@collectLatest
+                delay(AUTO_SAVE_DELAY_MS)
+                persistFurniture(items)
+            }
+        }
+    }
+
+    // ── Persistence ───────────────────────────────────────────────────────────
+
+    private suspend fun persistPlan() {
+        val json = Json.encodeToString(screenState.floorPlan)
+        db.roomDao().getRoomById(roomId)?.let { existing ->
+            db.roomDao().updateRoom(
+                existing.copy(floorPlanJson = json, updatedAt = System.currentTimeMillis())
+            )
+        }
+    }
+
+    private suspend fun persistFurniture(items: List<PlacedFurniture>) {
+        db.placedFurnitureDao().clearRoomFurniture(roomId)
+        items.forEach { db.placedFurnitureDao().insertPlacedFurniture(it.copy(roomId = roomId)) }
+    }
+
+    private fun persistSurfaces(floorColor: String? = null) {
+        val state: DesignerState = screenState
+        viewModelScope.launch {
+            db.roomDao().getRoomById(roomId)?.let { existing ->
+                db.roomDao().updateRoom(
+                    existing.copy(
+                        wallPresetIdx = state.wallPresetIdx,
+                        floorPresetIdx = state.floorPresetIdx,
+                        shadowsEnabled = state.shadowsOn,
+                        autoHideWalls = state.autoHideWalls,
+                        wallColor = state.wallColorOverride ?: WALL_PRESET_DEFAULT_MARKER,
+                        floorColor = floorColor ?: existing.floorColor,
+                        updatedAt = System.currentTimeMillis(),
+                    )
+                )
+            }
+        }
+    }
+
+    // ── Undo ──────────────────────────────────────────────────────────────────
+
+    private fun undoLastStep() = with(screenState) {
+        when (drawingPhase) {
+            DrawingPhase.CLOSED -> {
+                val lastRoom = floorPlan.rooms.last()
+                floorPlan = floorPlan.copy(rooms = floorPlan.rooms.dropLast(1))
+                currentPath = lastRoom
+                drawingPhase = DrawingPhase.PLACING
+            }
+            DrawingPhase.PLACING -> when {
+                currentPath.size > 1 -> {
+                    val lastIdx = currentPath.last()
+                    if (isNodeDisposable(lastIdx, dropLast = true)) {
+                        floorPlan = floorPlan.copy(nodes = floorPlan.nodes.dropLast(1))
+                    }
+                    currentPath = currentPath.dropLast(1)
+                }
+                currentPath.size == 1 -> {
+                    if (isNodeDisposable(currentPath.first(), dropLast = false)) {
+                        floorPlan = floorPlan.copy(nodes = floorPlan.nodes.dropLast(1))
+                    }
+                    currentPath = emptyList()
+                    drawingPhase = if (hasRooms) DrawingPhase.EDITING else DrawingPhase.PLACING
+                }
+                else -> Unit
+            }
+            DrawingPhase.EDITING -> Unit
+        }
+    }
+
+    /** A node can be dropped only if it is the newest one and no committed room or earlier path step uses it. */
+    private fun DesignerState.isNodeDisposable(index: Int, dropLast: Boolean): Boolean {
+        val usedElsewhere = floorPlan.rooms.any { index in it } ||
+            (dropLast && currentPath.dropLast(1).contains(index))
+        return !usedElsewhere && index == floorPlan.nodes.lastIndex
+    }
+
+    companion object {
+        /** Sentinel kept in DesignRoom.wallColor when the wall tint comes from the preset, not a custom pick. */
+        const val WALL_PRESET_DEFAULT_MARKER = ""
+    }
+}
+
+/** Nearest spot to (cx,cz) not within 60 cm of existing furniture, searched in rings and kept inside the plan bbox. */
+private fun findFreeSpot(
+    cx: Float,
+    cz: Float,
+    existing: List<PlacedFurniture>,
+    nodes: List<WallPoint>,
+): Pair<Float, Float> {
+    val minX = nodes.minOfOrNull { it.x } ?: (cx - 200f)
+    val maxX = nodes.maxOfOrNull { it.x } ?: (cx + 200f)
+    val minZ = nodes.minOfOrNull { it.y } ?: (cz - 200f)
+    val maxZ = nodes.maxOfOrNull { it.y } ?: (cz + 200f)
+    fun free(x: Float, z: Float) = existing.none { hypot(it.posX - x, it.posZ - z) < 60f }
+    if (free(cx, cz)) return cx to cz
+    for (ring in 1..8) {
+        val radius = ring * 70f
+        val steps = ring * 8
+        for (i in 0 until steps) {
+            val angle = 2.0 * Math.PI * i / steps
+            val x = (cx + radius * cos(angle)).toFloat().coerceIn(minX + 30f, maxX - 30f)
+            val z = (cz + radius * sin(angle)).toFloat().coerceIn(minZ + 30f, maxZ - 30f)
+            if (free(x, z)) return x to z
+        }
+    }
+    return cx to cz
+}

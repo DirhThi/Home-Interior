@@ -1,0 +1,200 @@
+package com.interiordesign3d.ui.screen.designer.view
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AddCircle
+import androidx.compose.material.icons.outlined.Chair
+import androidx.compose.material.icons.outlined.ViewInAr
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import com.interiordesign3d.R
+import com.interiordesign3d.common.base.BaseScreen
+import com.interiordesign3d.ui.screen.designer.DrawingPhase
+import com.interiordesign3d.ui.screen.designer.EditorMode
+import com.interiordesign3d.ui.screen.designer.state.DesignerState
+import com.interiordesign3d.ui.screen.designer.view.viewport.FilamentRoomViewport
+import com.interiordesign3d.ui.screen.designer.view.viewport.RoomViewport3D
+import com.interiordesign3d.ui.screen.designer.view.viewport.WallDrawingCanvas
+
+@Composable
+fun DesignerContent(
+    state: DesignerState,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+) {
+    BaseScreen(
+        loading = state.loading,
+        snackbarHostState = snackbarHostState,
+        topBar = { DesignerTopBar(state) },
+        bottomBar = {
+            if (state.editorMode == EditorMode.DRAW_WALLS) FloorPlanToolbar(state)
+        },
+        floatingActionButton = { DesignerFab(state) },
+    ) { modifier ->
+        when (state.editorMode) {
+            EditorMode.DRAW_WALLS -> PlanEditor(state, modifier)
+            EditorMode.DESIGN -> RoomDesignView(state, modifier)
+        }
+    }
+
+    if (state.showAddFurnitureSheet) {
+        AddFurnitureSheet(
+            onAdd = state::onAddFurniture,
+            onDismiss = state::onDismissAddFurniture,
+        )
+    }
+
+    if (state.showSurfaceSheet) {
+        SurfaceSheet(state = state, onDismiss = state::onDismissSurfaceSheet)
+    }
+}
+
+@Composable
+private fun DesignerFab(state: DesignerState) {
+    when (state.editorMode) {
+        EditorMode.DRAW_WALLS -> AnimatedVisibility(
+            visible = state.hasRooms,
+            enter = scaleIn() + fadeIn(),
+            exit = scaleOut() + fadeOut(),
+        ) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (state.drawingPhase == DrawingPhase.EDITING) {
+                    SmallFloatingActionButton(
+                        onClick = state::onShowAddFurniture,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ) {
+                        Icon(Icons.Outlined.AddCircle, stringResource(R.string.add_furniture))
+                    }
+                }
+                ExtendedFloatingActionButton(
+                    onClick = state::onEnterDesign,
+                    icon = { Icon(Icons.Outlined.Chair, null) },
+                    text = { Text(stringResource(R.string.design_room)) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                )
+            }
+        }
+
+        EditorMode.DESIGN -> FloatingActionButton(
+            onClick = state::onShowAddFurniture,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        ) {
+            Icon(Icons.Outlined.AddCircle, stringResource(R.string.add_furniture))
+        }
+    }
+}
+
+@Composable
+private fun PlanEditor(state: DesignerState, modifier: Modifier) {
+    WallDrawingCanvas(
+        floorPlan = state.floorPlan,
+        drawingPhase = state.drawingPhase,
+        currentPath = state.currentPath,
+        gridSizeCm = if (state.snapEnabled) 10f else 0f,
+        placementTool = state.placementTool,
+        onAddNewPoint = state::onAddNewPoint,
+        onSnapToNode = state::onSnapToNode,
+        onClosePath = state::onClosePath,
+        onMoveNode = state::onMoveNode,
+        onStartFromNode = state::onStartFromNode,
+        onStartNewPoint = state::onStartNewPoint,
+        onPlaceOpening = state::onPlaceOpening,
+        onMoveOpening = state::onMoveOpening,
+        onResizeOpening = state::onResizeOpening,
+        onRemoveOpening = state::onRemoveOpening,
+        placedFurniture = state.placedFurniture,
+        onMoveFurnitureInPlan = state::onMoveFurniture,
+        onTapFurniture = state::onSelectFurniture,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun RoomDesignView(state: DesignerState, modifier: Modifier) {
+    Box(modifier.fillMaxSize()) {
+        if (state.use3DEngine) {
+            FilamentRoomViewport(
+                floorPlan = state.floorPlan,
+                roomPolygons = state.roomPolygons,
+                placedFurniture = state.placedFurniture,
+                roomHeight = state.roomHeightCm,
+                wallModel = state.wallPreset.model,
+                wallColorHex = state.wallColorHex,
+                wallTileM = state.wallPreset.tileM,
+                floorModel = state.floorPreset.model,
+                floorColorHex = state.floorPreset.colorHex,
+                floorTileM = state.floorPreset.tileM,
+                shadows = state.shadowsOn,
+                autoHideWalls = state.autoHideWalls,
+                onDropOpening = state::onDropOpening,
+                onSelectFurniture = state::onSelectFurniture,
+                onMoveFurniture = state::onMoveFurniture,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            RoomViewport3D(
+                floorPlan = state.floorPlan,
+                roomHeight = state.roomHeightCm,
+                placedFurniture = state.placedFurniture,
+                selectedId = state.selectedId,
+                viewMode = state.viewMode,
+                roomPolygons = state.roomPolygons,
+                onSelectFurniture = state::onSelectFurniture,
+                onMoveFurniture = state::onMoveFurniture,
+                onMoveWallFurniture = state::onMoveWallFurniture,
+                wallColorHex = state.wallColorHex,
+                gridMinorCm = if (state.snapEnabled) 10f else 50f,
+                onWallColorChange = state::onWallColor,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        SmallFloatingActionButton(
+            onClick = state::onToggleRenderer,
+            containerColor = if (state.use3DEngine) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = if (state.use3DEngine) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.align(Alignment.TopStart).padding(12.dp),
+        ) {
+            Icon(Icons.Outlined.ViewInAr, stringResource(R.string.toggle_renderer), Modifier.size(20.dp))
+        }
+
+        AnimatedVisibility(
+            visible = state.selectedItem != null,
+            enter = slideInVertically { it },
+            exit = slideOutVertically { it },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            state.selectedItem?.let { FurnitureControlPanel(item = it, state = state) }
+        }
+    }
+}

@@ -1,9 +1,9 @@
-package com.interiordesign3d.ui.screens
+package com.interiordesign3d.ui.screen.designer
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GridOn
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.ViewInAr
+import androidx.compose.material.icons.outlined.GridOn
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.ViewInAr
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.interiordesign3d.data.models.WallPoint
@@ -14,9 +14,9 @@ import java.util.UUID
 enum class EditorMode { DRAW_WALLS, DESIGN }
 
 enum class ViewMode(val label: String, val icon: ImageVector) {
-    TOP_DOWN("Top View", Icons.Filled.GridOn),
-    PERSPECTIVE("3D View", Icons.Filled.ViewInAr),
-    ISOMETRIC("Isometric", Icons.Filled.Layers)
+    TOP_DOWN("Top View", Icons.Outlined.GridOn),
+    PERSPECTIVE("3D View", Icons.Outlined.ViewInAr),
+    ISOMETRIC("Isometric", Icons.Outlined.Layers)
 }
 
 /**

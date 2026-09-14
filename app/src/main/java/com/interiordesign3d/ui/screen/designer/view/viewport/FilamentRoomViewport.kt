@@ -1,4 +1,7 @@
-package com.interiordesign3d.ui.screens
+package com.interiordesign3d.ui.screen.designer.view.viewport
+
+import com.interiordesign3d.data.catalog.*
+import com.interiordesign3d.ui.screen.designer.*
 
 import android.content.Context
 import android.view.Choreographer
