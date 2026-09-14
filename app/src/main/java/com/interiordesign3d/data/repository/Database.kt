@@ -1,8 +1,6 @@
 package com.interiordesign3d.data.repository
 
 import androidx.room.*
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 import com.interiordesign3d.data.models.*
 import kotlinx.coroutines.flow.Flow
 
@@ -56,49 +54,11 @@ interface PlacedFurnitureDao {
     suspend fun clearRoomFurniture(roomId: String)
 }
 
-// ─── Migrations ───────────────────────────────────────────────────────────────
-
-val MIGRATION_1_2 = object : Migration(1, 2) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE rooms ADD COLUMN wallPointsJson TEXT NOT NULL DEFAULT ''")
-    }
-}
-
-val MIGRATION_2_3 = object : Migration(2, 3) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE placed_furniture ADD COLUMN isWallMounted INTEGER NOT NULL DEFAULT 0")
-        db.execSQL("ALTER TABLE placed_furniture ADD COLUMN wallMountHeight REAL NOT NULL DEFAULT 120.0")
-    }
-}
-
-val MIGRATION_3_4 = object : Migration(3, 4) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE rooms ADD COLUMN floorPlanJson TEXT NOT NULL DEFAULT ''")
-    }
-}
-
-val MIGRATION_4_5 = object : Migration(4, 5) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE placed_furniture ADD COLUMN customWidthCm REAL NOT NULL DEFAULT 0.0")
-        db.execSQL("ALTER TABLE placed_furniture ADD COLUMN customDepthCm REAL NOT NULL DEFAULT 0.0")
-        db.execSQL("ALTER TABLE placed_furniture ADD COLUMN customHeightCm REAL NOT NULL DEFAULT 0.0")
-    }
-}
-
-val MIGRATION_5_6 = object : Migration(5, 6) {
-    override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE rooms ADD COLUMN wallPresetIdx INTEGER NOT NULL DEFAULT 0")
-        db.execSQL("ALTER TABLE rooms ADD COLUMN floorPresetIdx INTEGER NOT NULL DEFAULT 0")
-        db.execSQL("ALTER TABLE rooms ADD COLUMN shadowsEnabled INTEGER NOT NULL DEFAULT 0")
-        db.execSQL("ALTER TABLE rooms ADD COLUMN autoHideWalls INTEGER NOT NULL DEFAULT 0")
-    }
-}
-
 // ─── Database ─────────────────────────────────────────────────────────────────
 
 @Database(
     entities = [DesignRoom::class, PlacedFurniture::class],
-    version = 6,
+    version = 1,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -116,7 +76,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "interior_design_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    // Dev-only app with a single user: the schema is always v1 and a change wipes it.
+                    .fallbackToDestructiveMigration()
                     .build().also { INSTANCE = it }
             }
     }
