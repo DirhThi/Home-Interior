@@ -47,7 +47,7 @@ open class DesignerState : BaseScreenState() {
     var showAddFurnitureSheet by mutableStateOf(false)
     var showSurfaceSheet by mutableStateOf(false)
 
-    val roomHeightCm = 260f
+    var roomHeightCm by mutableStateOf(DEFAULT_ROOM_HEIGHT_CM)
 
     val hasRooms: Boolean by derivedStateOf { floorPlan.rooms.isNotEmpty() }
 
@@ -118,6 +118,9 @@ open class DesignerState : BaseScreenState() {
     open fun onFloorPreset(index: Int) {}
     open fun onWallColor(hex: String?) {}
     open fun onApplyPalette(palette: ColorPalette) {}
+    open fun onRoomHeight(cm: Float) {}
     open fun onShadows(enabled: Boolean) {}
     open fun onAutoHideWalls(enabled: Boolean) {}
 }
+
+const val DEFAULT_ROOM_HEIGHT_CM = 260f

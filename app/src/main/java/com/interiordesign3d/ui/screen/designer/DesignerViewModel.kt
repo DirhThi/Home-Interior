@@ -259,6 +259,15 @@ class DesignerViewModel(
             notify(app.getString(R.string.palette_applied, palette.name))
         }
 
+        override fun onRoomHeight(cm: Float) {
+            roomHeightCm = cm
+            viewModelScope.launch {
+                db.roomDao().getRoomById(roomId)?.let {
+                    db.roomDao().updateRoom(it.copy(heightCm = cm, updatedAt = System.currentTimeMillis()))
+                }
+            }
+        }
+
         override fun onShadows(enabled: Boolean) {
             shadowsOn = enabled
             persistSurfaces()
@@ -286,6 +295,7 @@ class DesignerViewModel(
                     screenState.drawingPhase = DrawingPhase.EDITING
                     screenState.editorMode = EditorMode.DRAW_WALLS
                 }
+                screenState.roomHeightCm = room.heightCm
                 screenState.wallPresetIdx = room.wallPresetIdx
                 screenState.floorPresetIdx = room.floorPresetIdx
                 screenState.shadowsOn = room.shadowsEnabled

@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Contrast
+import androidx.compose.material.icons.outlined.Height
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -34,6 +35,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -52,6 +54,7 @@ import com.interiordesign3d.ui.properties.CenterBox
 import com.interiordesign3d.ui.properties.CenterRow
 import com.interiordesign3d.ui.properties.MinTouchTarget
 import com.interiordesign3d.ui.properties.onClickNotRipple
+import com.interiordesign3d.ui.properties.NumberInputDialog
 import com.interiordesign3d.ui.properties.parseHexColor
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
 
@@ -88,6 +91,7 @@ fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
                     checked = state.autoHideWalls,
                     onCheck = state::onAutoHideWalls,
                 )
+                HeightChip(state)
                 OptionChip(
                     label = stringResource(R.string.shadows),
                     icon = Icons.Outlined.Contrast,
@@ -118,6 +122,34 @@ fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
                 else -> PaletteRow(onApply = state::onApplyPalette)
             }
         }
+    }
+}
+
+@Composable
+private fun HeightChip(state: DesignerState) {
+    var editing by remember { mutableStateOf(false) }
+    FilterChip(
+        selected = false,
+        onClick = { editing = true },
+        modifier = Modifier.height(MinTouchTarget),
+        leadingIcon = { Icon(Icons.Outlined.Height, null, Modifier.size(18.dp)) },
+        label = {
+            Text(
+                stringResource(R.string.centimetres, state.roomHeightCm.toInt()),
+                style = MaterialTheme.typography.labelLarge,
+            )
+        },
+    )
+    if (editing) {
+        NumberInputDialog(
+            title = stringResource(R.string.edit_value, stringResource(R.string.ceiling_height)),
+            suffix = "cm",
+            initial = state.roomHeightCm,
+            range = 200f..400f,
+            step = 10f,
+            onConfirm = state::onRoomHeight,
+            onDismiss = { editing = false },
+        )
     }
 }
 

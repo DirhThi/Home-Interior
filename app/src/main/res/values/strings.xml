@@ -87,7 +87,8 @@
     <string name="floor">Floor</string>
     <string name="wall_colour">Wall colour</string>
     <string name="palettes">Palettes</string>
+    <string name="ceiling_height">ceiling height</string>
     <string name="shadows">Shadows</string>
-    <string name="hide_front_walls">Hide front walls</string>
+    <string name="hide_front_walls">Auto-hide</string>
     <string name="palette_applied">%1$s applied</string>
 </resources>
