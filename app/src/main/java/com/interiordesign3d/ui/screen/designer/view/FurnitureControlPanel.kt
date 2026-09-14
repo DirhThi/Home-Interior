@@ -109,6 +109,7 @@ fun FurnitureControlPanel(item: PlacedFurniture, state: DesignerState) {
                         suffix = "%",
                         value = item.scale * 100f,
                         range = 50f..200f,
+                        step = 5f,
                         onChange = { state.onScale(it / 100f) },
                         sliderValue = item.scale,
                         sliderRange = 0.5f..2f,
@@ -127,6 +128,7 @@ fun FurnitureControlPanel(item: PlacedFurniture, state: DesignerState) {
                             suffix = "cm",
                             value = item.wallMountHeight,
                             range = 40f..230f,
+                            step = 5f,
                             onChange = state::onChangeHeight,
                         )
                     } else {
@@ -136,6 +138,7 @@ fun FurnitureControlPanel(item: PlacedFurniture, state: DesignerState) {
                             suffix = "°",
                             value = item.rotationY,
                             range = 0f..360f,
+                            step = 15f,
                             onChange = state::onRotate,
                         )
                     }
@@ -185,6 +188,7 @@ private fun SliderRow(
     suffix: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
+    step: Float = 1f,
     onChange: (Float) -> Unit,
     sliderValue: Float = value,
     sliderRange: ClosedFloatingPointRange<Float> = range,
@@ -214,6 +218,7 @@ private fun SliderRow(
             suffix = suffix,
             initial = value,
             range = range,
+            step = step,
             onConfirm = onChange,
             onDismiss = { editing = false },
         )

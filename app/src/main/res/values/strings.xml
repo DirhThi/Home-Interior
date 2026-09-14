@@ -61,6 +61,8 @@
     <string name="apply">Apply</string>
     <string name="cancel">Cancel</string>
     <string name="value_range">%1$d to %2$d</string>
+    <string name="decrease">Decrease</string>
+    <string name="increase">Increase</string>
     <string name="edit_value">Edit %1$s</string>
     <string name="wall_mount_on">Hangs on the nearest wall</string>
     <string name="wall_mount_off">Stands on the floor</string>
