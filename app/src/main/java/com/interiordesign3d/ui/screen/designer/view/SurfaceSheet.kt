@@ -71,7 +71,7 @@ fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
         Column(
             Modifier.fillMaxWidth().padding(bottom = 16.dp),

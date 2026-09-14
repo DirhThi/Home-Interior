@@ -1,5 +1,6 @@
 package com.interiordesign3d.ui.screen.designer.view
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,7 +49,7 @@ fun AddFurnitureSheet(onAdd: (String, Boolean) -> Unit, onDismiss: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
         Column(
             Modifier.fillMaxWidth().padding(bottom = 12.dp),
@@ -96,7 +97,8 @@ fun AddFurnitureSheet(onAdd: (String, Boolean) -> Unit, onDismiss: () -> Unit) {
 private fun FurnitureTile(item: CatalogItem, onClick: () -> Unit) {
     Surface(
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.width(108.dp).onClickNotRipple(onClick = onClick),
     ) {
         Column(
