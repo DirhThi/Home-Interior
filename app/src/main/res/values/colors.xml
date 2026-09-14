@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="warm_white">#F5F0EB</color>
-    <color name="terracotta">#B5451B</color>
-    <color name="terracotta_dark">#8A3210</color>
-    <color name="sage">#4A7C59</color>
-    <color name="deep_espresso">#2C1810</color>
-    <color name="gold">#C4A028</color>
-    <color name="parchment">#D9CFC4</color>
+    <!-- Mirrors ui/theme/Color.kt; used by the window + splash themes only. -->
+    <color name="window_background">#FBF7F4</color>
+    <color name="splash_background">#A8431C</color>
 </resources>

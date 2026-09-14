@@ -1,64 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">InteriorAI 3D</string>
-    <string name="app_tagline">Design your dream space</string>
+    <string name="app_name">Budget Interiors</string>
 
-    <!-- Screens -->
-    <string name="home">Home</string>
-    <string name="catalog">Catalog</string>
-    <string name="measure">Measure</string>
-    <string name="designs">Designs</string>
-    <string name="ai">AI</string>
+    <!-- Home -->
+    <plurals name="room_count">
+        <item quantity="one">%d room</item>
+        <item quantity="other">%d rooms</item>
+    </plurals>
+    <string name="new_room">New room</string>
+    <string name="home_empty_title">No rooms yet</string>
+    <string name="home_empty_body">Draw a floor plan, then furnish it in 3D.</string>
+    <string name="home_empty_cta">Create your first room</string>
+    <string name="room_size">%1$d × %2$d cm · ceiling %3$d cm</string>
+    <string name="room_deleted">%1$s deleted</string>
+    <string name="undo">Undo</string>
+    <string name="delete">Delete</string>
+    <string name="open_room">Open %1$s</string>
 
-    <!-- Features -->
-    <string name="add_furniture">Add Furniture</string>
-    <string name="view_in_ar">View in AR</string>
-    <string name="room_designer">Room Designer</string>
-    <string name="new_design">New Design</string>
-    <string name="measure_room">Measure Room</string>
-    <string name="ai_suggestions">AI Suggestions</string>
-    <string name="saved_designs">Saved Designs</string>
-    <string name="color_picker">Colors &amp; Materials</string>
+    <!-- Model credits -->
+    <string name="model_credits">3D model credits</string>
+    <string name="close">Close</string>
 
-    <!-- Measurement -->
-    <string name="ar_scan">AR Room Scan</string>
-    <string name="manual_entry">Manual Entry</string>
-    <string name="width">Width (cm)</string>
-    <string name="length">Length (cm)</string>
-    <string name="height">Ceiling Height (cm)</string>
-    <string name="start_scan">Start AR Scan</string>
-    <string name="scan_complete">Scan Complete</string>
-    <string name="use_measurements">Use These Measurements</string>
-    <string name="rescan">Re-scan</string>
-
-    <!-- Furniture -->
-    <string name="furniture_catalog">Furniture Catalog</string>
-    <string name="search_hint">Search sofas, chairs, tables…</string>
-    <string name="add_to_room">Add to Room</string>
-    <string name="available_colors">Available Colors</string>
-
-    <!-- Room Designer -->
-    <string name="rotation">Rotation</string>
-    <string name="scale">Scale</string>
-    <string name="delete_furniture">Remove item</string>
-    <string name="save_design">Save Design</string>
-    <string name="share">Share</string>
-
-    <!-- AR -->
-    <string name="ar_mode">AR Mode</string>
-    <string name="ar_placement_hint">Tap to place furniture</string>
-
-    <!-- AI -->
-    <string name="apply_style">Apply Style</string>
-    <string name="preview">Preview</string>
-
-    <!-- General -->
-    <string name="cancel">Cancel</string>
-    <string name="confirm">Confirm</string>
+    <!-- Designer · top bar -->
+    <string name="floor_plan">Floor plan</string>
+    <string name="design_mode">Design</string>
+    <string name="hint_placing">Tap to place wall corners</string>
+    <string name="hint_closed">Room closed — tap Done to confirm</string>
+    <string name="hint_editing">Tap a corner to start another room</string>
+    <string name="hint_design">Drag furniture to arrange it</string>
     <string name="back">Back</string>
+    <string name="save">Save</string>
+    <string name="saved">Saved</string>
+    <string name="edit_floor_plan">Edit floor plan</string>
+    <string name="surfaces">Walls and floor</string>
+    <string name="toggle_renderer">Switch renderer</string>
+
+    <!-- Designer · floor plan toolbar -->
+    <string name="done">Done</string>
+    <string name="clear">Clear</string>
+    <string name="snap_to_grid">Snap</string>
+    <string name="door">Door</string>
+    <string name="window">Window</string>
+    <string name="opening_hint">Tap a wall to place · tap a marker to remove</string>
+    <string name="design_room">Design room</string>
+
+    <!-- Designer · furniture -->
+    <string name="add_furniture">Add furniture</string>
+    <string name="furniture_scale">Size</string>
+    <string name="furniture_color">Colour</string>
+    <string name="furniture_rotation">Rotation</string>
+    <string name="wall_mount">Wall mounted</string>
+    <string name="height_from_floor">Height from floor</string>
+    <string name="remove_item">Remove</string>
+    <string name="deselect">Deselect</string>
+    <string name="default_colour">Default colour</string>
+    <string name="wall_badge">Wall</string>
+    <string name="percent">%1$d%%</string>
+    <string name="centimetres">%1$d cm</string>
+    <string name="degrees">%1$d°</string>
+
+    <!-- Designer · surfaces sheet -->
+    <string name="walls">Walls</string>
+    <string name="floor">Floor</string>
+    <string name="wall_colour">Wall colour</string>
+    <string name="palettes">Palettes</string>
     <string name="apply">Apply</string>
-    <string name="new_room">New Room</string>
-    <string name="create_room">Create Room</string>
-    <string name="room_name">Room name</string>
-    <string name="no_items">No items found</string>
+    <string name="shadows">Shadows</string>
+    <string name="shadows_on">On — richer, heavier</string>
+    <string name="shadows_off">Off — smoother</string>
+    <string name="hide_front_walls">Hide front walls</string>
+    <string name="hide_front_walls_desc">Fades the two walls blocking the camera</string>
+    <string name="palette_applied">%1$s applied</string>
 </resources>

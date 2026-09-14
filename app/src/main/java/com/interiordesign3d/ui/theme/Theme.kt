@@ -1,210 +1,126 @@
 package com.interiordesign3d.ui.theme
 
-import androidx.compose.material3.*
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-
-// ─── Brand Colors ─────────────────────────────────────────────────────────────
-
-object InteriorColors {
-    // Warm neutrals
-    val WarmWhite       = Color(0xFFF5F0EB)
-    val ParchmentLight  = Color(0xFFEDE8E1)
-    val Parchment       = Color(0xFFD9CFC4)
-    val WarmGray        = Color(0xFF8B7355)
-
-    // Primary accent — warm terracotta
-    val Terracotta      = Color(0xFFB5451B)
-    val TerracottaLight = Color(0xFFD4602A)
-    val TerracottaDark  = Color(0xFF8A3210)
-
-    // Secondary — sage green
-    val Sage            = Color(0xFF4A7C59)
-    val SageLight       = Color(0xFF6A9E78)
-    val SageDark        = Color(0xFF2C5F3E)
-
-    // Dark surfaces
-    val DeepEspresso    = Color(0xFF2C1810)
-    val CharcoalWarm    = Color(0xFF3A3530)
-    val SlateWarm       = Color(0xFF5C5550)
-
-    // Utility
-    val Gold            = Color(0xFFC4A028)
-    val ErrorRed        = Color(0xFFD94040)
-    val SuccessGreen    = Color(0xFF4A7C59)
-    val InfoBlue        = Color(0xFF4A6D8C)
-}
-
-// ─── Light Color Scheme ───────────────────────────────────────────────────────
+import com.interiordesign3d.ui.theme.InteriorColors as C
 
 private val LightColorScheme = lightColorScheme(
-    primary             = InteriorColors.Terracotta,
-    onPrimary           = Color.White,
-    primaryContainer    = Color(0xFFFFDAD1),
-    onPrimaryContainer  = InteriorColors.TerracottaDark,
+    primary                 = C.Terracotta40,
+    onPrimary               = Color.White,
+    primaryContainer        = C.Terracotta90,
+    onPrimaryContainer      = C.Terracotta10,
+    inversePrimary          = C.Terracotta80,
 
-    secondary           = InteriorColors.Sage,
-    onSecondary         = Color.White,
-    secondaryContainer  = Color(0xFFD2EDDA),
-    onSecondaryContainer = InteriorColors.SageDark,
+    secondary               = C.Sage40,
+    onSecondary             = Color.White,
+    secondaryContainer      = C.Sage90,
+    onSecondaryContainer    = C.Sage10,
 
-    tertiary            = InteriorColors.Gold,
-    onTertiary          = Color.White,
+    tertiary                = C.Gold40,
+    onTertiary              = Color.White,
+    tertiaryContainer       = C.Gold90,
+    onTertiaryContainer     = C.Gold10,
 
-    background          = InteriorColors.WarmWhite,
-    onBackground        = InteriorColors.DeepEspresso,
+    background              = C.Neutral98,
+    onBackground            = C.Neutral12,
+    surface                 = C.Neutral98,
+    onSurface               = C.Neutral12,
+    surfaceVariant          = C.NeutralVar90,
+    onSurfaceVariant        = C.NeutralVar30,
+    surfaceTint             = C.Terracotta40,
 
-    surface             = Color.White,
-    onSurface           = InteriorColors.DeepEspresso,
-    surfaceVariant      = InteriorColors.ParchmentLight,
-    onSurfaceVariant    = InteriorColors.CharcoalWarm,
+    surfaceContainerLowest  = Color.White,
+    surfaceContainerLow     = C.Neutral96,
+    surfaceContainer        = C.Neutral94,
+    surfaceContainerHigh    = C.NeutralVar92,
+    surfaceContainerHighest = C.NeutralVar88,
 
-    outline             = InteriorColors.Parchment,
-    outlineVariant      = InteriorColors.WarmGray,
+    inverseSurface          = C.Neutral24,
+    inverseOnSurface        = C.Neutral98,
 
-    error               = InteriorColors.ErrorRed,
-    onError             = Color.White,
+    outline                 = C.Neutral50,
+    outlineVariant          = C.NeutralVar80,
+    scrim                   = Color.Black,
+
+    error                   = C.Error40,
+    onError                 = Color.White,
+    errorContainer          = C.Error90,
+    onErrorContainer        = C.Error10,
 )
-
-// ─── Dark Color Scheme ────────────────────────────────────────────────────────
 
 private val DarkColorScheme = darkColorScheme(
-    primary             = InteriorColors.TerracottaLight,
-    onPrimary           = InteriorColors.DeepEspresso,
-    primaryContainer    = InteriorColors.TerracottaDark,
-    onPrimaryContainer  = Color(0xFFFFDAD1),
+    primary                 = C.Terracotta80,
+    onPrimary               = C.Terracotta20,
+    primaryContainer        = C.Terracotta30,
+    onPrimaryContainer      = C.Terracotta90,
+    inversePrimary          = C.Terracotta40,
 
-    secondary           = InteriorColors.SageLight,
-    onSecondary         = InteriorColors.SageDark,
-    secondaryContainer  = InteriorColors.SageDark,
-    onSecondaryContainer = Color(0xFFD2EDDA),
+    secondary               = C.Sage80,
+    onSecondary             = C.Sage20,
+    secondaryContainer      = C.Sage30,
+    onSecondaryContainer    = C.Sage90,
 
-    background          = InteriorColors.DeepEspresso,
-    onBackground        = InteriorColors.WarmWhite,
+    tertiary                = C.Gold80,
+    onTertiary              = C.Gold20,
+    tertiaryContainer       = C.Gold30,
+    onTertiaryContainer     = C.Gold90,
 
-    surface             = InteriorColors.CharcoalWarm,
-    onSurface           = InteriorColors.WarmWhite,
-    surfaceVariant      = Color(0xFF4A4040),
-    onSurfaceVariant    = InteriorColors.Parchment,
+    background              = C.Neutral10,
+    onBackground            = C.Neutral90,
+    surface                 = C.Neutral10,
+    onSurface               = C.Neutral90,
+    surfaceVariant          = C.NeutralVar30,
+    onSurfaceVariant        = C.NeutralVar80,
+    surfaceTint             = C.Terracotta80,
 
-    outline             = InteriorColors.SlateWarm,
+    surfaceContainerLowest  = C.Neutral6,
+    surfaceContainerLow     = C.Neutral12,
+    surfaceContainer        = C.Neutral17,
+    surfaceContainerHigh    = C.Neutral22,
+    surfaceContainerHighest = C.Neutral27,
+
+    inverseSurface          = C.Neutral90,
+    inverseOnSurface        = C.Neutral24,
+
+    outline                 = C.Neutral60,
+    outlineVariant          = C.NeutralVar30,
+    scrim                   = Color.Black,
+
+    error                   = C.Error80,
+    onError                 = C.Error20,
+    errorContainer          = C.Error30,
+    onErrorContainer        = C.Error90,
 )
-
-// ─── Typography ───────────────────────────────────────────────────────────────
-
-val InteriorTypography = Typography(
-    displayLarge = TextStyle(
-        fontWeight = FontWeight.Light,
-        fontSize = 57.sp,
-        lineHeight = 64.sp,
-        letterSpacing = (-0.25).sp
-    ),
-    displayMedium = TextStyle(
-        fontWeight = FontWeight.Light,
-        fontSize = 45.sp,
-        lineHeight = 52.sp
-    ),
-    headlineLarge = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp
-    ),
-    headlineMedium = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp
-    ),
-    headlineSmall = TextStyle(
-        fontWeight = FontWeight.Medium,
-        fontSize = 24.sp,
-        lineHeight = 32.sp
-    ),
-    titleLarge = TextStyle(
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp
-    ),
-    titleMedium = TextStyle(
-        fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.15.sp
-    ),
-    titleSmall = TextStyle(
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
-    ),
-    bodyLarge = TextStyle(
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.5.sp
-    ),
-    bodyMedium = TextStyle(
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.25.sp
-    ),
-    bodySmall = TextStyle(
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.4.sp
-    ),
-    labelLarge = TextStyle(
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
-    ),
-    labelMedium = TextStyle(
-        fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    ),
-    labelSmall = TextStyle(
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    )
-)
-
-// ─── Shapes ───────────────────────────────────────────────────────────────────
 
 val InteriorShapes = Shapes(
-    extraSmall  = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
-    small       = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-    medium      = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-    large       = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-    extraLarge  = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+    extraSmall = RoundedCornerShape(6.dp),
+    small      = RoundedCornerShape(10.dp),
+    medium     = RoundedCornerShape(14.dp),
+    large      = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
-
-// ─── Theme ────────────────────────────────────────────────────────────────────
 
 @Composable
 fun InteriorDesignTheme(
-    darkTheme: Boolean = androidx.compose.foundation.isSystemInDarkTheme(),
-    content: @Composable () -> Unit
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit,
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography  = InteriorTypography,
-        shapes      = InteriorShapes,
-        content     = content
-    )
+    CompositionLocalProvider(
+        LocalInteriorAccents provides if (darkTheme) DarkAccents else LightAccents
+    ) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
+            typography  = InteriorTypography,
+            shapes      = InteriorShapes,
+            content     = content,
+        )
+    }
 }
-
-
