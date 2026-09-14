@@ -85,6 +85,10 @@ data class DesignRoom(
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val wallPointsJson: String = "",
+    val wallPresetIdx: Int = 0,
+    val floorPresetIdx: Int = 0,
+    val shadowsEnabled: Boolean = false,
+    val autoHideWalls: Boolean = false,
     // JSON-encoded FloorPlan (multi-room with shared nodes)
     val floorPlanJson: String = ""
 ) : Parcelable

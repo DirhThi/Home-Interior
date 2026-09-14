@@ -85,11 +85,20 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE rooms ADD COLUMN wallPresetIdx INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE rooms ADD COLUMN floorPresetIdx INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE rooms ADD COLUMN shadowsEnabled INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE rooms ADD COLUMN autoHideWalls INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 // ─── Database ─────────────────────────────────────────────────────────────────
 
 @Database(
     entities = [DesignRoom::class, PlacedFurniture::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -107,7 +116,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "interior_design_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build().also { INSTANCE = it }
             }
     }
