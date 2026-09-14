@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.data.catalog.CatalogItem
@@ -52,12 +53,12 @@ fun AddFurnitureSheet(onAdd: (String, Boolean) -> Unit, onDismiss: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 stringResource(R.string.add_furniture),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
 
@@ -80,10 +81,10 @@ fun AddFurnitureSheet(onAdd: (String, Boolean) -> Unit, onDismiss: () -> Unit) {
 
             LazyHorizontalGrid(
                 rows = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxWidth().height(248.dp),
+                modifier = Modifier.fillMaxWidth().height(184.dp),
                 contentPadding = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(group.items, key = { it.key }) { item ->
                     FurnitureTile(item = item, onClick = { onAdd(item.key, item.wallMounted) })
@@ -99,12 +100,12 @@ private fun FurnitureTile(item: CatalogItem, onClick: () -> Unit) {
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.width(108.dp).onClickNotRipple(onClick = onClick),
+        modifier = Modifier.width(92.dp).onClickNotRipple(onClick = onClick),
     ) {
         Column(
-            Modifier.padding(8.dp),
+            Modifier.padding(horizontal = 6.dp, vertical = 5.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 AssetImage(item.preview, Modifier.fillMaxWidth(), item.label)
@@ -126,9 +127,9 @@ private fun FurnitureTile(item: CatalogItem, onClick: () -> Unit) {
             Text(
                 item.label,
                 style = MaterialTheme.typography.labelSmall,
-                maxLines = 2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.height(28.dp),
             )
         }
     }

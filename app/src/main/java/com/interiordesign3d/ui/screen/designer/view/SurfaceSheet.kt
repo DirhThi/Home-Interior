@@ -74,8 +74,8 @@ fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            Modifier.fillMaxWidth().padding(bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             // Two view options that used to be full switch rows with subtitles — half the height as chips.
             CenterRow(
@@ -157,13 +157,13 @@ private fun PresetRow(presets: List<SurfacePreset>, selectedIdx: Int, onSelect: 
 @Composable
 private fun SurfaceTile(preset: SurfacePreset, selected: Boolean, onClick: () -> Unit) {
     Column(
-        Modifier.width(76.dp).onClickNotRipple(onClick = onClick),
+        Modifier.width(64.dp).onClickNotRipple(onClick = onClick),
         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Box(
             Modifier
-                .size(64.dp)
+                .size(56.dp)
                 .clip(MaterialTheme.shapes.medium)
                 .border(
                     width = if (selected) 3.dp else 1.dp,
@@ -176,17 +176,18 @@ private fun SurfaceTile(preset: SurfacePreset, selected: Boolean, onClick: () ->
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .height(64.dp)
+                        .height(56.dp)
                         .background(parseHexColor(preset.colorHex, Color.Gray))
                 )
             } else {
-                AssetImage(preset.preview, Modifier.size(64.dp))
+                AssetImage(preset.preview, Modifier.size(56.dp))
             }
         }
         Text(
             preset.label,
             style = MaterialTheme.typography.labelSmall,
-            maxLines = 2,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
