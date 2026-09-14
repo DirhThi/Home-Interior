@@ -32,9 +32,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -48,6 +50,7 @@ import com.interiordesign3d.ui.properties.AssetImage
 import com.interiordesign3d.ui.properties.CenterBox
 import com.interiordesign3d.ui.properties.CenterRow
 import com.interiordesign3d.ui.properties.MinTouchTarget
+import com.interiordesign3d.ui.properties.NumberInputDialog
 import com.interiordesign3d.ui.properties.onClickNotRipple
 import com.interiordesign3d.ui.properties.parseHexColor
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
@@ -75,11 +78,10 @@ fun FurnitureControlPanel(item: PlacedFurniture, state: DesignerState) {
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
         tonalElevation = 0.dp,
         shadowElevation = 16.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             PanelHeader(item = item, state = state)
 
@@ -102,10 +104,15 @@ fun FurnitureControlPanel(item: PlacedFurniture, state: DesignerState) {
             Box(Modifier.fillMaxWidth().height(MinTouchTarget)) {
                 when (tab) {
                     TAB_SIZE -> SliderRow(
+                        label = stringResource(R.string.furniture_scale),
                         readout = stringResource(R.string.percent, (item.scale * 100).toInt()),
-                        value = item.scale,
-                        range = 0.5f..2f,
-                        onChange = state::onScale,
+                        suffix = "%",
+                        value = item.scale * 100f,
+                        range = 50f..200f,
+                        onChange = { state.onScale(it / 100f) },
+                        sliderValue = item.scale,
+                        sliderRange = 0.5f..2f,
+                        onSlide = state::onScale,
                     )
 
                     TAB_COLOUR -> ColourRow(
@@ -115,14 +122,18 @@ fun FurnitureControlPanel(item: PlacedFurniture, state: DesignerState) {
 
                     TAB_ROTATION -> if (item.isWallMounted) {
                         SliderRow(
+                            label = stringResource(R.string.height_from_floor),
                             readout = stringResource(R.string.centimetres, item.wallMountHeight.toInt()),
+                            suffix = "cm",
                             value = item.wallMountHeight,
                             range = 40f..230f,
                             onChange = state::onChangeHeight,
                         )
                     } else {
                         SliderRow(
+                            label = stringResource(R.string.furniture_rotation),
                             readout = stringResource(R.string.degrees, item.rotationY.toInt()),
+                            suffix = "°",
                             value = item.rotationY,
                             range = 0f..360f,
                             onChange = state::onRotate,
@@ -144,7 +155,7 @@ private fun TabLabel(res: Int) {
 @Composable
 private fun PanelHeader(item: PlacedFurniture, state: DesignerState) {
     CenterRow(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp),
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp),
         Arrangement.SpaceBetween,
     ) {
         CenterRow(Modifier.weight(1f), Arrangement.spacedBy(10.dp)) {
@@ -163,26 +174,48 @@ private fun PanelHeader(item: PlacedFurniture, state: DesignerState) {
     }
 }
 
+/**
+ * Slider plus a tappable readout. The slider and the typed value can run on different scales
+ * (size slides 0.5..2 but is typed as 50..200 %), hence the separate slider parameters.
+ */
 @Composable
 private fun SliderRow(
+    label: String,
     readout: String,
+    suffix: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     onChange: (Float) -> Unit,
+    sliderValue: Float = value,
+    sliderRange: ClosedFloatingPointRange<Float> = range,
+    onSlide: (Float) -> Unit = onChange,
 ) {
-    CenterRow(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp)) {
+    var editing by remember(label) { mutableStateOf(false) }
+
+    CenterRow(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp)) {
         Slider(
-            value = value,
-            onValueChange = onChange,
-            valueRange = range,
+            value = sliderValue,
+            onValueChange = onSlide,
+            valueRange = sliderRange,
             modifier = Modifier.weight(1f),
         )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            readout,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.width(52.dp),
+        Spacer(Modifier.width(8.dp))
+        TextButton(
+            onClick = { editing = true },
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+        ) {
+            Text(readout, style = MaterialTheme.typography.labelLarge)
+        }
+    }
+
+    if (editing) {
+        NumberInputDialog(
+            title = stringResource(R.string.edit_value, label.lowercase()),
+            suffix = suffix,
+            initial = value,
+            range = range,
+            onConfirm = onChange,
+            onDismiss = { editing = false },
         )
     }
 }
