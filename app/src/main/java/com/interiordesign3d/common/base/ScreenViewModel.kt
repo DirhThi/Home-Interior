@@ -8,7 +8,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 
 /** Stands in for DI: builds the screen's ViewModel with the Application and this screen's Navigator. */
 @Composable
@@ -24,6 +26,14 @@ inline fun <reified VM : ViewModel> rememberScreenViewModel(
 @Composable
 fun CollectMessages(viewModel: BaseViewModel, host: SnackbarHostState) {
     LaunchedEffect(viewModel, host) {
-        viewModel.messages.collect { host.showSnackbar(it.text) }
+        viewModel.messages.collect { msg ->
+            val result = host.showSnackbar(
+                message = msg.text,
+                actionLabel = msg.actionLabel,
+                withDismissAction = msg.actionLabel == null,
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) msg.onAction?.invoke()
+        }
     }
 }

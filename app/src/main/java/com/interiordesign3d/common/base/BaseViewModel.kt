@@ -9,7 +9,11 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 /** One-shot text shown in the screen's snackbar. */
-data class UiMessage(val text: String)
+data class UiMessage(
+    val text: String,
+    val actionLabel: String? = null,
+    val onAction: (() -> Unit)? = null,
+)
 
 open class BaseViewModel(
     protected val app: Application,
@@ -25,7 +29,7 @@ open class BaseViewModel(
 
     protected fun notify(@StringRes res: Int) = notify(app.getString(res))
 
-    protected fun notify(text: String) {
-        viewModelScope.launch { _messages.emit(UiMessage(text)) }
+    protected fun notify(text: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
+        viewModelScope.launch { _messages.emit(UiMessage(text, actionLabel, onAction)) }
     }
 }
