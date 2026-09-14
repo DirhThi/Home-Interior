@@ -59,6 +59,7 @@ fun WallDrawingCanvas(
     onResizeOpening: (id: String, newWidthCm: Float) -> Unit = { _, _ -> },
     onRemoveOpening: (id: String) -> Unit = {},
     onTapOpening: (id: String) -> Unit = {},
+    activeLevel: Int = 0,
     placedFurniture: List<PlacedFurniture> = emptyList(),
     onMoveFurnitureInPlan: (id: String, posX: Float, posZ: Float) -> Unit = { _, _, _ -> },
     onTapFurniture: (id: String) -> Unit = {},
@@ -95,6 +96,7 @@ fun WallDrawingCanvas(
     val onResizeOp      = rememberUpdatedState(onResizeOpening)
     val onRemoveOp      = rememberUpdatedState(onRemoveOpening)
     val onTapOp         = rememberUpdatedState(onTapOpening)
+    val levelRef        = rememberUpdatedState(activeLevel)
     val placedFurRef    = rememberUpdatedState(placedFurniture)
     val onMoveFurRef    = rememberUpdatedState(onMoveFurnitureInPlan)
     val onTapFurRef     = rememberUpdatedState(onTapFurniture)
@@ -137,7 +139,7 @@ fun WallDrawingCanvas(
                     var nearOpening: OpeningHit? = null
                     if (plan0.openings.isNotEmpty()) {
                         var bestOpDist = hitPx * 2f
-                        for (op in plan0.openings) {
+                        for (op in plan0.openings.filter { it.level == levelRef.value }) {
                             val aIdx  = op.nodeA
                             val bIdx  = op.nodeB
                             val a     = plan0.nodes.getOrNull(aIdx) ?: continue
@@ -286,7 +288,7 @@ fun WallDrawingCanvas(
                                     // Placement tool: tap near existing opening → remove; tap wall → place
                                     var removedId: String? = null
                                     val plan = planRef.value
-                                    for (op in plan.openings) {
+                                    for (op in plan.openings.filter { it.level == levelRef.value }) {
                                         val aIdx = op.nodeA
                                         val bIdx = op.nodeB
                                         val a = plan.nodes.getOrNull(aIdx) ?: continue
@@ -336,7 +338,7 @@ fun WallDrawingCanvas(
                                 } else {
                                     // No tool: an opening under the finger is being selected, not replaced.
                                     var tappedId: String? = null
-                                    for (op in plan.openings) {
+                                    for (op in plan.openings.filter { it.level == levelRef.value }) {
                                         val a = plan.nodes.getOrNull(op.nodeA) ?: continue
                                         val b = plan.nodes.getOrNull(op.nodeB) ?: continue
                                         val aS = screenOf(a); val bS = screenOf(b)
@@ -388,8 +390,29 @@ fun WallDrawingCanvas(
             // dimensions land on top of each other.
             val labelledEdges = HashSet<Long>()
 
+            // ── Storey below: dashed, so it reads as a guide to line up against rather than
+            //    part of the plan being edited ───────────────────────────────────────────
+            if (activeLevel > 0) {
+                val dashed = Stroke(
+                    width = 2.5f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f)),
+                )
+                floorPlan.rooms.forEachIndexed { idx, room ->
+                    if (floorPlan.levelOf(idx) != activeLevel - 1) return@forEachIndexed
+                    val pts = room.map { toScreen(floorPlan.nodes[it]) }
+                    if (pts.size < 2) return@forEachIndexed
+                    val guide = Path().apply {
+                        moveTo(pts.first().x, pts.first().y)
+                        pts.drop(1).forEach { lineTo(it.x, it.y) }
+                        close()
+                    }
+                    drawPath(guide, accents.canvasWall.copy(alpha = 0.32f), style = dashed)
+                }
+            }
+
             // ── Committed rooms ───────────────────────────────────────────────
             floorPlan.rooms.forEachIndexed { idx, room ->
+                if (floorPlan.levelOf(idx) != activeLevel) return@forEachIndexed
                 val floorC = accents.canvasRoomFill
                 val wallC = accents.canvasWall
                 val pts = room.map { toScreen(floorPlan.nodes[it]) }
@@ -440,15 +463,21 @@ fun WallDrawingCanvas(
                     val a = toScreen(floorPlan.nodes[currentPath[i]])
                     val b = toScreen(floorPlan.nodes[currentPath[i + 1]])
                     drawLine(accents.canvasWall.copy(alpha = 0.9f), a, b, 2.5f)
-                    drawDimension(
-                        textMeasurer = textMeasurer,
-                        style = dimensionStyle,
-                        chip = accents.dimensionChip,
-                        from = floorPlan.nodes[currentPath[i]],
-                        to = floorPlan.nodes[currentPath[i + 1]],
-                        screenFrom = a,
-                        screenTo = b,
-                    )
+                    // The just-closed room still sits in currentPath; without this its walls get
+                    // a second label stacked on the committed one.
+                    val c0 = currentPath[i]; val c1 = currentPath[i + 1]
+                    val key = minOf(c0, c1).toLong() * 100_000L + maxOf(c0, c1)
+                    if (labelledEdges.add(key)) {
+                        drawDimension(
+                            textMeasurer = textMeasurer,
+                            style = dimensionStyle,
+                            chip = accents.dimensionChip,
+                            from = floorPlan.nodes[c0],
+                            to = floorPlan.nodes[c1],
+                            screenFrom = a,
+                            screenTo = b,
+                        )
+                    }
                 }
             }
 
@@ -483,7 +512,7 @@ fun WallDrawingCanvas(
             }
 
             // ── Openings (doors & windows) ─────────────────────────────────────
-            floorPlan.openings.forEach { op ->
+            floorPlan.openings.filter { it.level == activeLevel }.forEach { op ->
                 val aIdx = op.nodeA
                 val bIdx = op.nodeB
                 val a    = floorPlan.nodes.getOrNull(aIdx) ?: return@forEach

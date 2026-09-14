@@ -51,6 +51,7 @@ private val filamentReady: Boolean by lazy { Utils.init(); true }
 
 private const val CM = 0.01f
 private const val WALL_THICK_CM = 10f
+private const val FLOOR_SLAB_M = 0.05f   // a storey sits on the slab of the one below, not on its wall tops
 private const val OPENING_CASED = "doorway"      // cased opening: hole and reveal, no leaf
 private const val DOOR_OPEN_DEG = 78f
 private const val OPEN_PLAN_MIN_CM = 200f        // a cased opening this wide loses its lintel
@@ -67,6 +68,7 @@ fun FilamentRoomViewport(
     roomPolygons: List<List<WallPoint>>,
     placedFurniture: List<PlacedFurniture>,
     roomHeight: Float,
+    activeLevel: Int = 0,
     wallModel: String = "mat_paintedplaster017",
     wallColorHex: String = "#F2E6D3",
     wallTileM: Float = 2f,
@@ -118,7 +120,7 @@ fun FilamentRoomViewport(
                 s.setAutoHideWalls(autoHideWalls)
                 s.onDropOpening = { r, e, t, w, id -> onDrop.value(r, e, t, w, id) }
                 s.onSelectOpening = { id -> onPickOpening.value(id) }
-                s.update(floorPlan, roomPolygons, floorPlan.openings, placedFurniture, roomHeight,
+                s.update(floorPlan, activeLevel, roomPolygons, floorPlan.openings, placedFurniture, roomHeight,
                     wallModel, wallColorHex, wallTileM, floorModel, floorColorHex, floorTileM)
             }
         },
@@ -184,6 +186,11 @@ private class RoomScene(
     private var polys: List<List<WallPoint>> = emptyList()
     private var planNodes: List<WallPoint> = emptyList()
     private var planRooms: List<List<Int>> = emptyList()
+    private var planLevels: List<Int> = emptyList()
+
+    private fun polysOnLevel(level: Int): List<List<WallPoint>> =
+        planRooms.indices.filter { planLevels.getOrElse(it) { 0 } == level }
+            .map { ri -> planRooms[ri].mapNotNull { planNodes.getOrNull(it) } }
 
     private var houseCx = 0f; private var houseCz = 0f
 
@@ -267,6 +274,7 @@ private class RoomScene(
 
     fun update(
         plan: FloorPlan,
+        activeLevel: Int,
         roomPolygons: List<List<WallPoint>>, openings: List<WallOpening>,
         furniture: List<PlacedFurniture>, roomHeightCm: Float,
         wallModel: String, wallColorHex: String, wallTileM: Float,
@@ -277,17 +285,18 @@ private class RoomScene(
         polys = roomPolygons
         planNodes = plan.nodes
         planRooms = plan.rooms
+        planLevels = plan.rooms.indices.map { plan.levelOf(it) }
         val minX = allPts.minOf { it.x }; val maxX = allPts.maxOf { it.x }
         val minZ = allPts.minOf { it.y }; val maxZ = allPts.maxOf { it.y }
         houseCx = (minX + maxX) / 2f; houseCz = (minZ + maxZ) / 2f
         val spanX = (maxX - minX).coerceAtLeast(1f); val spanZ = (maxZ - minZ).coerceAtLeast(1f)
 
         val sSig = roomPolygons.joinToString(";") { p -> p.joinToString(",") { "${it.x.toInt()}/${it.y.toInt()}" } } +
-                "|${roomHeightCm.toInt()}|$wallModel|$wallColorHex|$wallTileM|$floorModel|$floorColorHex|$floorTileM" +
+                "|$activeLevel|${roomHeightCm.toInt()}|$wallModel|$wallColorHex|$wallTileM|$floorModel|$floorColorHex|$floorTileM" +
                 "|" + openings.joinToString(",") { "${it.nodeA}/${it.nodeB}/${it.t}/${it.type}/${it.widthCm}/${it.style}/${it.leafHidden}/${it.leafOpen}" }
         if (sSig != structSig) {
             structSig = sSig
-            rebuildStructure(plan, roomHeightCm, wallModel, wallColorHex, wallTileM, floorModel, floorColorHex, floorTileM)
+            rebuildStructure(plan, activeLevel, roomHeightCm, wallModel, wallColorHex, wallTileM, floorModel, floorColorHex, floorTileM)
             // frame the room only when its geometry changes (keeps user's orbit otherwise)
             centerX = 0f; centerZ = 0f; centerY = roomHeightCm * CM * 0.35f
             radius = maxOf(spanX, spanZ) * CM * 1.3f + roomHeightCm * CM
@@ -311,6 +320,7 @@ private class RoomScene(
 
     private fun rebuildStructure(
         plan: FloorPlan,
+        activeLevel: Int,
         roomHeightCm: Float,
         wallModel: String, wallColorHex: String, wallTileM: Float,
         floorModel: String, floorColorHex: String, floorTileM: Float,
@@ -324,7 +334,7 @@ private class RoomScene(
         fun wz(cm: Float) = (cm - houseCz) * CM
         val wt = WALL_THICK_CM * CM
         val hM = roomHeightCm * CM
-        val floorT = 0.05f
+        val floorT = FLOOR_SLAB_M
         val wallMi = materialOf("wall", wallModel, wallColorHex) ?: return
         val trimMi = materialOf("trim", "mat_paint", wallColorHex, 0.72f) ?: return
         val floorMi = materialOf("floor", floorModel, floorColorHex) ?: return
@@ -332,141 +342,153 @@ private class RoomScene(
         // One floor per room, built from the room polygon itself and grown outward by the wall
         // thickness so it runs under the walls (a bbox slab would poke past off-square edges).
         val nodes = plan.nodes
-        val rooms = plan.rooms
-        for (room in rooms) buildFloorMesh(room.map { nodes[it] }, floorMi, floorTileM)
+        // Storeys stack: everything from the ground up to the one being edited is built, and
+        // each storey's floor slab doubles as the ceiling of the one below.
+        for (level in 0..activeLevel.coerceAtMost(plan.levelCount - 1)) {
+            val baseY = level * (hM + floorT)
+            val rooms = plan.roomsOnLevel(level).map { plan.rooms[it] }
+            if (rooms.isEmpty()) continue
+            for (room in rooms) buildFloorMesh(room.map { nodes[it] }, floorMi, floorTileM, baseY)
+            // A storey with another above it needs a ceiling, or you see straight down through any
+            // part of the footprint the upper storey does not cover. Sits just under the upper
+            // floor slab rather than level with it, so the two never fight for the same plane.
+            if (level < activeLevel) {
+                for (room in rooms) buildFloorMesh(room.map { nodes[it] }, wallMi, wallTileM, baseY + hM + 0.01f)
+            }
 
-        // ONE wall per unique edge. Two rooms sharing an edge used to build a slab each, offset
-        // outward into one another — that is where the 20 cm party wall came from, and why a door
-        // cut on a shared wall opened into the neighbour's solid wall.
-        val uses = LinkedHashMap<Long, MutableList<EdgeUse>>()
-        rooms.forEachIndexed { ri, room ->
-            val poly = room.map { nodes[it] }
-            val cx = poly.map { it.x }.average().toFloat()
-            val cz = poly.map { it.y }.average().toFloat()
-            for (i in room.indices) {
-                val n0 = room[i]; val n1 = room[(i + 1) % room.size]
+            // ONE wall per unique edge. Two rooms sharing an edge used to build a slab each, offset
+            // outward into one another — that is where the 20 cm party wall came from, and why a door
+            // cut on a shared wall opened into the neighbour's solid wall.
+            val uses = LinkedHashMap<Long, MutableList<EdgeUse>>()
+            rooms.forEachIndexed { ri, room ->
+                val poly = room.map { nodes[it] }
+                val cx = poly.map { it.x }.average().toFloat()
+                val cz = poly.map { it.y }.average().toFloat()
+                for (i in room.indices) {
+                    val n0 = room[i]; val n1 = room[(i + 1) % room.size]
+                    val a = nodes[n0]; val b = nodes[n1]
+                    val dx = b.x - a.x; val dz = b.y - a.y
+                    val len = sqrt(dx * dx + dz * dz); if (len < 1f) continue
+                    var nx = -dz / len; var nz = dx / len
+                    // Point it away from this room's centre.
+                    if (nx * (cx - (a.x + b.x) / 2f) + nz * (cz - (a.y + b.y) / 2f) > 0f) { nx = -nx; nz = -nz }
+                    uses.getOrPut(edgeKey(n0, n1)) { mutableListOf() } += EdgeUse(ri, n0, n1, nx, nz)
+                }
+            }
+
+            for ((_, edgeUses) in uses) {
+                val first = edgeUses.first()
+                val exterior = edgeUses.size == 1
+                val n0 = first.nodeA; val n1 = first.nodeB
                 val a = nodes[n0]; val b = nodes[n1]
                 val dx = b.x - a.x; val dz = b.y - a.y
-                val len = sqrt(dx * dx + dz * dz); if (len < 1f) continue
-                var nx = -dz / len; var nz = dx / len
-                // Point it away from this room's centre.
-                if (nx * (cx - (a.x + b.x) / 2f) + nz * (cz - (a.y + b.y) / 2f) > 0f) { nx = -nx; nz = -nz }
-                uses.getOrPut(edgeKey(n0, n1)) { mutableListOf() } += EdgeUse(ri, n0, n1, nx, nz)
-            }
-        }
+                val lenCm = sqrt(dx * dx + dz * dz); if (lenCm < 1f) continue
+                val ux = dx / lenCm; val uz = dz / lenCm
+                val nx = first.nx; val nz = first.nz
+                val rotDeg = Math.toDegrees(atan2(-dz.toDouble(), dx.toDouble())).toFloat()
+                // An exterior wall still sits outside its room's polygon, so interiors keep their size.
+                // A shared wall is centred on the edge instead, so one wall serves both rooms.
+                val off = if (exterior) WALL_THICK_CM / 2f else 0f
+                val edgeEnts = mutableListOf<Int>()
 
-        for ((_, edgeUses) in uses) {
-            val first = edgeUses.first()
-            val exterior = edgeUses.size == 1
-            val n0 = first.nodeA; val n1 = first.nodeB
-            val a = nodes[n0]; val b = nodes[n1]
-            val dx = b.x - a.x; val dz = b.y - a.y
-            val lenCm = sqrt(dx * dx + dz * dz); if (lenCm < 1f) continue
-            val ux = dx / lenCm; val uz = dz / lenCm
-            val nx = first.nx; val nz = first.nz
-            val rotDeg = Math.toDegrees(atan2(-dz.toDouble(), dx.toDouble())).toFloat()
-            // An exterior wall still sits outside its room's polygon, so interiors keep their size.
-            // A shared wall is centred on the edge instead, so one wall serves both rooms.
-            val off = if (exterior) WALL_THICK_CM / 2f else 0f
-            val edgeEnts = mutableListOf<Int>()
-
-            fun along(t: Float) = (a.x + ux * t * lenCm) to (a.y + uz * t * lenCm)
-            fun slab(t0: Float, t1: Float, y0: Float, y1: Float) {
-                val segLen = (t1 - t0) * lenCm; if (segLen < 1f || y1 - y0 < 0.005f) return
-                val (mx, mz) = along((t0 + t1) / 2f)
-                edgeEnts += buildBox(wallMi, segLen * CM, y1 - y0, wt,
-                    wx(mx + nx * off), y0, wz(mz + nz * off), rotDeg, wallTileM)
-            }
-            // 8 cm strip just proud of a face. A shared wall is seen from both sides, so it gets two.
-            fun baseboardSide(t0: Float, t1: Float, side: Float) {
-                val segLen = (t1 - t0) * lenCm; if (segLen < 1f) return
-                val (mx, mz) = along((t0 + t1) / 2f)
-                val d = off + side * (WALL_THICK_CM / 2f + 0.6f)
-                edgeEnts += buildBox(trimMi, segLen * CM, 0.08f, 0.012f,
-                    wx(mx + nx * d), 0f, wz(mz + nz * d), rotDeg, 1f)
-            }
-            fun baseboard(t0: Float, t1: Float) {
-                baseboardSide(t0, t1, -1f)
-                if (!exterior) baseboardSide(t0, t1, 1f)
-            }
-
-            val edgeOpenings = plan.openingsOn(n0, n1).sortedBy { op ->
-                if (op.nodeA == n0) op.t else 1f - op.t
-            }
-            var tPrev = 0f
-            for (op in edgeOpenings) {
-                val t = if (op.nodeA == n0) op.t else 1f - op.t
-                val isDoor = op.type == OpeningType.DOOR
-                val doorH = DOOR_HEIGHT_M.coerceAtMost(hM - 0.10f).coerceAtLeast(1.80f)
-                val sill = if (isDoor) 0f else minOf(0.9f, hM * 0.35f)
-                val boxH = if (isDoor) doorH else minOf(1.3f, hM - sill - 0.3f).coerceAtLeast(0.4f)
-                val model = when {
-                    op.leafHidden -> null            // applies to a window frame just as much as a door leaf
-                    !isDoor -> if (op.widthCm > 130f) "q_window_large" else "q_window_small"
-                    op.style == OPENING_CASED -> null
-                    op.style.startsWith("q_door") -> op.style
-                    op.widthCm >= DOUBLE_DOOR_MIN_CM -> "q_door_double"
-                    else -> "q_door"
+                fun along(t: Float) = (a.x + ux * t * lenCm) to (a.y + uz * t * lenCm)
+                fun slab(t0: Float, t1: Float, y0: Float, y1: Float) {
+                    val segLen = (t1 - t0) * lenCm; if (segLen < 1f || y1 - y0 < 0.005f) return
+                    val (mx, mz) = along((t0 + t1) / 2f)
+                    edgeEnts += buildBox(wallMi, segLen * CM, y1 - y0, wt,
+                        wx(mx + nx * off), baseY + y0, wz(mz + nz * off), rotDeg, wallTileM)
                 }
-                // Fit the joinery first, then cut the hole to the size it actually became —
-                // cutting to op.widthCm left a strip of bare wall beside anything fitted by height.
-                val path = model?.let { "models/$it.glb" }
-                val ext = path?.let { extentOf(it) }
-                val fitS = if (ext == null) 1f else minOf(op.widthCm * CM / ext[0], boxH / ext[1])
-                val cutW = if (ext == null) op.widthCm * CM else ext[0] * fitS
-                val cutH = if (ext == null) boxH else ext[1] * fitS
-
-                val halfT = (cutW / CM / 2f) / lenCm
-                val tS = (t - halfT).coerceIn(0f, 1f); val tE = (t + halfT).coerceIn(0f, 1f)
-                if (tS > tPrev + 1e-3f) { slab(tPrev, tS, -floorT, hM); baseboard(tPrev, tS) }
-                val (ox, oz) = along(t)
-                val lx = wx(ox + nx * off); val lz = wz(oz + nz * off)
-
-                // A cased opening wider than a doorway reads as one shared space: no lintel at all.
-                val openPlan = isDoor && model == null && op.widthCm >= OPEN_PLAN_MIN_CM
-                if (isDoor) {
-                    if (!openPlan) slab(tS, tE, cutH, hM)
-                } else {
-                    slab(tS, tE, -floorT, sill); baseboard(tS, tE)
-                    slab(tS, tE, sill + cutH, hM)
+                // 8 cm strip just proud of a face. A shared wall is seen from both sides, so it gets two.
+                fun baseboardSide(t0: Float, t1: Float, side: Float) {
+                    val segLen = (t1 - t0) * lenCm; if (segLen < 1f) return
+                    val (mx, mz) = along((t0 + t1) / 2f)
+                    val d = off + side * (WALL_THICK_CM / 2f + 0.6f)
+                    edgeEnts += buildBox(trimMi, segLen * CM, 0.08f, 0.012f,
+                        wx(mx + nx * d), baseY, wz(mz + nz * d), rotDeg, 1f)
                 }
-                openingWorld[op.id] = floatArrayOf(lx, sill + cutH / 2f, lz)
-                if (path != null) {
-                    val swing = if (isDoor && op.leafOpen) DOOR_OPEN_DEG else 0f
-                    placeFitted(path, cutW, cutH, lx, sill, lz, rotDeg, swing)
-                        ?.let { edgeEnts += it.entities.toList() }
+                fun baseboard(t0: Float, t1: Float) {
+                    baseboardSide(t0, t1, -1f)
+                    if (!exterior) baseboardSide(t0, t1, 1f)
                 }
-                tPrev = tE
+
+                val edgeOpenings = plan.openingsOn(n0, n1, level).sortedBy { op ->
+                    if (op.nodeA == n0) op.t else 1f - op.t
+                }
+                var tPrev = 0f
+                for (op in edgeOpenings) {
+                    val t = if (op.nodeA == n0) op.t else 1f - op.t
+                    val isDoor = op.type == OpeningType.DOOR
+                    val doorH = DOOR_HEIGHT_M.coerceAtMost(hM - 0.10f).coerceAtLeast(1.80f)
+                    val sill = if (isDoor) 0f else minOf(0.9f, hM * 0.35f)
+                    val boxH = if (isDoor) doorH else minOf(1.3f, hM - sill - 0.3f).coerceAtLeast(0.4f)
+                    val model = when {
+                        op.leafHidden -> null            // applies to a window frame just as much as a door leaf
+                        !isDoor -> if (op.widthCm > 130f) "q_window_large" else "q_window_small"
+                        op.style == OPENING_CASED -> null
+                        op.style.startsWith("q_door") -> op.style
+                        op.widthCm >= DOUBLE_DOOR_MIN_CM -> "q_door_double"
+                        else -> "q_door"
+                    }
+                    // Fit the joinery first, then cut the hole to the size it actually became —
+                    // cutting to op.widthCm left a strip of bare wall beside anything fitted by height.
+                    val path = model?.let { "models/$it.glb" }
+                    val ext = path?.let { extentOf(it) }
+                    val fitS = if (ext == null) 1f else minOf(op.widthCm * CM / ext[0], boxH / ext[1])
+                    val cutW = if (ext == null) op.widthCm * CM else ext[0] * fitS
+                    val cutH = if (ext == null) boxH else ext[1] * fitS
+
+                    val halfT = (cutW / CM / 2f) / lenCm
+                    val tS = (t - halfT).coerceIn(0f, 1f); val tE = (t + halfT).coerceIn(0f, 1f)
+                    if (tS > tPrev + 1e-3f) { slab(tPrev, tS, -floorT, hM); baseboard(tPrev, tS) }
+                    val (ox, oz) = along(t)
+                    val lx = wx(ox + nx * off); val lz = wz(oz + nz * off)
+
+                    // A cased opening wider than a doorway reads as one shared space: no lintel at all.
+                    val openPlan = isDoor && model == null && op.widthCm >= OPEN_PLAN_MIN_CM
+                    if (isDoor) {
+                        if (!openPlan) slab(tS, tE, cutH, hM)
+                    } else {
+                        slab(tS, tE, -floorT, sill); baseboard(tS, tE)
+                        slab(tS, tE, sill + cutH, hM)
+                    }
+                    openingWorld[op.id] = floatArrayOf(lx, baseY + sill + cutH / 2f, lz)
+                    if (path != null) {
+                        val swing = if (isDoor && op.leafOpen) DOOR_OPEN_DEG else 0f
+                        placeFitted(path, cutW, cutH, lx, baseY + sill, lz, rotDeg, swing)
+                            ?.let { edgeEnts += it.entities.toList() }
+                    }
+                    tPrev = tE
+                }
+                if (tPrev < 1f - 1e-3f) { slab(tPrev, 1f, -floorT, hM); baseboard(tPrev, 1f) }
+                wallSegs.add(WallSeg(n0, n1, exterior, nx, nz, off,
+                    wx((a.x + b.x) / 2f + nx * off), wz((a.y + b.y) / 2f + nz * off), edgeEnts.toIntArray()))
             }
-            if (tPrev < 1f - 1e-3f) { slab(tPrev, 1f, -floorT, hM); baseboard(tPrev, 1f) }
-            wallSegs.add(WallSeg(n0, n1, exterior, nx, nz, off,
-                wx((a.x + b.x) / 2f + nx * off), wz((a.y + b.y) / 2f + nz * off), edgeEnts.toIntArray()))
-        }
 
-        // One post per plan corner. It has to sit where its walls actually are: an exterior wall is
-        // pushed out by half its thickness, so the post follows by the sum of those pushes — parked
-        // on the bare node it left a step at every outside corner.
-        val usedNodes = rooms.flatten().toSet()
-        for (nodeIdx in usedNodes) {
-            val v = nodes[nodeIdx]
-            val touching = wallSegs.indices.filter { wallSegs[it].touches(nodeIdx) }
-            if (touching.isEmpty()) continue
-            // Count each outward DIRECTION once. A wall running straight through a T-junction is two
-            // segments sharing one normal, and summing both pushed the post out by a full thickness.
-            var ox = 0f; var oz = 0f
-            val counted = mutableListOf<FloatArray>()
-            touching.forEach { i ->
-                val seg = wallSegs[i]
-                if (seg.offCm == 0f) return@forEach
-                if (counted.none { abs(it[0] - seg.nx) < 0.01f && abs(it[1] - seg.nz) < 0.01f }) {
-                    counted += floatArrayOf(seg.nx, seg.nz)
-                    ox += seg.nx * seg.offCm
-                    oz += seg.nz * seg.offCm
+            // One post per plan corner. It has to sit where its walls actually are: an exterior wall is
+            // pushed out by half its thickness, so the post follows by the sum of those pushes — parked
+            // on the bare node it left a step at every outside corner.
+            val usedNodes = rooms.flatten().toSet()
+            for (nodeIdx in usedNodes) {
+                val v = nodes[nodeIdx]
+                val touching = wallSegs.indices.filter { wallSegs[it].touches(nodeIdx) }
+                if (touching.isEmpty()) continue
+                // Count each outward DIRECTION once. A wall running straight through a T-junction is two
+                // segments sharing one normal, and summing both pushed the post out by a full thickness.
+                var ox = 0f; var oz = 0f
+                val counted = mutableListOf<FloatArray>()
+                touching.forEach { i ->
+                    val seg = wallSegs[i]
+                    if (seg.offCm == 0f) return@forEach
+                    if (counted.none { abs(it[0] - seg.nx) < 0.01f && abs(it[1] - seg.nz) < 0.01f }) {
+                        counted += floatArrayOf(seg.nx, seg.nz)
+                        ox += seg.nx * seg.offCm
+                        oz += seg.nz * seg.offCm
+                    }
                 }
+                val post = buildBox(wallMi, wt + 0.004f, hM + floorT, wt + 0.004f,
+                    wx(v.x + ox), baseY - floorT, wz(v.y + oz), 0f, wallTileM)
+                cornerSegs.add(CornerSeg(touching.toIntArray(), intArrayOf(post)))
             }
-            val post = buildBox(wallMi, wt + 0.004f, hM + floorT, wt + 0.004f,
-                wx(v.x + ox), -floorT, wz(v.y + oz), 0f, wallTileM)
-            cornerSegs.add(CornerSeg(touching.toIntArray(), intArrayOf(post)))
         }
     }
 
@@ -495,16 +517,17 @@ private class RoomScene(
         val s = worldScale(f)
         val halfH = bb.halfExtent[1] * s
         val mount = catalogItem(f.furnitureId)?.mount ?: MountType.FLOOR
+        val levelY = f.level * (roomHeightM + FLOOR_SLAB_M)   // everything sits on its own storey
 
         if (f.isWallMounted || mount == MountType.WALL) {
-            findNearestWall(f.posX, f.posZ, polys)?.let { wall ->
+            findNearestWall(f.posX, f.posZ, polysOnLevel(f.level))?.let { wall ->
                 val inX = wall.normalX; val inZ = wall.normalZ
                 val depth = bb.halfExtent[2] * s                      // back face flush with the wall
                 val px = (wall.snappedX - houseCx) * CM + inX * depth
                 val pz = (wall.snappedZ - houseCz) * CM + inZ * depth
                 // model front is -Z → aim it along the inward normal so it faces the room
                 val rotDeg = Math.toDegrees(atan2(-inX.toDouble(), -inZ.toDouble())).toFloat()
-                val py = f.wallMountHeight * CM
+                val py = levelY + f.wallMountHeight * CM
                 applyTransform(asset, s, s, s, bb.center, bb.halfExtent, px, py, pz, rotDeg, 0)
                 furnitureWorld[f.id] = floatArrayOf(px, py, pz)
                 return
@@ -512,10 +535,10 @@ private class RoomScene(
         }
         val wx = (f.posX - houseCx) * CM; val wz = (f.posZ - houseCz) * CM
         if (mount == MountType.CEILING) {
-            applyTransform(asset, s, s, s, bb.center, bb.halfExtent, wx, roomHeightM, wz, f.rotationY, 1)
-            furnitureWorld[f.id] = floatArrayOf(wx, roomHeightM - halfH, wz)
+            applyTransform(asset, s, s, s, bb.center, bb.halfExtent, wx, levelY + roomHeightM, wz, f.rotationY, 1)
+            furnitureWorld[f.id] = floatArrayOf(wx, levelY + roomHeightM - halfH, wz)
         } else {
-            val baseY = supportTopUnder(f, wx, wz, bb, s)
+            val baseY = levelY + supportTopUnder(f, wx, wz, bb, s)
             applyTransform(asset, s, s, s, bb.center, bb.halfExtent, wx, baseY, wz, f.rotationY, -1)
             furnitureWorld[f.id] = floatArrayOf(wx, baseY + halfH, wz)
         }
@@ -717,13 +740,13 @@ private class RoomScene(
     }
 
     /** Flat floor at y = 0 covering the room polygon (grown outward by the wall thickness). */
-    private fun buildFloorMesh(poly: List<WallPoint>, mi: MaterialInstance, tileM: Float) {
+    private fun buildFloorMesh(poly: List<WallPoint>, mi: MaterialInstance, tileM: Float, baseY: Float = 0f) {
         if (poly.size < 3) return
         val pts = outset(poly, WALL_THICK_CM)
         val tris = triangulate(pts); if (tris.isEmpty()) return
         val qUp = floatArrayOf(-0.70710678f, 0f, 0f, 0.70710678f)
         val vbData = ByteBuffer.allocateDirect(pts.size * VSTRIDE).order(ByteOrder.nativeOrder())
-        pts.forEach { pt -> vbData.vertex((pt.x - houseCx) * CM, 0f, (pt.y - houseCz) * CM, qUp, pt.x * CM / tileM, pt.y * CM / tileM) }
+        pts.forEach { pt -> vbData.vertex((pt.x - houseCx) * CM, baseY, (pt.y - houseCz) * CM, qUp, pt.x * CM / tileM, pt.y * CM / tileM) }
         vbData.flip()
         val ibData = ByteBuffer.allocateDirect(tris.size * 2).order(ByteOrder.nativeOrder())
         tris.forEach { ibData.putShort(it.toShort()) }
@@ -731,7 +754,7 @@ private class RoomScene(
         val minX = pts.minOf { it.x }; val maxX = pts.maxOf { it.x }
         val minZ = pts.minOf { it.y }; val maxZ = pts.maxOf { it.y }
         addMesh(vbData, pts.size, ibData, tris.size, mi,
-            Box(((minX + maxX) / 2f - houseCx) * CM, 0f, ((minZ + maxZ) / 2f - houseCz) * CM,
+            Box(((minX + maxX) / 2f - houseCx) * CM, baseY, ((minZ + maxZ) / 2f - houseCz) * CM,
                 (maxX - minX) * CM / 2f + 0.01f, 0.01f, (maxZ - minZ) * CM / 2f + 0.01f), null, false)
     }
 

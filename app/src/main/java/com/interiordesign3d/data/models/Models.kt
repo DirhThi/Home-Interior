@@ -54,6 +54,7 @@ data class WallOpening(
     // rather than by (room, edge index) is what lets ONE opening cut a wall two rooms share.
     val nodeA: Int = -1,
     val nodeB: Int = -1,
+    val level: Int = 0,        // storey this wall belongs to
     val t: Float,              // position along nodeA → nodeB [0, 1]
     val type: OpeningType,
     val widthCm: Float = 90f, // 90 cm door, 120 cm window default
@@ -64,15 +65,41 @@ data class WallOpening(
 
 @Serializable
 data class FloorPlan(
+    // Nodes are shared across storeys on purpose: upper walls land on lower ones, and the storey
+    // below can be traced directly when drawing the one above.
     val nodes: List<WallPoint> = emptyList(),
     val rooms: List<List<Int>> = emptyList(),
-    val openings: List<WallOpening> = emptyList()
+    val openings: List<WallOpening> = emptyList(),
+    /** Parallel to [rooms]; an empty list means every room is on the ground floor. */
+    val roomLevels: List<Int> = emptyList()
 ) {
     fun roomPolygon(idx: Int): List<WallPoint> = rooms[idx].map { nodes[it] }
 
+    fun levelOf(roomIdx: Int): Int = roomLevels.getOrElse(roomIdx) { 0 }
+
+    val levelCount: Int get() = (roomLevels.maxOrNull() ?: 0) + 1
+
+    /** Indices into [rooms] for one storey. */
+    fun roomsOnLevel(level: Int): List<Int> = rooms.indices.filter { levelOf(it) == level }
+
+    /** Appends a room on [level], keeping [roomLevels] aligned with [rooms]. */
+    fun addRoom(polygon: List<Int>, level: Int): FloorPlan {
+        val levels = roomLevels.toMutableList()
+        while (levels.size < rooms.size) levels += 0
+        levels += level
+        return copy(rooms = rooms + listOf(polygon), roomLevels = levels)
+    }
+
+    fun dropLastRoom(): FloorPlan {
+        if (rooms.isEmpty()) return this
+        val levels = roomLevels.toMutableList()
+        while (levels.size < rooms.size) levels += 0
+        return copy(rooms = rooms.dropLast(1), roomLevels = levels.dropLast(1))
+    }
+
     /** Openings on the wall between two nodes, whichever order they were stored in. */
-    fun openingsOn(a: Int, b: Int): List<WallOpening> = openings.filter {
-        (it.nodeA == a && it.nodeB == b) || (it.nodeA == b && it.nodeB == a)
+    fun openingsOn(a: Int, b: Int, level: Int): List<WallOpening> = openings.filter {
+        it.level == level && ((it.nodeA == a && it.nodeB == b) || (it.nodeA == b && it.nodeB == a))
     }
 
 }
@@ -133,7 +160,8 @@ data class PlacedFurniture(
     val wallMountHeight: Float = 120f,
     val customWidthCm: Float = 0f,
     val customDepthCm: Float = 0f,
-    val customHeightCm: Float = 0f
+    val customHeightCm: Float = 0f,
+    val level: Int = 0
 ) : Parcelable
 
 // ─── Color Palette (used by ColorPickerScreen) ────────────────────────────────

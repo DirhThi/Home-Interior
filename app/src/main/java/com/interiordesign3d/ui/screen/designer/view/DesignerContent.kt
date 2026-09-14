@@ -129,11 +129,14 @@ private fun PlanEditor(state: DesignerState, modifier: Modifier) {
         onResizeOpening = state::onResizeOpening,
         onRemoveOpening = state::onRemoveOpening,
         onTapOpening = { state.onSelectOpening(it) },
+        activeLevel = state.activeLevel,
         placedFurniture = state.placedFurniture,
         onMoveFurnitureInPlan = state::onMoveFurniture,
         onTapFurniture = state::onSelectFurniture,
         modifier = Modifier.fillMaxSize(),
     )
+
+    LevelSwitcher(state, Modifier.align(Alignment.TopStart).padding(12.dp))
 
     AnimatedVisibility(
         visible = state.selectedOpening != null,
@@ -162,6 +165,7 @@ private fun RoomDesignView(state: DesignerState, modifier: Modifier) {
             floorTileM = state.floorPreset.tileM,
             shadows = state.shadowsOn,
             autoHideWalls = state.autoHideWalls,
+            activeLevel = state.activeLevel,
             backgroundColor = LocalInteriorAccents.current.viewportBackground,
             onDropOpening = state::onDropOpening,
             onSelectFurniture = state::onSelectFurniture,
@@ -169,6 +173,8 @@ private fun RoomDesignView(state: DesignerState, modifier: Modifier) {
             onMoveFurniture = state::onMoveFurniture,
             modifier = Modifier.fillMaxSize(),
         )
+
+        LevelSwitcher(state, Modifier.align(Alignment.TopStart).padding(12.dp))
 
         AnimatedVisibility(
             visible = state.selectedItem != null || state.selectedOpening != null,

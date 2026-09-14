@@ -77,7 +77,7 @@ class DesignerViewModel(
 
         override fun onClosePath() {
             if (currentPath.size >= 3) {
-                floorPlan = floorPlan.copy(rooms = floorPlan.rooms + listOf(currentPath))
+                floorPlan = floorPlan.addRoom(currentPath, activeLevel)
                 drawingPhase = DrawingPhase.CLOSED
             }
         }
@@ -123,7 +123,7 @@ class DesignerViewModel(
             val nodeB = room.getOrNull((edgeIdx + 1) % room.size) ?: return
             val opening = WallOpening(
                 id = UUID.randomUUID().toString(),
-                nodeA = nodeA, nodeB = nodeB, t = t, type = type,
+                nodeA = nodeA, nodeB = nodeB, level = activeLevel, t = t, type = type,
                 widthCm = if (type == OpeningType.DOOR) DEFAULT_DOOR_CM else DEFAULT_WINDOW_CM,
             )
             floorPlan = floorPlan.copy(openings = floorPlan.openings + opening)
@@ -167,7 +167,7 @@ class DesignerViewModel(
             floorPlan = floorPlan.copy(
                 openings = floorPlan.openings + WallOpening(
                     id = UUID.randomUUID().toString(),
-                    nodeA = nodeA, nodeB = nodeB, t = t,
+                    nodeA = nodeA, nodeB = nodeB, level = activeLevel, t = t,
                     type = OpeningType.DOOR,
                     widthCm = widthCm.coerceIn(60f, 200f),
                     style = furnitureId,
@@ -199,6 +199,7 @@ class DesignerViewModel(
                 modelUrl = "",
                 posX = x, posZ = z,
                 isWallMounted = wallMounted,
+                level = activeLevel,
                 wallMountHeight = item?.wallHeightCm ?: 120f,
             )
             placedFurniture = placedFurniture + placed
@@ -363,7 +364,7 @@ class DesignerViewModel(
         when (drawingPhase) {
             DrawingPhase.CLOSED -> {
                 val lastRoom = floorPlan.rooms.last()
-                floorPlan = floorPlan.copy(rooms = floorPlan.rooms.dropLast(1))
+                floorPlan = floorPlan.dropLastRoom()
                 currentPath = lastRoom
                 drawingPhase = DrawingPhase.PLACING
             }

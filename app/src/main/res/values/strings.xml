@@ -48,6 +48,7 @@
     <string name="opening_width">width</string>
     <string name="opening_hint">Tap a wall to place · tap a marker to remove</string>
     <string name="design_room">Design room</string>
+    <string name="add_level">Add storey</string>
     <string name="plan_hint_empty">Tap to place wall corners</string>
     <string name="plan_hint_close">Tap the first corner to close the room</string>
     <plurals name="plan_hint_more">

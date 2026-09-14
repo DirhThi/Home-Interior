@@ -34,6 +34,7 @@ open class DesignerState : BaseScreenState() {
     var selectedOpeningId by mutableStateOf<String?>(null)
 
     var editorMode by mutableStateOf(EditorMode.DRAW_WALLS)
+    var activeLevel by mutableStateOf(0)
 
     // ── Surfaces ──────────────────────────────────────────────────────────────
     var wallPresetIdx by mutableStateOf(0)
@@ -51,8 +52,16 @@ open class DesignerState : BaseScreenState() {
 
     val hasRooms: Boolean by derivedStateOf { floorPlan.rooms.isNotEmpty() }
 
+    /** Storeys that exist, plus the empty one being started. */
+    val levelCount: Int by derivedStateOf { maxOf(floorPlan.levelCount, activeLevel + 1) }
+
     val roomPolygons: List<List<WallPoint>> by derivedStateOf {
         floorPlan.rooms.map { room -> room.map { floorPlan.nodes[it] } }
+    }
+
+    /** Only the storey being edited: hit-testing and wall snapping must ignore the others. */
+    val activeRoomPolygons: List<List<WallPoint>> by derivedStateOf {
+        floorPlan.roomsOnLevel(activeLevel).map { i -> floorPlan.rooms[i].map { floorPlan.nodes[it] } }
     }
 
     val selectedItem: PlacedFurniture? by derivedStateOf {
@@ -72,6 +81,13 @@ open class DesignerState : BaseScreenState() {
     open fun onSave() {}
     open fun onEditFloorPlan() {}
     open fun onEnterDesign() {}
+    open fun onSelectLevel(level: Int) {
+        activeLevel = level
+        selectedId = null
+        selectedOpeningId = null
+        currentPath = emptyList()
+    }
+    open fun onAddLevel() { onSelectLevel(levelCount) }
 
     // ── Wall drawing ──────────────────────────────────────────────────────────
     open fun onAddNewPoint(point: WallPoint) {}
