@@ -4,6 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 InteriorDesign3D (`com.interiordesign3d`) — a Kotlin + Jetpack Compose interior design app: draw a multi-room floor plan, place furniture, and view it in a pseudo-3D viewport.
 
+## Docs
+
+Longer-form notes live in `docs/`, not here:
+
+- [`docs/status.md`](docs/status.md) — what the app does today, how well it has actually been verified, what is fragile
+- [`docs/backlog.md`](docs/backlog.md) — everything still open, and why two roadmap tasks should be dropped
+- [`docs/stairs.md`](docs/stairs.md) — how a flight is described, plus the tread-depth and handrail gaps
+- [`docs/exterior.md`](docs/exterior.md) — the spec for the unstarted exterior step
+
+## Changelog — required
+
+**Every code change that a user could notice gets an entry in [`CHANGELOG.md`](CHANGELOG.md), in the same commit as the code.** Add it under `## [Unreleased]` in the right group (Added / Changed / Fixed / Removed), one line, same voice as the commit titles, with the short hash once the commit exists. Skip only invisible refactors, formatting and doc-only commits. The file's own "How to keep this file" section is the reference.
+
 ## Build Commands
 
 ```bash
@@ -42,7 +55,7 @@ ui/screen/<feature>/
 
 **ViewModels own the database.** Composables never touch `AppDatabase` — that is the rule the refactor established; don't reintroduce direct DB reads in a `@Composable`.
 
-> ⚠️ **The README is partly wrong.** There is no AR and no camera capture. ARCore, CameraX, Coil, colorpicker-compose, accompanist, Gson and DataStore were all declared but referenced by zero files, and have been removed from `build.gradle`. The real 3D view **is** Google Filament (`FilamentRoomViewport.kt`).
+There is no AR and no camera capture. ARCore, CameraX, Coil, colorpicker-compose, accompanist, Gson and DataStore were all declared but referenced by zero files, and have been removed from `build.gradle`. The real 3D view **is** Google Filament (`FilamentRoomViewport.kt`). The README used to claim otherwise and was rewritten to match the code — keep it that way.
 
 ### 3D viewport (`ui/screen/designer/view/viewport/FilamentRoomViewport.kt`)
 
@@ -71,6 +84,8 @@ The old `color_picker/{roomId}` route and `ColorPickerScreen` are **gone** — t
 - `repository/FurnitureRepository.kt` — Hardcoded furniture catalog (search/filter) **and** `ColorPaletteRepository` (object with static palettes by `DesignStyle`). Both live in this one file despite the name.
 
 **Floor-plan model:** A `FloorPlan` is `nodes: List<WallPoint>` (shared point pool, cm) + `rooms: List<List<Int>>` (each room = polygon of node indices, so adjacent rooms share edges) + `openings: List<WallOpening>` (doors/windows on a room edge, parameterized by `t∈[0,1]` along the edge). It is **serialized to a JSON string in `DesignRoom.floorPlanJson`** with `kotlinx.serialization` — it is *not* a Room entity.
+
+It also carries the storeys: `roomLevels` (parallel to `rooms`), `stairs: List<Stair>` (a flight rising from `level` to the one above, straight / L / U — see [`docs/stairs.md`](docs/stairs.md)) and `levelSurfaces: List<LevelSurface>` (wall preset, floor preset and wall paint, **one per storey**). Wall and floor finish therefore lives on the *plan*, not the entity: `DesignRoom.wallColor`, `floorColor`, `wallPresetIdx` and `floorPresetIdx` are leftovers nothing writes any more, and `RoomCard` still reads two of them — see [`docs/backlog.md`](docs/backlog.md).
 
 ### Designer (the core feature, `ui/screen/designer/`)
 

@@ -6,3 +6,14 @@ app/build/
 *.iml
 *.jks
 *.keystore
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Android Studio / Gradle leftovers
+captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+*.hprof
