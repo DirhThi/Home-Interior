@@ -29,22 +29,22 @@ private val LightColorScheme = lightColorScheme(
     tertiaryContainer       = C.Copper90,
     onTertiaryContainer     = C.Copper10,
 
-    background              = C.Bone98,
+    background              = C.BoneGround,
     onBackground            = C.OnBone,
-    surface                 = C.Bone98,
+    surface                 = C.BoneGround,
     onSurface               = C.OnBone,
     surfaceVariant          = C.NeutralVar90,
     onSurfaceVariant        = C.NeutralVar30,
     surfaceTint             = C.Moss40,
 
     surfaceContainerLowest  = Color.White,
-    surfaceContainerLow     = C.Bone96,
-    surfaceContainer        = C.Bone94,
-    surfaceContainerHigh    = C.Bone92,
+    surfaceContainerLow     = C.Bone99,
+    surfaceContainer        = C.Bone97,
+    surfaceContainerHigh    = C.Bone94,
     surfaceContainerHighest = C.Bone90,
 
     inverseSurface          = C.Ink24,
-    inverseOnSurface        = C.Bone98,
+    inverseOnSurface        = C.Bone99,
 
     outline                 = C.Outline,
     outlineVariant          = C.NeutralVar80,
@@ -82,10 +82,10 @@ private val DarkColorScheme = darkColorScheme(
     surfaceTint             = C.Moss80,
 
     surfaceContainerLowest  = C.Ink4,
-    surfaceContainerLow     = C.Ink12,
-    surfaceContainer        = C.Ink14,
-    surfaceContainerHigh    = C.Ink18,
-    surfaceContainerHighest = C.Ink22,
+    surfaceContainerLow     = Color(0xFF141E19),
+    surfaceContainer        = Color(0xFF1A2721),
+    surfaceContainerHigh    = Color(0xFF22312A),
+    surfaceContainerHighest = Color(0xFF2C3D35),
 
     inverseSurface          = C.OnInk,
     inverseOnSurface        = C.Ink24,

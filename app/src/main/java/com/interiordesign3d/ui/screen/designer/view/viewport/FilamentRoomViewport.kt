@@ -1,6 +1,8 @@
 package com.interiordesign3d.ui.screen.designer.view.viewport
 
 import com.interiordesign3d.data.catalog.*
+import androidx.compose.ui.graphics.Color
+import kotlin.math.pow
 import com.interiordesign3d.ui.screen.designer.*
 
 import android.content.Context
@@ -68,6 +70,7 @@ fun FilamentRoomViewport(
     floorTileM: Float = 1f,
     shadows: Boolean = false,
     autoHideWalls: Boolean = true,
+    backgroundColor: Color = Color(0xFFDAD5C8),
     onDropOpening: (roomIdx: Int, edgeIdx: Int, t: Float, widthCm: Float, furnitureId: String) -> Unit = { _, _, _, _, _ -> },
     onSelectFurniture: (String?) -> Unit = {},
     onMoveFurniture: (String, Float, Float) -> Unit = { _, _, _ -> },
@@ -77,6 +80,7 @@ fun FilamentRoomViewport(
     val sceneRef = remember { mutableStateOf<RoomScene?>(null) }
     val onSelect = rememberUpdatedState(onSelectFurniture)
     val onMove = rememberUpdatedState(onMoveFurniture)
+    val bgRef = rememberUpdatedState(backgroundColor)
     val onDrop = rememberUpdatedState(onDropOpening)
 
     // Pause/resume the render loop with the lifecycle so returning from background
@@ -98,7 +102,7 @@ fun FilamentRoomViewport(
         modifier = modifier.fillMaxSize(),
         factory = { ctx ->
             val sv = SurfaceView(ctx)
-            sceneRef.value = RoomScene(ctx, sv, { onSelect.value(it) }, { id, x, z -> onMove.value(id, x, z) })
+            sceneRef.value = RoomScene(ctx, sv, bgRef.value, { onSelect.value(it) }, { id, x, z -> onMove.value(id, x, z) })
             sv
         },
         update = {
@@ -117,6 +121,7 @@ fun FilamentRoomViewport(
 private class RoomScene(
     context: Context,
     private val surfaceView: SurfaceView,
+    backdrop: Color,
     private val onSelect: (String?) -> Unit,
     private val onMove: (String, Float, Float) -> Unit,
 ) {
@@ -182,8 +187,10 @@ private class RoomScene(
         view.scene = scene
         view.camera = camera
         camera.setExposure(16f, 1f / 125f, 100f)
-        // Darker, cooler backdrop so the light walls read as a silhouette instead of blending in.
-        scene.skybox = Skybox.Builder().color(0.56f, 0.58f, 0.63f, 1.0f).build(engine)
+        // Backdrop comes from the theme so the viewport belongs to the rest of the screen.
+        scene.skybox = Skybox.Builder()
+            .color(srgbToLinear(backdrop.red), srgbToLinear(backdrop.green), srgbToLinear(backdrop.blue), 1.0f)
+            .build(engine)
         // Perf: models are flat/unlit — drop the shadow pass, MSAA and dithering.
         view.setShadowingEnabled(false)
         view.setAntiAliasing(com.google.android.filament.View.AntiAliasing.FXAA)   // cheap, kills jaggies
@@ -957,3 +964,7 @@ private fun readAsset(context: Context, path: String): ByteBuffer {
     val bytes = context.assets.open(path).use { it.readBytes() }
     return ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder()).apply { put(bytes); rewind() }
 }
+
+/** Filament skybox colours are linear; Compose colours are sRGB. */
+private fun srgbToLinear(c: Float): Float =
+    if (c <= 0.04045f) c / 12.92f else ((c + 0.055f) / 1.055f).toDouble().pow(2.4).toFloat()

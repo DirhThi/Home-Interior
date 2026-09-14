@@ -34,11 +34,11 @@ object InteriorColors {
     val Copper90 = Color(0xFFFFDCC6)
 
     // Bone — surfaces
-    val Bone98 = Color(0xFFF7F5EF)
-    val Bone96 = Color(0xFFF2F0E9)
-    val Bone94 = Color(0xFFECEAE3)
-    val Bone92 = Color(0xFFE6E4DC)
-    val Bone90 = Color(0xFFE0DED6)
+    val BoneGround = Color(0xFFE9E5DA)   // the ground everything else sits on
+    val Bone99 = Color(0xFFFAF8F3)
+    val Bone97 = Color(0xFFF4F1EA)
+    val Bone94 = Color(0xFFEDE9DF)
+    val Bone90 = Color(0xFFE3DED1)
 
     // Ink — dark surfaces
     val Ink4  = Color(0xFF070D0A)
@@ -82,34 +82,43 @@ data class InteriorAccents(
     val canvasNodeStart: Color,
     val canvasNodeIdle: Color,
     val canvasFurniture: Color,
+    val dimensionText: Color,
+    val dimensionChip: Color,
+    val viewportBackground: Color,
 )
 
 val LightAccents = InteriorAccents(
     door             = InteriorColors.Copper40,
     window           = InteriorColors.Moss40,
-    canvasBackground = InteriorColors.Bone98,
-    canvasGrid       = Color(0xFFE1E5DC),
-    canvasGridMajor  = Color(0xFFC9D0C5),
+    canvasBackground = Color(0xFFFBF9F4),
+    canvasGrid       = Color(0xFFDCE0D4),
+    canvasGridMajor  = Color(0xFFBFC7B6),
     canvasWall       = InteriorColors.OnBone,
-    canvasRoomFill   = Color(0x1A2F5D50),
+    canvasRoomFill   = Color(0x262F5D50),
     canvasNodeActive = InteriorColors.Moss40,
     canvasNodeStart  = InteriorColors.Copper60,
     canvasNodeIdle   = Color(0xFF9AA79E),
     canvasFurniture  = InteriorColors.Moss40,
+    dimensionText      = InteriorColors.Copper40,
+    dimensionChip      = Color(0xEBFBF9F4),
+    viewportBackground = Color(0xFF5E655C),
 )
 
 val DarkAccents = InteriorAccents(
     door             = InteriorColors.Copper80,
     window           = InteriorColors.Moss80,
-    canvasBackground = InteriorColors.Ink8,
+    canvasBackground = Color(0xFF0A100D),
     canvasGrid       = Color(0xFF1D2823),
-    canvasGridMajor  = Color(0xFF2B3830),
+    canvasGridMajor  = Color(0xFF32413A),
     canvasWall       = InteriorColors.OnInk,
-    canvasRoomFill   = Color(0x2686C7B0),
+    canvasRoomFill   = Color(0x3386C7B0),
     canvasNodeActive = InteriorColors.Moss80,
     canvasNodeStart  = InteriorColors.Copper80,
     canvasNodeIdle   = Color(0xFF6E7A73),
     canvasFurniture  = InteriorColors.Moss80,
+    dimensionText      = InteriorColors.Copper80,
+    dimensionChip      = Color(0xE60A100D),
+    viewportBackground = Color(0xFF121915),
 )
 
 val LocalInteriorAccents = staticCompositionLocalOf { LightAccents }
