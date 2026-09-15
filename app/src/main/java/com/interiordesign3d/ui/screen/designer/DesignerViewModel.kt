@@ -8,6 +8,7 @@ import com.interiordesign3d.common.base.BaseViewModel
 import com.interiordesign3d.common.base.Navigator
 import com.interiordesign3d.data.catalog.catalogItem
 import com.interiordesign3d.data.models.ColorPalette
+import com.interiordesign3d.data.models.Balcony
 import com.interiordesign3d.data.models.ExteriorSurface
 import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.RoofShape
@@ -220,6 +221,30 @@ class DesignerViewModel(
                 shape = shape,
                 lengthCm = if (keep) it.lengthCm else Stair.defaultLengthCm(shape),
             )
+        }
+
+        override fun onPlaceBalcony(nodeA: Int, nodeB: Int, t: Float) {
+            val b = Balcony(
+                id = UUID.randomUUID().toString(),
+                level = activeLevel, nodeA = nodeA, nodeB = nodeB, t = t,
+            )
+            floorPlan = floorPlan.copy(balconies = floorPlan.balconies + b)
+            selectedBalconyId = b.id
+            placementTool = PlacementTool.NONE
+        }
+
+        override fun onMoveBalcony(id: String, t: Float) = updateBalconyById(id) {
+            it.copy(t = t.coerceIn(0f, 1f))
+        }
+
+        override fun onBalconyWidth(cm: Float) = updateBalcony { it.copy(widthCm = cm) }
+
+        override fun onBalconyDepth(cm: Float) = updateBalcony { it.copy(depthCm = cm) }
+
+        override fun onRemoveSelectedBalcony() {
+            val id = selectedBalconyId ?: return
+            floorPlan = floorPlan.copy(balconies = floorPlan.balconies.filterNot { it.id == id })
+            selectedBalconyId = null
         }
 
         override fun onRemoveSelectedStair() {
@@ -439,6 +464,16 @@ class DesignerViewModel(
     private suspend fun persistFurniture(items: List<PlacedFurniture>) {
         db.placedFurnitureDao().clearRoomFurniture(roomId)
         items.forEach { db.placedFurnitureDao().insertPlacedFurniture(it.copy(roomId = roomId)) }
+    }
+
+    private fun updateBalcony(transform: (Balcony) -> Balcony) {
+        updateBalconyById(screenState.selectedBalconyId ?: return, transform)
+    }
+
+    private fun updateBalconyById(id: String, transform: (Balcony) -> Balcony) {
+        screenState.floorPlan = screenState.floorPlan.copy(
+            balconies = screenState.floorPlan.balconies.map { if (it.id == id) transform(it) else it },
+        )
     }
 
     private fun withExterior(transform: (ExteriorSurface) -> ExteriorSurface) {

@@ -2,6 +2,7 @@ package com.interiordesign3d.ui.screen.designer.view
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.DoorFront
 import androidx.compose.material.icons.outlined.GridOn
+import androidx.compose.material.icons.outlined.Balcony
 import androidx.compose.material.icons.outlined.Stairs
 import androidx.compose.material.icons.outlined.Window
 import androidx.compose.material3.Button
@@ -29,6 +31,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -60,13 +63,20 @@ fun FloorPlanToolbar(state: DesignerState, modifier: Modifier = Modifier) {
     }
 }
 
-/** Door / window are modes, not one-shot actions, so they stay as toggles on their own line. */
+/**
+ * Door / window / stairs / balcony are modes, not one-shot actions, so they stay as toggles on their
+ * own line. It scrolls sideways: four chips no longer fit a phone, and the fourth label was wrapping
+ * to two lines rather than the row admitting it had run out of room.
+ */
 @Composable
 private fun OpeningToolRow(state: DesignerState) {
     val accents = LocalInteriorAccents.current
 
     CenterRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         OpeningChip(
@@ -89,6 +99,13 @@ private fun OpeningToolRow(state: DesignerState) {
             accent = MaterialTheme.colorScheme.primary,
             checked = state.placementTool == PlacementTool.STAIRS,
             onCheck = { state.onToolChange(state.placementTool.toggled(PlacementTool.STAIRS)) },
+        )
+        OpeningChip(
+            icon = Icons.Outlined.Balcony,
+            label = stringResource(R.string.balcony),
+            accent = MaterialTheme.colorScheme.tertiary,
+            checked = state.placementTool == PlacementTool.BALCONY,
+            onCheck = { state.onToolChange(state.placementTool.toggled(PlacementTool.BALCONY)) },
         )
         AnimatedVisibility(visible = state.placementTool != PlacementTool.NONE) {
             Text(

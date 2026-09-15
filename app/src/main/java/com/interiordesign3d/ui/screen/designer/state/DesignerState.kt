@@ -10,6 +10,7 @@ import com.interiordesign3d.data.catalog.FLOOR_PRESETS
 import com.interiordesign3d.data.catalog.GROUND_PRESETS
 import com.interiordesign3d.data.catalog.ROOF_PRESETS
 import com.interiordesign3d.data.catalog.WALL_PRESETS
+import com.interiordesign3d.data.models.Balcony
 import com.interiordesign3d.data.models.ColorPalette
 import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
@@ -38,6 +39,7 @@ open class DesignerState : BaseScreenState() {
     var selectedId by mutableStateOf<String?>(null)
     var selectedOpeningId by mutableStateOf<String?>(null)
     var selectedStairId by mutableStateOf<String?>(null)
+    var selectedBalconyId by mutableStateOf<String?>(null)
 
     var editorMode by mutableStateOf(EditorMode.DRAW_WALLS)
     var activeLevel by mutableStateOf(0)
@@ -79,6 +81,9 @@ open class DesignerState : BaseScreenState() {
     val selectedOpening: WallOpening? by derivedStateOf {
         floorPlan.openings.firstOrNull { it.id == selectedOpeningId }
     }
+
+    val selectedBalcony: Balcony?
+        get() = floorPlan.balconies.firstOrNull { it.id == selectedBalconyId }
 
     val selectedStair: Stair? by derivedStateOf {
         floorPlan.stairs.firstOrNull { it.id == selectedStairId }
@@ -144,6 +149,12 @@ open class DesignerState : BaseScreenState() {
     open fun onStairLeg(cm: Float) {}
     open fun onStairWell(cm: Float) {}
     open fun onStairShape(shape: StairShape) {}
+    open fun onPlaceBalcony(nodeA: Int, nodeB: Int, t: Float) {}
+    open fun onMoveBalcony(id: String, t: Float) {}
+    open fun onSelectBalcony(id: String?) { selectedBalconyId = id }
+    open fun onBalconyWidth(cm: Float) {}
+    open fun onBalconyDepth(cm: Float) {}
+    open fun onRemoveSelectedBalcony() {}
     open fun onRemoveSelectedStair() {}
     open fun onDropOpening(nodeA: Int, nodeB: Int, t: Float, widthCm: Float, furnitureId: String) {}
 

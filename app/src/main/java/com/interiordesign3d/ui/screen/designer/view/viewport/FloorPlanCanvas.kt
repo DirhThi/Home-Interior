@@ -61,6 +61,9 @@ fun WallDrawingCanvas(
     onTapOpening: (id: String) -> Unit = {},
     activeLevel: Int = 0,
     onPlaceStair: (x: Float, y: Float) -> Unit = { _, _ -> },
+    onPlaceBalcony: (nodeA: Int, nodeB: Int, t: Float) -> Unit = { _, _, _ -> },
+    onTapBalcony: (String) -> Unit = {},
+    selectedBalconyId: String? = null,
     onMoveStair: (id: String, x: Float, y: Float) -> Unit = { _, _, _ -> },
     onTapStair: (id: String) -> Unit = {},
     selectedStairId: String? = null,
@@ -72,6 +75,7 @@ fun WallDrawingCanvas(
     val accents = LocalInteriorAccents.current
     val textMeasurer = rememberTextMeasurer()
     val errorColor = MaterialTheme.colorScheme.error
+    val selectColor = MaterialTheme.colorScheme.primary
     val dimensionStyle = MaterialTheme.typography.labelSmall.copy(color = accents.dimensionText)
     val panOffset = remember { mutableStateOf(Offset.Zero) }
     val scale     = remember { mutableFloatStateOf(1.5f) }
@@ -103,6 +107,8 @@ fun WallDrawingCanvas(
     val onTapOp         = rememberUpdatedState(onTapOpening)
     val levelRef        = rememberUpdatedState(activeLevel)
     val onPlaceStairRef = rememberUpdatedState(onPlaceStair)
+    val onPlaceBalconyRef = rememberUpdatedState(onPlaceBalcony)
+    val onTapBalconyRef = rememberUpdatedState(onTapBalcony)
     val onMoveStairRef  = rememberUpdatedState(onMoveStair)
     val onTapStairRef   = rememberUpdatedState(onTapStair)
     val placedFurRef    = rememberUpdatedState(placedFurniture)
@@ -311,6 +317,37 @@ fun WallDrawingCanvas(
                             DrawingPhase.EDITING -> {
                                 if (toolRef.value == PlacementTool.STAIRS) {
                                     onPlaceStairRef.value(tapCm.x, tapCm.y)
+                                } else if (toolRef.value == PlacementTool.BALCONY) {
+                                    // Hangs off a wall, so it is placed on the nearest edge like an
+                                    // opening — but only on one a single room uses; an interior wall
+                                    // would put the balcony inside the next room.
+                                    val plan = planRef.value
+                                    var best = 40.dp.toPx(); var bA = -1; var bB = -1; var bT = 0.5f
+                                    val uses = HashMap<Long, Int>()
+                                    plan.roomsOnLevel(levelRef.value).forEach { ri ->
+                                        val room = plan.rooms[ri]
+                                        room.indices.forEach { i ->
+                                            val p = room[i]; val q = room[(i + 1) % room.size]
+                                            val k = minOf(p, q).toLong() * 100_000L + maxOf(p, q)
+                                            uses[k] = (uses[k] ?: 0) + 1
+                                        }
+                                    }
+                                    plan.roomsOnLevel(levelRef.value).forEach { ri ->
+                                        val room = plan.rooms[ri]
+                                        room.indices.forEach { i ->
+                                            val ai = room[i]; val bi = room[(i + 1) % room.size]
+                                            val k = minOf(ai, bi).toLong() * 100_000L + maxOf(ai, bi)
+                                            if (uses[k] != 1) return@forEach
+                                            val aS = screenOf(plan.nodes[ai]); val bS = screenOf(plan.nodes[bi])
+                                            val e = bS - aS
+                                            val l2 = (e.x * e.x + e.y * e.y).coerceAtLeast(0.001f)
+                                            val t = ((downPos - aS).let { it.x * e.x + it.y * e.y } / l2)
+                                                .coerceIn(0.1f, 0.9f)
+                                            val d = (Offset(aS.x + e.x * t, aS.y + e.y * t) - downPos).getDistance()
+                                            if (d < best) { best = d; bA = ai; bB = bi; bT = t }
+                                        }
+                                    }
+                                    if (bA >= 0) onPlaceBalconyRef.value(bA, bB, bT)
                                 } else if (toolRef.value != PlacementTool.NONE) {
                                     // Placement tool: tap near existing opening → remove; tap wall → place
                                     var removedId: String? = null
@@ -364,6 +401,14 @@ fun WallDrawingCanvas(
                                     }
                                 } else {
                                     // No tool: an opening under the finger is being selected, not replaced.
+                                    val balcony = plan.balconies.firstOrNull { b ->
+                                        b.level == levelRef.value &&
+                                            plan.balconySlab(b)?.let { sl ->
+                                                pointInPolygon(
+                                                    WallPoint(tapCm.x, tapCm.y), sl,
+                                                )
+                                            } == true
+                                    }
                                     var tappedId: String? = null
                                     for (op in plan.openings.filter { it.level == levelRef.value }) {
                                         val a = plan.nodes.getOrNull(op.nodeA) ?: continue
@@ -376,6 +421,7 @@ fun WallDrawingCanvas(
                                         }
                                     }
                                     when {
+                                        balcony != null -> onTapBalconyRef.value(balcony.id)
                                         tappedId != null -> onTapOp.value(tappedId!!)
                                         nearNodeIdx >= 0 -> onFromNode.value(nearNodeIdx)
                                         else -> onNewPt.value(tapCm)
@@ -481,6 +527,26 @@ fun WallDrawingCanvas(
                             awayFrom = roomCentroid,
                         )
                     }
+                }
+            }
+
+            // ── Balconies on this storey ─────────────────────────────────────
+            floorPlan.balconies.forEach { b ->
+                if (b.level != activeLevel) return@forEach
+                val slab = floorPlan.balconySlab(b) ?: return@forEach
+                val pts = slab.map { toScreen(it) }
+                val path = Path().apply {
+                    pts.forEachIndexed { i, o -> if (i == 0) moveTo(o.x, o.y) else lineTo(o.x, o.y) }
+                    close()
+                }
+                val on = b.id == selectedBalconyId
+                drawPath(path, accents.canvasRoomFill)
+                // The wall side stays open: it is a doorway onto the balcony, not a fourth rail.
+                for (i in 1 until pts.size) {
+                    drawLine(
+                        if (on) selectColor else accents.canvasWall.copy(alpha = 0.7f),
+                        pts[i], pts[(i + 1) % pts.size], strokeWidth = if (on) 4f else 2.5f,
+                    )
                 }
             }
 

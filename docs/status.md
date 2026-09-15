@@ -47,6 +47,10 @@ above and forces itself to fit inside a single room up there. Width, length,
 rotation and shape are editable; the material is its own preset, separate from
 walls and floors. Details in [stairs.md](stairs.md).
 
+**Balconies.** Tap an outside wall and a railed slab hangs off it, width and
+projection editable. Interior walls are refused — a balcony there would hang into the
+next room.
+
 **Furnish.** 145 Quaternius CC0 models in a tabbed sheet. Drag to place with
 real rules — pushed out of other furniture, snapped to walls within 8 cm,
 stacked on surfaces. Scale, rotation, height and colour per item. Auto-saved

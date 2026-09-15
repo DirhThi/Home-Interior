@@ -13,6 +13,9 @@ debts that grew out of the stair work and were never on that list.
 | [Verify on a device](#verify-on-a-device) | 6 | you |
 | [Drop](#drop-these-two) | 2 | — |
 
+Everything on the roadmap that is code is done, and so are the three debts. What is
+left below is yours to verify, plus a short list of things found along the way.
+
 ---
 
 ## Debt

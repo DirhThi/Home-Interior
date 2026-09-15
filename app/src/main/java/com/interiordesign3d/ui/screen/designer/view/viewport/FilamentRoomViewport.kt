@@ -39,7 +39,9 @@ import com.google.android.filament.gltfio.FilamentAsset
 import com.google.android.filament.gltfio.ResourceLoader
 import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.utils.Utils
+import com.interiordesign3d.data.models.Balcony
 import com.interiordesign3d.data.models.FLOOR_SLAB_CM
+import com.interiordesign3d.data.models.WALL_THICK_CM
 import com.interiordesign3d.data.models.HOLE_MARGIN_CM
 import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
@@ -55,7 +57,6 @@ import kotlin.math.*
 private val filamentReady: Boolean by lazy { Utils.init(); true }
 
 private const val CM = 0.01f
-private const val WALL_THICK_CM = 10f
 private const val BRIDGE_NUDGE_CM = 0.15f
 private val FLOOR_SLAB_M = FLOOR_SLAB_CM * CM
 private const val OPENING_CASED = "doorway"      // cased opening: hole and reveal, no leaf
@@ -589,6 +590,23 @@ private class RoomScene(
                         }
                     }
                 }
+            }
+
+            // Balconies hang off the outside, so they belong to the storey whose wall carries them.
+            plan.balconies.filter { it.level == level }.forEach { b ->
+                val slab = plan.balconySlab(b) ?: return@forEach
+                buildFloorMesh(slab, floorMi, floorTileM, baseY = baseY)
+                // Rail the three open sides; the fourth is the wall it hangs from.
+                for (i in 1 until slab.size) {
+                    railRun(slab[i], slab[(i + 1) % slab.size], baseY, wallMi, wallTileM, ::wx, ::wz)
+                }
+                // Soffit, so it does not read as a floating sheet from below.
+                val cx = slab.map { it.x }.average().toFloat()
+                val cy = slab.map { it.y }.average().toFloat()
+                val n = plan.outwardNormal(b.nodeA, b.nodeB, b.level) ?: return@forEach
+                val rot = Math.toDegrees(atan2(n.x.toDouble(), n.y.toDouble())).toFloat()
+                buildBox(wallMi, b.widthCm * CM, 0.12f, b.depthCm * CM,
+                    wx(cx), baseY - 0.12f, wz(cy), rot, wallTileM)
             }
 
             // Guard the hole this flight leaves in the floor above, on every side but the one you

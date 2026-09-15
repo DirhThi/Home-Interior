@@ -44,6 +44,10 @@ everything below sits under Unreleased. When the first build goes out, cut a
   walks the edges exactly one room uses to get the storey's outline, so an L-shaped
   or split plan roofs correctly — and a courtyard comes back as a ring wound the
   other way, which is how callers can tell it apart.
+- **Balconies.** A fourth placement tool: tap a wall and a slab hangs off the outside
+  of it, railed on the three open sides, with width and projection editable. It only
+  takes on a wall a single room uses, because one on an interior wall would hang into
+  the next room. Pinned to the node pair like a door, so reshaping the plan carries it.
 - **Guard rails where a floor opens or ends.** A parapet round every flat roof, so a
   terrace reads as somewhere you could stand, and a rail round the stairwell opening
   upstairs on every side but the one you step out of — `Stair.wellGuards` works that
@@ -100,6 +104,8 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Fixed
 
+- **The floor-plan tool row wrapped its last label to two lines** instead of admitting
+  four chips no longer fit a phone. It scrolls sideways now.
 - **A roof tint could not make a dark tile red.** `baseColorFactor` multiplies the
   texture, so it only ever darkens — terracotta had to come from a scan that is
   already terracotta, not from tinting slate.

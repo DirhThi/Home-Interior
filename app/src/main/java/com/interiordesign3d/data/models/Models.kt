@@ -282,6 +282,21 @@ data class LevelSurface(
     val wallColor: String = "",   // blank = take the tint from the wall preset
 )
 
+/**
+ * A slab hung off the outside of a wall, with a rail round the three open sides. Like [WallOpening]
+ * it is pinned to a node pair rather than to a room, so moving a corner carries it along.
+ */
+@Serializable
+data class Balcony(
+    val id: String = "",
+    val level: Int = 0,
+    val nodeA: Int = 0,
+    val nodeB: Int = 0,
+    val t: Float = 0.5f,        // along the edge
+    val widthCm: Float = 240f,
+    val depthCm: Float = 120f,
+)
+
 @Serializable
 enum class RoofShape {
     /** A slab following the outline. Doubles as a roof terrace. */
@@ -337,6 +352,7 @@ data class FloorPlan(
     val roomLevels: List<Int> = emptyList(),
     val stairs: List<Stair> = emptyList(),
     val levelSurfaces: List<LevelSurface> = emptyList(),
+    val balconies: List<Balcony> = emptyList(),
     val exterior: ExteriorSurface = ExteriorSurface()
 ) {
     fun roomPolygon(idx: Int): List<WallPoint> = rooms[idx].map { nodes[it] }
@@ -555,6 +571,45 @@ data class FloorPlan(
 
     private fun edgeKey(a: Int, b: Int): Long = minOf(a, b).toLong() * 100_000L + maxOf(a, b)
 
+    /**
+     * Unit normal of the edge pointing away from the room that owns it — which way a balcony hangs,
+     * or a canopy faces. Null when no room on [level] uses the edge.
+     */
+    fun outwardNormal(a: Int, b: Int, level: Int): WallPoint? {
+        val owner = roomsOnLevel(level).firstOrNull { ri ->
+            rooms[ri].indices.any { i ->
+                val p = rooms[ri][i]; val q = rooms[ri][(i + 1) % rooms[ri].size]
+                (p == a && q == b) || (p == b && q == a)
+            }
+        } ?: return null
+        val pa = nodes[a]; val pb = nodes[b]
+        val len = kotlin.math.hypot(pb.x - pa.x, pb.y - pa.y).coerceAtLeast(1e-3f)
+        var nx = (pb.y - pa.y) / len; var ny = -(pb.x - pa.x) / len
+        val cx = rooms[owner].map { nodes[it].x }.average().toFloat()
+        val cy = rooms[owner].map { nodes[it].y }.average().toFloat()
+        val mx = (pa.x + pb.x) / 2f - cx; val my = (pa.y + pb.y) / 2f - cy
+        if (nx * mx + ny * my < 0f) { nx = -nx; ny = -ny }
+        return WallPoint(nx, ny)
+    }
+
+    /** The balcony slab in plan: four corners, starting at the outer wall face. */
+    fun balconySlab(b: Balcony): List<WallPoint>? {
+        val pa = nodes.getOrNull(b.nodeA) ?: return null
+        val pb = nodes.getOrNull(b.nodeB) ?: return null
+        val n = outwardNormal(b.nodeA, b.nodeB, b.level) ?: return null
+        val len = kotlin.math.hypot(pb.x - pa.x, pb.y - pa.y).coerceAtLeast(1e-3f)
+        val ux = (pb.x - pa.x) / len; val uy = (pb.y - pa.y) / len
+        val half = (b.widthCm / 2f).coerceAtMost(len / 2f)
+        val cxp = pa.x + (pb.x - pa.x) * b.t + n.x * WALL_THICK_CM / 2f
+        val cyp = pa.y + (pb.y - pa.y) * b.t + n.y * WALL_THICK_CM / 2f
+        return listOf(
+            WallPoint(cxp - ux * half, cyp - uy * half),
+            WallPoint(cxp + ux * half, cyp + uy * half),
+            WallPoint(cxp + ux * half + n.x * b.depthCm, cyp + uy * half + n.y * b.depthCm),
+            WallPoint(cxp - ux * half + n.x * b.depthCm, cyp - uy * half + n.y * b.depthCm),
+        )
+    }
+
     fun openingsOn(a: Int, b: Int, level: Int): List<WallOpening> = openings.filter {
         it.level == level && ((it.nodeA == a && it.nodeB == b) || (it.nodeA == b && it.nodeB == a))
     }
@@ -660,6 +715,7 @@ fun signedArea2(poly: List<WallPoint>): Float {
     return a
 }
 
+const val WALL_THICK_CM = 10f
 const val MIN_STAIR_WIDTH_CM = 70f
 const val MIN_STAIR_LENGTH_CM = 150f
 /** A storey sits on the slab of the one below, not on its wall tops. */

@@ -77,7 +77,8 @@ private fun DesignerFab(state: DesignerState) {
     when (state.editorMode) {
         // Hidden while an opening is selected: it would float over that panel's controls.
         EditorMode.DRAW_WALLS -> AnimatedVisibility(
-            visible = state.hasRooms && state.selectedOpening == null && state.selectedStair == null,
+            visible = state.hasRooms && state.selectedOpening == null &&
+            state.selectedStair == null && state.selectedBalcony == null,
             enter = scaleIn() + fadeIn(),
             exit = scaleOut() + fadeOut(),
         ) {
@@ -137,6 +138,9 @@ private fun PlanEditor(state: DesignerState, modifier: Modifier) {
         onMoveStair = state::onMoveStair,
         onTapStair = { state.onSelectStair(it) },
         selectedStairId = state.selectedStairId,
+        onPlaceBalcony = state::onPlaceBalcony,
+        onTapBalcony = { state.onSelectBalcony(it) },
+        selectedBalconyId = state.selectedBalconyId,
         placedFurniture = state.placedFurniture,
         onMoveFurnitureInPlan = state::onMoveFurniture,
         onTapFurniture = state::onSelectFurniture,
@@ -146,13 +150,15 @@ private fun PlanEditor(state: DesignerState, modifier: Modifier) {
     LevelSwitcher(state, Modifier.align(Alignment.TopStart).padding(12.dp))
 
     AnimatedVisibility(
-        visible = state.selectedOpening != null || state.selectedStair != null,
+        visible = state.selectedOpening != null || state.selectedStair != null ||
+            state.selectedBalcony != null,
         enter = slideInVertically { it },
         exit = slideOutVertically { it },
         modifier = Modifier.align(Alignment.BottomCenter),
     ) {
         state.selectedOpening?.let { OpeningControlPanel(opening = it, state = state) }
             ?: state.selectedStair?.let { StairControlPanel(stair = it, state = state) }
+            ?: state.selectedBalcony?.let { BalconyControlPanel(balcony = it, state = state) }
     }
     }
 }

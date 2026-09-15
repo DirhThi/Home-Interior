@@ -49,6 +49,12 @@
     <string name="door_open">Open</string>
     <string name="opening_width">width</string>
     <string name="stairs">Stairs</string>
+    <string name="balcony">Balcony</string>
+    <string name="balcony_width">W %1$d</string>
+    <string name="balcony_width_label">balcony width</string>
+    <string name="balcony_depth">D %1$d</string>
+    <string name="balcony_depth_label">how far it projects</string>
+    <string name="balcony_inside">This wall has rooms on both sides — a balcony on it would hang into the next room.</string>
     <string name="outside">Outside</string>
     <string name="roof">Roof</string>
     <string name="roof_flat">Flat</string>
