@@ -20,7 +20,20 @@ fun DesignerScreen(roomId: String, navigator: Navigator) {
     CollectMessages(viewModel, snackbarHostState)
     DesignerContent(state = state, snackbarHostState = snackbarHostState)
 
-    BackHandler(enabled = state.selectedId != null || state.selectedOpeningId != null) {
-        if (state.selectedId != null) state.onDeselect() else state.onSelectOpening(null)
+    // Back clears whatever is selected before it leaves the screen. Stairs, balconies and walls used
+    // to fall through, so Back with a stair selected dropped you out of the designer entirely.
+    val hasSelection = state.selectedId != null || state.selectedOpeningId != null ||
+        state.selectedStairId != null || state.selectedBalconyId != null ||
+        state.selectedWall != null || state.placementTool != PlacementTool.NONE
+
+    BackHandler(enabled = hasSelection) {
+        when {
+            state.selectedId != null -> state.onDeselect()
+            state.selectedOpeningId != null -> state.onSelectOpening(null)
+            state.selectedStairId != null -> state.onSelectStair(null)
+            state.selectedBalconyId != null -> state.onSelectBalcony(null)
+            state.selectedWall != null -> state.onSelectWall(null)
+            else -> state.onToolChange(PlacementTool.NONE)
+        }
     }
 }

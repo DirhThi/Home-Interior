@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
@@ -15,14 +14,9 @@ import androidx.compose.material.icons.outlined.DoorFront
 import androidx.compose.material.icons.outlined.DoorSliding
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Window
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,8 +28,11 @@ import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.WallOpening
+import com.interiordesign3d.ui.properties.ChoiceChip
+import com.interiordesign3d.ui.properties.PanelIconButton
+import com.interiordesign3d.ui.properties.ValueChip
+import com.interiordesign3d.ui.properties.GlassPane
 import com.interiordesign3d.ui.properties.CenterRow
-import com.interiordesign3d.ui.properties.MinTouchTarget
 import com.interiordesign3d.ui.properties.NumberInputDialog
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
 
@@ -48,10 +45,10 @@ fun OpeningControlPanel(opening: WallOpening, state: DesignerState) {
     val isDoor = opening.type == OpeningType.DOOR
     var editingWidth by remember(opening.id) { mutableStateOf(false) }
 
-    Surface(
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        shadowElevation = 16.dp,
+    GlassPane(
+        shape = MaterialTheme.shapes.extraLarge,
+        strong = true,
+        elevation = 18.dp,
     ) {
         Column(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 10.dp),
@@ -70,50 +67,38 @@ fun OpeningControlPanel(opening: WallOpening, state: DesignerState) {
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-                IconButton(
+                PanelIconButton(
+                    Icons.Outlined.Delete,
+                    stringResource(R.string.remove_item),
                     onClick = state::onRemoveSelectedOpening,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) {
-                    Icon(Icons.Outlined.Delete, stringResource(R.string.remove_item))
-                }
-                IconButton(onClick = { state.onSelectOpening(null) }) {
-                    Icon(Icons.Outlined.Close, stringResource(R.string.deselect))
-                }
+                    danger = true,
+                )
+                PanelIconButton(
+                    Icons.Outlined.Close,
+                    stringResource(R.string.deselect),
+                    onClick = { state.onSelectOpening(null) },
+                )
             }
 
             CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
-                FilterChip(
+                ChoiceChip(
+                    label = stringResource(if (isDoor) R.string.show_leaf else R.string.show_frame),
                     selected = !opening.leafHidden,
+                    icon = Icons.Outlined.Visibility,
                     onClick = { state.onSetLeafHidden(!opening.leafHidden) },
-                    modifier = Modifier.height(MinTouchTarget),
-                    leadingIcon = { Icon(Icons.Outlined.Visibility, null, Modifier.size(18.dp)) },
-                    label = {
-                        Text(
-                            stringResource(if (isDoor) R.string.show_leaf else R.string.show_frame),
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    },
                 )
 
                 AnimatedVisibility(visible = isDoor && !opening.leafHidden) {
-                    FilterChip(
+                    ChoiceChip(
+                        label = stringResource(R.string.door_open),
                         selected = opening.leafOpen,
+                        icon = Icons.Outlined.DoorSliding,
                         onClick = { state.onSetLeafOpen(!opening.leafOpen) },
-                        modifier = Modifier.height(MinTouchTarget),
-                        leadingIcon = { Icon(Icons.Outlined.DoorSliding, null, Modifier.size(18.dp)) },
-                        label = {
-                            Text(stringResource(R.string.door_open), style = MaterialTheme.typography.labelLarge)
-                        },
                     )
                 }
 
-                TextButton(onClick = { editingWidth = true }) {
-                    Text(
-                        stringResource(R.string.centimetres, opening.widthCm.toInt()),
-                        style = MaterialTheme.typography.labelLarge,
-                    )
+                ValueChip(stringResource(R.string.centimetres, opening.widthCm.toInt())) {
+                    editingWidth = true
                 }
             }
         }

@@ -1,6 +1,7 @@
 package com.interiordesign3d.ui.screen.designer.view
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,11 +16,10 @@ import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -35,6 +35,9 @@ import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.data.catalog.CatalogItem
 import com.interiordesign3d.data.catalog.FURNITURE_CATALOG
+import com.interiordesign3d.ui.properties.fadeTrailingEdge
+import com.interiordesign3d.ui.properties.CenterRow
+import com.interiordesign3d.ui.properties.ChoiceChip
 import com.interiordesign3d.ui.properties.AssetImage
 import com.interiordesign3d.ui.properties.onClickNotRipple
 
@@ -62,20 +65,16 @@ fun AddFurnitureSheet(onAdd: (String, Boolean) -> Unit, onDismiss: () -> Unit) {
                 modifier = Modifier.padding(horizontal = 20.dp),
             )
 
-            ScrollableTabRow(
-                selectedTabIndex = groupIdx,
-                containerColor = Color.Transparent,
-                edgePadding = 20.dp,
-                divider = {},
+            CenterRow(
+                Modifier
+                    .fillMaxWidth()
+                    .fadeTrailingEdge()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp),
+                Arrangement.spacedBy(6.dp),
             ) {
                 FURNITURE_CATALOG.forEachIndexed { index, catalogGroup ->
-                    Tab(
-                        selected = index == groupIdx,
-                        onClick = { groupIdx = index },
-                        text = {
-                            Text(catalogGroup.title, style = MaterialTheme.typography.labelLarge)
-                        },
-                    )
+                    ChoiceChip(catalogGroup.title, index == groupIdx) { groupIdx = index }
                 }
             }
 

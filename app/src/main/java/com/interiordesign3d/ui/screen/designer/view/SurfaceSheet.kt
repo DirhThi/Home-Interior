@@ -2,6 +2,8 @@ package com.interiordesign3d.ui.screen.designer.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +45,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.interiordesign3d.ui.properties.fadeTrailingEdge
+import com.interiordesign3d.ui.properties.ChoiceChip
 import com.interiordesign3d.R
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.res.pluralStringResource
@@ -111,18 +115,16 @@ fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
                 )
             }
 
-            ScrollableTabRow(
-                selectedTabIndex = tab,
-                containerColor = Color.Transparent,
-                edgePadding = 20.dp,
-                divider = {},
+            CenterRow(
+                Modifier
+                    .fillMaxWidth()
+                    .fadeTrailingEdge()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp),
+                Arrangement.spacedBy(6.dp),
             ) {
                 tabs.forEachIndexed { index, label ->
-                    Tab(
-                        selected = tab == index,
-                        onClick = { tab = index },
-                        text = { Text(stringResource(label), style = MaterialTheme.typography.labelLarge) },
-                    )
+                    ChoiceChip(stringResource(label), tab == index) { tab = index }
                 }
             }
 
@@ -146,17 +148,11 @@ fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
 @Composable
 private fun HeightChip(state: DesignerState) {
     var editing by remember { mutableStateOf(false) }
-    FilterChip(
+    ChoiceChip(
+        label = stringResource(R.string.centimetres, state.roomHeightCm.toInt()),
         selected = false,
+        icon = Icons.Outlined.Height,
         onClick = { editing = true },
-        modifier = Modifier.height(MinTouchTarget),
-        leadingIcon = { Icon(Icons.Outlined.Height, null, Modifier.size(18.dp)) },
-        label = {
-            Text(
-                stringResource(R.string.centimetres, state.roomHeightCm.toInt()),
-                style = MaterialTheme.typography.labelLarge,
-            )
-        },
     )
     if (editing) {
         NumberInputDialog(
@@ -178,13 +174,7 @@ private fun OptionChip(
     checked: Boolean,
     onCheck: (Boolean) -> Unit,
 ) {
-    FilterChip(
-        selected = checked,
-        onClick = { onCheck(!checked) },
-        modifier = Modifier.height(MinTouchTarget),
-        leadingIcon = { Icon(icon, null, Modifier.size(18.dp)) },
-        label = { Text(label, style = MaterialTheme.typography.labelLarge) },
-    )
+    ChoiceChip(label = label, selected = checked, icon = icon, onClick = { onCheck(!checked) })
 }
 
 @Composable
@@ -200,6 +190,7 @@ private fun RowLabel(res: Int) {
 @Composable
 private fun PresetRow(presets: List<SurfacePreset>, selectedIdx: Int, onSelect: (Int) -> Unit) {
     LazyRow(
+        modifier = Modifier.fadeTrailingEdge(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(horizontal = 20.dp),
     ) {

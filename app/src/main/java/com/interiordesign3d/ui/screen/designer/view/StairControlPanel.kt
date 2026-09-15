@@ -6,20 +6,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Rotate90DegreesCw
 import androidx.compose.material.icons.outlined.Stairs
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,8 +27,13 @@ import com.interiordesign3d.data.models.FLOOR_SLAB_CM
 import com.interiordesign3d.data.models.MIN_COMFORTABLE_TREAD_CM
 import com.interiordesign3d.data.models.Stair
 import com.interiordesign3d.data.models.StairShape
+import com.interiordesign3d.ui.properties.ChoiceChip
+import com.interiordesign3d.ui.properties.PanelIconButton
+import com.interiordesign3d.ui.properties.Segment
+import com.interiordesign3d.ui.properties.SegmentedPills
+import com.interiordesign3d.ui.properties.ValueChip
+import com.interiordesign3d.ui.properties.GlassPane
 import com.interiordesign3d.ui.properties.CenterRow
-import com.interiordesign3d.ui.properties.MinTouchTarget
 import com.interiordesign3d.ui.properties.NumberInputDialog
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
 
@@ -48,10 +47,10 @@ private const val EDIT_WELL = 4
 fun StairControlPanel(stair: Stair, state: DesignerState) {
     var editing by remember(stair.id) { mutableStateOf(EDIT_NONE) }
 
-    Surface(
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        shadowElevation = 16.dp,
+    GlassPane(
+        shape = MaterialTheme.shapes.extraLarge,
+        strong = true,
+        elevation = 18.dp,
     ) {
         Column(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 10.dp),
@@ -65,17 +64,17 @@ fun StairControlPanel(stair: Stair, state: DesignerState) {
                     )
                     Text(stringResource(R.string.stairs), style = MaterialTheme.typography.titleMedium)
                 }
-                IconButton(
+                PanelIconButton(
+                    Icons.Outlined.Delete,
+                    stringResource(R.string.remove_item),
                     onClick = state::onRemoveSelectedStair,
-                    colors = IconButtonDefaults.iconButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) {
-                    Icon(Icons.Outlined.Delete, stringResource(R.string.remove_item))
-                }
-                IconButton(onClick = { state.onSelectStair(null) }) {
-                    Icon(Icons.Outlined.Close, stringResource(R.string.deselect))
-                }
+                    danger = true,
+                )
+                PanelIconButton(
+                    Icons.Outlined.Close,
+                    stringResource(R.string.deselect),
+                    onClick = { state.onSelectStair(null) },
+                )
             }
 
             if (!state.floorPlan.stairFits(stair)) {
@@ -95,49 +94,38 @@ fun StairControlPanel(stair: Stair, state: DesignerState) {
                 )
             }
 
-            CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(6.dp)) {
-                StairShape.entries.forEach { shape ->
-                    FilterChip(
-                        selected = stair.shape == shape,
-                        onClick = { state.onStairShape(shape) },
-                        modifier = Modifier.height(MinTouchTarget),
-                        label = {
-                            Text(
-                                stringResource(
-                                    when (shape) {
-                                        StairShape.STRAIGHT -> R.string.stair_straight
-                                        StairShape.L_SHAPED -> R.string.stair_l
-                                        StairShape.U_SHAPED -> R.string.stair_u
-                                    }
-                                ),
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                        },
+            val shapes = StairShape.entries
+            SegmentedPills(
+                segments = shapes.map {
+                    Segment(
+                        stringResource(
+                            when (it) {
+                                StairShape.STRAIGHT -> R.string.stair_straight
+                                StairShape.L_SHAPED -> R.string.stair_l
+                                StairShape.U_SHAPED -> R.string.stair_u
+                            }
+                        )
                     )
-                }
-            }
+                },
+                selectedIndex = shapes.indexOf(stair.shape),
+                onSelect = { state.onStairShape(shapes[it]) },
+                modifier = Modifier.fillMaxWidth().padding(end = 10.dp),
+            )
 
             CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(6.dp)) {
-                FilterChip(
+                ChoiceChip(
+                    label = stringResource(R.string.degrees, stair.rotationDeg.toInt()),
                     selected = false,
+                    icon = Icons.Outlined.Rotate90DegreesCw,
                     onClick = { state.onStairRotate((stair.rotationDeg + 90f) % 360f) },
-                    modifier = Modifier.height(MinTouchTarget),
-                    leadingIcon = { Icon(Icons.Outlined.Rotate90DegreesCw, null, Modifier.size(18.dp)) },
-                    label = { Text(stringResource(R.string.degrees, stair.rotationDeg.toInt())) },
                 )
-                TextButton(onClick = { editing = EDIT_WIDTH }) {
-                    Text(stringResource(R.string.stair_width, stair.widthCm.toInt()))
-                }
-                TextButton(onClick = { editing = EDIT_LENGTH }) {
-                    Text(stringResource(R.string.stair_length, stair.lengthCm.toInt()))
-                }
+                ValueChip(stringResource(R.string.stair_width, stair.widthCm.toInt())) { editing = EDIT_WIDTH }
+                ValueChip(stringResource(R.string.stair_length, stair.lengthCm.toInt())) { editing = EDIT_LENGTH }
                 when (stair.shape) {
-                    StairShape.L_SHAPED -> TextButton(onClick = { editing = EDIT_LEG }) {
-                        Text(stringResource(R.string.stair_leg, stair.legCm.toInt()))
-                    }
-                    StairShape.U_SHAPED -> TextButton(onClick = { editing = EDIT_WELL }) {
-                        Text(stringResource(R.string.stair_well, stair.wellCm.toInt()))
-                    }
+                    StairShape.L_SHAPED ->
+                        ValueChip(stringResource(R.string.stair_leg, stair.legCm.toInt())) { editing = EDIT_LEG }
+                    StairShape.U_SHAPED ->
+                        ValueChip(stringResource(R.string.stair_well, stair.wellCm.toInt())) { editing = EDIT_WELL }
                     StairShape.STRAIGHT -> Unit
                 }
             }

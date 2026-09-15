@@ -32,7 +32,8 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
 
-private const val AUTO_SAVE_DELAY_MS = 400L
+/** Long enough to fold a whole drag into one write, short enough to feel immediate. */
+private const val AUTO_SAVE_DELAY_MS = 150L
 
 class DesignerViewModel(
     app: Application,
@@ -45,35 +46,30 @@ class DesignerViewModel(
 
     val screenState: DesignerState = object : DesignerState() {
 
-        override fun onBack() = pops()
-
-        override fun onSave() {
+        // Flushes on the way out: auto-save coalesces, so the very last edit may still be pending
+        // and there is no Save button to fall back on any more.
+        override fun onBack() {
             viewModelScope.launch {
                 persistPlan()
                 persistFurniture(placedFurniture)
-                notify(app.getString(R.string.saved))
+                pops()
             }
         }
 
-        override fun onEditFloorPlan() {
+        override fun onModeChange(mode: EditorMode) {
+            if (mode == editorMode) return
+            // Leaving a mode flushes whatever that mode owns: the plan when stepping out of the 2D
+            // editor, the furniture when stepping back into it.
             viewModelScope.launch {
-                persistFurniture(placedFurniture)
-                editorMode = EditorMode.DRAW_WALLS
+                if (editorMode == EditorMode.DRAW_WALLS) persistPlan() else persistFurniture(placedFurniture)
+                selectedId = null
+                selectedOpeningId = null
+                selectedStairId = null
+                selectedBalconyId = null
+                selectedWall = null
+                placementTool = PlacementTool.NONE
+                editorMode = mode
             }
-        }
-
-        override fun onEnterDesign() {
-            viewModelScope.launch {
-                persistPlan()
-                editorMode = EditorMode.DESIGN
-            }
-        }
-
-        override fun onToggleExterior() {
-            selectedId = null
-            selectedOpeningId = null
-            editorMode =
-                if (editorMode == EditorMode.EXTERIOR) EditorMode.DESIGN else EditorMode.EXTERIOR
         }
 
         // ── Wall drawing ──────────────────────────────────────────────────────
@@ -440,12 +436,18 @@ class DesignerViewModel(
 
     /**
      * The plan carries the rooms, the storeys, every surface pick and the roof, and until this
-     * existed all of it was lost unless you hit Save or crossed into Design mode — draw a room,
-     * press Back, gone. Same debounce as furniture.
+     * existed all of it was lost unless you hit Save or crossed into Design mode.
+     *
+     * It watches the revision counter, not the plan: `snapshotFlow` compares with `equals`, and on a
+     * structure of lists that is a deep walk on every frame of a node drag.
+     *
+     * The delay is there to coalesce, not to be lazy. A drag assigns a new plan every frame, and
+     * `collectLatest` cancels the pending write each time, so one gesture costs exactly one write
+     * instead of sixty.
      */
     private fun observePlanForAutoSave() {
         viewModelScope.launch {
-            snapshotFlow { screenState.floorPlan }.collectLatest {
+            snapshotFlow { screenState.planRevision }.collectLatest {
                 if (!loaded) return@collectLatest
                 delay(AUTO_SAVE_DELAY_MS)
                 persistPlan()
@@ -455,10 +457,10 @@ class DesignerViewModel(
 
     private fun observeFurnitureForAutoSave() {
         viewModelScope.launch {
-            snapshotFlow { screenState.placedFurniture }.collectLatest { items ->
+            snapshotFlow { screenState.furnitureRevision }.collectLatest {
                 if (!loaded) return@collectLatest
                 delay(AUTO_SAVE_DELAY_MS)
-                persistFurniture(items)
+                persistFurniture(screenState.placedFurniture)
             }
         }
     }

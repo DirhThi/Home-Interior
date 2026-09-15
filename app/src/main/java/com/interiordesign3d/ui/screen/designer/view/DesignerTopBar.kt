@@ -1,84 +1,76 @@
 package com.interiordesign3d.ui.screen.designer.view
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.MeetingRoom
-import androidx.compose.material.icons.outlined.Save
-import androidx.compose.material.icons.outlined.Wallpaper
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
-import com.interiordesign3d.ui.screen.designer.DrawingPhase
+import com.interiordesign3d.data.plans.areaM2
+import com.interiordesign3d.ui.properties.GlassIconButton
+import com.interiordesign3d.ui.properties.GlassPane
 import com.interiordesign3d.ui.screen.designer.EditorMode
+import com.interiordesign3d.ui.screen.designer.PlacementTool
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
+import com.interiordesign3d.ui.theme.LocalGlass
 
+/**
+ * Back, and nothing else. Mode switching moved to [ModeTabBar], surfaces to the action clusters, and
+ * Save is gone because `observePlanForAutoSave` writes the plan 400 ms after the last edit.
+ */
 @Composable
-fun DesignerTopBar(state: DesignerState) {
-    val outside = state.editorMode == EditorMode.EXTERIOR
-    val inDesign = state.editorMode == EditorMode.DESIGN || outside
-    val subtitle = when {
-        outside -> R.string.hint_exterior
-        inDesign -> R.string.hint_design
-        state.drawingPhase == DrawingPhase.PLACING -> R.string.hint_placing
-        state.drawingPhase == DrawingPhase.CLOSED -> R.string.hint_closed
-        else -> R.string.hint_editing
+fun DesignerBackButton(state: DesignerState, modifier: Modifier = Modifier) {
+    GlassIconButton(
+        icon = Icons.AutoMirrored.Outlined.ArrowBack,
+        contentDescription = stringResource(R.string.back),
+        modifier = modifier,
+        onClick = state::onBack,
+    )
+}
+
+/**
+ * The one running readout: what to do next, or the plan's size once it has rooms.
+ *
+ * It absorbs what `FloorPlanCanvas` used to draw for itself. Two hint chips fought for the top of the
+ * screen once the canvas went full-bleed, and the canvas's own one had no status-bar inset to give.
+ */
+@Composable
+fun DesignerHint(state: DesignerState, modifier: Modifier = Modifier) {
+    val glass = LocalGlass.current
+
+    val rooms = state.floorPlan.rooms.size
+    val remaining = 3 - state.currentPath.size
+    val text = when {
+        state.editorMode == EditorMode.EXTERIOR -> stringResource(R.string.hint_exterior)
+        state.editorMode == EditorMode.DESIGN -> stringResource(R.string.hint_design)
+        state.placementTool != PlacementTool.NONE -> stringResource(R.string.opening_hint)
+        state.currentPath.size >= 3 -> stringResource(R.string.plan_hint_close)
+        state.currentPath.isNotEmpty() ->
+            pluralStringResource(R.plurals.plan_hint_more, remaining, remaining)
+        rooms > 0 -> pluralStringResource(
+            R.plurals.plan_rooms_area, rooms, rooms, state.floorPlan.areaM2()
+        )
+        else -> stringResource(R.string.plan_hint_empty)
     }
 
-    TopAppBar(
-        title = {
-            Column {
-                Text(
-                    stringResource(
-                        when {
-                            outside -> R.string.exterior_mode
-                            inDesign -> R.string.design_mode
-                            else -> R.string.floor_plan
-                        }
-                    ),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    stringResource(subtitle),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-        navigationIcon = {
-            IconButton(onClick = state::onBack) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
-            }
-        },
-        actions = {
-            if (inDesign) {
-                IconButton(onClick = state::onToggleExterior) {
-                    Icon(
-                        if (outside) Icons.Outlined.MeetingRoom else Icons.Outlined.Home,
-                        stringResource(if (outside) R.string.go_inside else R.string.go_outside),
-                    )
-                }
-                IconButton(onClick = state::onEditFloorPlan) {
-                    Icon(Icons.Outlined.EditNote, stringResource(R.string.edit_floor_plan))
-                }
-                IconButton(onClick = state::onShowSurfaceSheet) {
-                    Icon(Icons.Outlined.Wallpaper, stringResource(R.string.surfaces))
-                }
-                IconButton(onClick = state::onSave) {
-                    Icon(Icons.Outlined.Save, stringResource(R.string.save))
-                }
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background,
-        ),
-    )
+    GlassPane(modifier, shape = CircleShape, elevation = 6.dp) {
+        Crossfade(text, label = "hint") { line ->
+            Text(
+                line,
+                style = MaterialTheme.typography.labelMedium,
+                color = glass.contentMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+            )
+        }
+    }
 }

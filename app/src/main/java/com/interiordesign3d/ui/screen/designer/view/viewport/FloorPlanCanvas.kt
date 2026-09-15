@@ -13,10 +13,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.drawText
-import com.interiordesign3d.R
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.foundation.shape.CircleShape
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -24,7 +20,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,7 +29,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.*
 import com.interiordesign3d.data.models.*
 import kotlin.math.*
@@ -82,6 +77,49 @@ fun WallDrawingCanvas(
     val panOffset = remember { mutableStateOf(Offset.Zero) }
     val scale     = remember { mutableFloatStateOf(1.5f) }
     var initialized by remember { mutableStateOf(false) }
+    val canvasSize = remember { mutableStateOf(IntSize.Zero) }
+
+    // What the designer's floating chrome covers: a tool cluster down each side, the back row and
+    // hint chip above, the tab bar below.
+    val density = LocalDensity.current
+    val sideChromePx = with(density) { 66.dp.toPx() }
+    val topChromePx = with(density) { 150.dp.toPx() }
+    val bottomChromePx = with(density) { 116.dp.toPx() }
+
+    // Frame the plan that is actually there. The old rule scaled every plan as if it were 6 m wide,
+    // so anything larger opened half off-screen. It runs from an effect rather than straight out of
+    // onSizeChanged because the plan arrives from the database a frame or two after first layout,
+    // and it locks itself the first time it has real rooms to measure.
+    LaunchedEffect(canvasSize.value, floorPlan.rooms.isNotEmpty()) {
+        val sz = canvasSize.value
+        if (initialized || sz.width == 0 || sz.height == 0) return@LaunchedEffect
+
+        val pts = floorPlan.nodes
+        if (floorPlan.rooms.isEmpty() || pts.isEmpty()) {
+            scale.floatValue = sz.width * 0.8f / 600f
+            panOffset.value = Offset(sz.width * 0.1f, sz.height * 0.12f)
+            return@LaunchedEffect
+        }
+
+        val minX = pts.minOf { it.x }
+        val minY = pts.minOf { it.y }
+        val w = (pts.maxOf { it.x } - minX).coerceAtLeast(120f)
+        val h = (pts.maxOf { it.y } - minY).coerceAtLeast(120f)
+
+        // Fit inside the space the floating chrome leaves, not the whole canvas: tool clusters run
+        // down both edges and the tab bar sits at the bottom, so a plan centred on the raw viewport
+        // opens with its dimension labels underneath them.
+        val usableW = (sz.width - 2f * sideChromePx).coerceAtLeast(sz.width * 0.4f)
+        val usableH = (sz.height - topChromePx - bottomChromePx).coerceAtLeast(sz.height * 0.3f)
+        val sc = minOf(usableW * 0.92f / w, usableH * 0.92f / h).coerceIn(0.2f, 12f)
+
+        scale.floatValue = sc
+        panOffset.value = Offset(
+            sz.width / 2f - w * sc / 2f - minX * sc,
+            topChromePx + usableH / 2f - h * sc / 2f - minY * sc,
+        )
+        initialized = true
+    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseRadius by infiniteTransition.animateFloat(
@@ -122,13 +160,7 @@ fun WallDrawingCanvas(
         modifier = modifier
             .fillMaxSize()
             .background(accents.canvasBackground)
-            .onSizeChanged { sz ->
-                if (!initialized && sz.width > 0) {
-                    scale.floatValue = sz.width * 0.8f / 600f
-                    panOffset.value  = Offset(sz.width * 0.1f, sz.height * 0.12f)
-                    initialized = true
-                }
-            }
+            .onSizeChanged { canvasSize.value = it }
             .pointerInput(Unit) {
                 val hitPx   = 30.dp.toPx()
                 val closePx = 38.dp.toPx()
@@ -808,48 +840,6 @@ fun WallDrawingCanvas(
             }
             }
         }
-
-        PlanStatusPill(
-            floorPlan = floorPlan,
-            currentPath = currentPath,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
-        )
-    }
-}
-
-/** The canvas's only chrome: room count + area once a room exists, otherwise the next thing to do. */
-@Composable
-private fun PlanStatusPill(
-    floorPlan: FloorPlan,
-    currentPath: List<Int>,
-    modifier: Modifier = Modifier,
-) {
-    val roomCount = floorPlan.rooms.size
-    val text = when {
-        roomCount > 0 -> {
-            val area = floorPlan.rooms.sumOf { room ->
-                polygonArea(room.map { floorPlan.nodes[it] }).toDouble()
-            } / 10_000.0
-            pluralStringResource(R.plurals.plan_rooms_area, roomCount, roomCount, area)
-        }
-        currentPath.size >= 3 -> stringResource(R.string.plan_hint_close)
-        currentPath.isNotEmpty() ->
-            pluralStringResource(R.plurals.plan_hint_more, 3 - currentPath.size, 3 - currentPath.size)
-        else -> stringResource(R.string.plan_hint_empty)
-    }
-
-    Surface(
-        modifier = modifier,
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
-        tonalElevation = 2.dp,
-    ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-        )
     }
 }
 

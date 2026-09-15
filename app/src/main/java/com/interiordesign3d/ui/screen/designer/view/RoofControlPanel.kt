@@ -4,14 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -23,8 +18,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.data.models.RoofShape
+import com.interiordesign3d.ui.properties.ChoiceChip
+import com.interiordesign3d.ui.properties.Segment
+import com.interiordesign3d.ui.properties.SegmentedPills
+import com.interiordesign3d.ui.properties.ValueChip
+import com.interiordesign3d.ui.properties.GlassPane
 import com.interiordesign3d.ui.properties.CenterRow
-import com.interiordesign3d.ui.properties.MinTouchTarget
 import com.interiordesign3d.ui.properties.NumberInputDialog
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
 
@@ -44,62 +43,47 @@ fun RoofControlPanel(state: DesignerState) {
     val ext = state.exteriorSurface
     val flat = ext.roofShape == RoofShape.FLAT
 
-    Surface(
-        modifier = Modifier.navigationBarsPadding(),
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        shadowElevation = 16.dp,
+    GlassPane(
+        shape = MaterialTheme.shapes.extraLarge,
+        strong = true,
+        elevation = 18.dp,
     ) {
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(6.dp)) {
-                RoofShape.entries.forEach { shape ->
-                    FilterChip(
-                        selected = ext.roofShape == shape,
-                        onClick = { state.onRoofShape(shape) },
-                        modifier = Modifier.height(MinTouchTarget),
-                        label = {
-                            Text(
-                                stringResource(
-                                    when (shape) {
-                                        RoofShape.FLAT -> R.string.roof_flat
-                                        RoofShape.HIP -> R.string.roof_hip
-                                        RoofShape.THAI -> R.string.roof_thai
-                                    }
-                                ),
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                        },
+            val shapes = RoofShape.entries
+            SegmentedPills(
+                segments = shapes.map {
+                    Segment(
+                        stringResource(
+                            when (it) {
+                                RoofShape.FLAT -> R.string.roof_flat
+                                RoofShape.HIP -> R.string.roof_hip
+                                RoofShape.THAI -> R.string.roof_thai
+                            }
+                        )
                     )
-                }
-            }
+                },
+                selectedIndex = shapes.indexOf(ext.roofShape),
+                onSelect = { state.onRoofShape(shapes[it]) },
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             if (!flat) {
-                CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(2.dp)) {
-                    TextButton(onClick = { editing = EDIT_PITCH }) {
-                        Text(stringResource(R.string.roof_pitch, ext.pitch.toInt()))
-                    }
-                    TextButton(onClick = { editing = EDIT_EAVES }) {
-                        Text(stringResource(R.string.roof_eaves, ext.eaves.toInt()))
-                    }
-                    TextButton(onClick = { editing = EDIT_TAPER }) {
-                        Text(stringResource(R.string.roof_taper, (ext.hipFactor * 100f).toInt()))
-                    }
+                CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(6.dp)) {
+                    ValueChip(stringResource(R.string.roof_pitch, ext.pitch.toInt())) { editing = EDIT_PITCH }
+                    ValueChip(stringResource(R.string.roof_eaves, ext.eaves.toInt())) { editing = EDIT_EAVES }
+                    ValueChip(stringResource(R.string.roof_taper, (ext.hipFactor * 100f).toInt())) { editing = EDIT_TAPER }
                 }
             }
 
             // Only worth offering when there is a storey under the top one to reach out over.
             if (state.topLevel > 0) {
-                FilterChip(
+                ChoiceChip(
+                    label = stringResource(R.string.roof_cover_terrace),
                     selected = ext.coverTerrace,
                     onClick = { state.onRoofCoverTerrace(!ext.coverTerrace) },
-                    modifier = Modifier.height(MinTouchTarget),
-                    label = {
-                        Text(stringResource(R.string.roof_cover_terrace),
-                            style = MaterialTheme.typography.labelLarge)
-                    },
                 )
             }
 

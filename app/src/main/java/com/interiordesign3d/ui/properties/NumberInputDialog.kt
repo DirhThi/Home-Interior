@@ -20,7 +20,6 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -169,14 +168,7 @@ private fun StepButton(
     contentDescription: Int,
     onClick: () -> Unit,
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .size(MinTouchTarget)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
-    ) {
-        Icon(icon, stringResource(contentDescription), Modifier.size(20.dp))
-    }
+    PanelIconButton(icon, stringResource(contentDescription), onClick = onClick)
 }
 
 @Composable

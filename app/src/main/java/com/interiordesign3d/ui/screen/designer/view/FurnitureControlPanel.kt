@@ -3,6 +3,8 @@ package com.interiordesign3d.ui.screen.designer.view
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,14 +12,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
@@ -28,11 +28,11 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,9 +43,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.interiordesign3d.ui.theme.LocalGlass
+import com.interiordesign3d.ui.properties.fadeTrailingEdge
+import com.interiordesign3d.ui.properties.ChoiceChip
+import com.interiordesign3d.ui.properties.ValueChip
+import com.interiordesign3d.ui.properties.PanelIconButton
 import com.interiordesign3d.R
 import com.interiordesign3d.data.catalog.catalogItem
 import com.interiordesign3d.data.models.PlacedFurniture
+import com.interiordesign3d.ui.properties.GlassPane
 import com.interiordesign3d.ui.properties.AssetImage
 import com.interiordesign3d.ui.properties.CenterBox
 import com.interiordesign3d.ui.properties.CenterRow
@@ -73,32 +79,36 @@ private const val TAB_WALL = 3
 fun FurnitureControlPanel(item: PlacedFurniture, state: DesignerState) {
     var tab by remember { mutableIntStateOf(TAB_SIZE) }
 
-    Surface(
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest,
-        tonalElevation = 0.dp,
-        shadowElevation = 16.dp,
+    GlassPane(
+        shape = MaterialTheme.shapes.extraLarge,
+        strong = true,
+        elevation = 18.dp,
     ) {
         Column(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 4.dp),
+            Modifier.fillMaxWidth().padding(bottom = 4.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             PanelHeader(item = item, state = state)
 
-            ScrollableTabRow(
-                selectedTabIndex = tab,
-                containerColor = Color.Transparent,
-                edgePadding = 16.dp,
-                divider = {},
+            // Scrolls rather than squeezing: four labels of this length do not fit a phone, and an
+            // equal-weight track would clip them.
+            CenterRow(
+                Modifier
+                    .fillMaxWidth()
+                    .fadeTrailingEdge()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                Arrangement.spacedBy(6.dp),
             ) {
-                Tab(tab == TAB_SIZE, { tab = TAB_SIZE }, text = { TabLabel(R.string.furniture_scale) })
-                Tab(tab == TAB_COLOUR, { tab = TAB_COLOUR }, text = { TabLabel(R.string.furniture_color) })
-                if (item.isWallMounted) {
-                    Tab(tab == TAB_ROTATION, { tab = TAB_ROTATION }, text = { TabLabel(R.string.height_from_floor) })
-                } else {
-                    Tab(tab == TAB_ROTATION, { tab = TAB_ROTATION }, text = { TabLabel(R.string.furniture_rotation) })
-                }
-                Tab(tab == TAB_WALL, { tab = TAB_WALL }, text = { TabLabel(R.string.wall_mount) })
+                ChoiceChip(stringResource(R.string.furniture_scale), tab == TAB_SIZE) { tab = TAB_SIZE }
+                ChoiceChip(stringResource(R.string.furniture_color), tab == TAB_COLOUR) { tab = TAB_COLOUR }
+                ChoiceChip(
+                    stringResource(
+                        if (item.isWallMounted) R.string.height_from_floor else R.string.furniture_rotation
+                    ),
+                    tab == TAB_ROTATION,
+                ) { tab = TAB_ROTATION }
+                ChoiceChip(stringResource(R.string.wall_mount), tab == TAB_WALL) { tab = TAB_WALL }
             }
 
             Box(Modifier.fillMaxWidth().height(MinTouchTarget)) {
@@ -165,15 +175,17 @@ private fun PanelHeader(item: PlacedFurniture, state: DesignerState) {
             catalogItem(item.furnitureId)?.preview?.let { AssetImage(it, Modifier.size(34.dp)) }
             Text(item.furnitureName, style = MaterialTheme.typography.titleMedium, maxLines = 1)
         }
-        IconButton(
+        PanelIconButton(
+            Icons.Outlined.Delete,
+            stringResource(R.string.remove_item),
             onClick = state::onDeleteSelected,
-            colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error),
-        ) {
-            Icon(Icons.Outlined.Delete, stringResource(R.string.remove_item))
-        }
-        IconButton(onClick = state::onDeselect) {
-            Icon(Icons.Outlined.Close, stringResource(R.string.deselect))
-        }
+            danger = true,
+        )
+        PanelIconButton(
+            Icons.Outlined.Close,
+            stringResource(R.string.deselect),
+            onClick = state::onDeselect,
+        )
     }
 }
 
@@ -194,6 +206,7 @@ private fun SliderRow(
     sliderRange: ClosedFloatingPointRange<Float> = range,
     onSlide: (Float) -> Unit = onChange,
 ) {
+    val glass = LocalGlass.current
     var editing by remember(label) { mutableStateOf(false) }
 
     CenterRow(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp)) {
@@ -202,14 +215,14 @@ private fun SliderRow(
             onValueChange = onSlide,
             valueRange = sliderRange,
             modifier = Modifier.weight(1f),
+            colors = SliderDefaults.colors(
+                thumbColor = glass.accent,
+                activeTrackColor = glass.accent,
+                inactiveTrackColor = glass.content.copy(alpha = 0.18f),
+            ),
         )
         Spacer(Modifier.width(8.dp))
-        TextButton(
-            onClick = { editing = true },
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-        ) {
-            Text(readout, style = MaterialTheme.typography.labelLarge)
-        }
+        ValueChip(readout) { editing = true }
     }
 
     if (editing) {
@@ -278,6 +291,16 @@ private fun WallMountRow(item: PlacedFurniture, state: DesignerState) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
-        Switch(checked = item.isWallMounted, onCheckedChange = state::onToggleWallMount)
+        val glass = LocalGlass.current
+        Switch(
+            checked = item.isWallMounted,
+            onCheckedChange = state::onToggleWallMount,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = glass.onAccent,
+                checkedTrackColor = glass.accent,
+                uncheckedTrackColor = glass.content.copy(alpha = 0.12f),
+                uncheckedBorderColor = glass.content.copy(alpha = 0.28f),
+            ),
+        )
     }
 }

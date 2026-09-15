@@ -3,6 +3,7 @@ package com.interiordesign3d.ui.screen.designer.state
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.interiordesign3d.common.base.BaseScreenState
@@ -30,14 +31,40 @@ import com.interiordesign3d.ui.screen.designer.PlacementTool
 open class DesignerState : BaseScreenState() {
 
     // ── Plan ──────────────────────────────────────────────────────────────────
-    var floorPlan by mutableStateOf(FloorPlan())
+
+    private val planState = mutableStateOf(FloorPlan())
+    private val furnitureState = mutableStateOf(emptyList<PlacedFurniture>())
+
+    /**
+     * Bumped on every assignment to [floorPlan] / [placedFurniture].
+     *
+     * Auto-save watches these instead of the values themselves: both are structures of lists, so
+     * letting `snapshotFlow` compare them ran a deep structural equals on every frame of a drag.
+     * An Int changes just as reliably and costs nothing to compare.
+     */
+    var planRevision by mutableIntStateOf(0)
+        private set
+    var furnitureRevision by mutableIntStateOf(0)
+        private set
+
+    var floorPlan: FloorPlan
+        get() = planState.value
+        set(value) {
+            planState.value = value
+            planRevision++
+        }
     var drawingPhase by mutableStateOf(DrawingPhase.PLACING)
     var currentPath by mutableStateOf(emptyList<Int>())
     var snapEnabled by mutableStateOf(true)
     var placementTool by mutableStateOf(PlacementTool.NONE)
 
     // ── Furniture ─────────────────────────────────────────────────────────────
-    var placedFurniture by mutableStateOf(emptyList<PlacedFurniture>())
+    var placedFurniture: List<PlacedFurniture>
+        get() = furnitureState.value
+        set(value) {
+            furnitureState.value = value
+            furnitureRevision++
+        }
     var selectedId by mutableStateOf<String?>(null)
     var selectedOpeningId by mutableStateOf<String?>(null)
     var selectedStairId by mutableStateOf<String?>(null)
@@ -114,10 +141,8 @@ open class DesignerState : BaseScreenState() {
 
     // ── Navigation / persistence ──────────────────────────────────────────────
     open fun onBack() {}
-    open fun onSave() {}
-    open fun onEditFloorPlan() {}
-    open fun onEnterDesign() {}
-    open fun onToggleExterior() {}
+    /** One entry point for all three editor modes — the tab bar is the only thing that switches them. */
+    open fun onModeChange(mode: EditorMode) {}
     open fun onSelectLevel(level: Int) {
         activeLevel = level
         selectedId = null
