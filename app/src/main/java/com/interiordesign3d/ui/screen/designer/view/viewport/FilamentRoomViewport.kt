@@ -58,6 +58,9 @@ private const val BRIDGE_NUDGE_CM = 0.15f
 private val FLOOR_SLAB_M = FLOOR_SLAB_CM * CM
 private const val OPENING_CASED = "doorway"      // cased opening: hole and reveal, no leaf
 private const val DOOR_OPEN_DEG = 78f
+private const val RAIL_H_M = 0.90f       // handrail above the nosing line
+private const val RAIL_T_CM = 4f
+private const val BALUSTER_T_CM = 3.5f
 private const val OPEN_PLAN_MIN_CM = 200f        // a cased opening this wide loses its lintel
 private const val DOOR_HEIGHT_M = 2.10f
 private const val DOUBLE_DOOR_MIN_CM = 130f
@@ -491,7 +494,9 @@ private class RoomScene(
                 // Steps share out across the runs by length; the landing between them is flat and
                 // sits level with the last step of the run feeding it.
                 var stepIndex = 0
+                val runStart = IntArray(runs.size)
                 runs.forEachIndexed { ri, (a, b) ->
+                    runStart[ri] = stepIndex
                     val isLast = ri == runs.lastIndex
                     val n = if (isLast) count - stepIndex
                             else ((count * runLen[ri] / totalRun).roundToInt()).coerceIn(1, count - stepIndex - 1)
@@ -508,12 +513,49 @@ private class RoomScene(
                     }
                     stepIndex += n
 
-                    // Landing at the top of every run but the last.
+                    // Handrail down both sides. The rail is one raking box along the nosing line and
+                    // a baluster stands on every nosing, so the two always meet whatever the pitch.
+                    val riseRun = n * riser
+                    val pitch = Math.toDegrees(atan2(riseRun.toDouble(), (len * CM).toDouble())).toFloat()
+                    val railLen = hypot(len * CM, riseRun)
+                    val nX = -uy; val nY = ux            // plan normal, to step off to either side
+                    val railY = baseY + runStart[ri] * riser + RAIL_H_M
+                    for (side in intArrayOf(-1, 1)) {
+                        val off = side * (st.widthCm / 2f - RAIL_T_CM / 2f)
+                        val sx = a.x + nX * off; val sy = a.y + nY * off
+                        buildBox(stairMi, railLen, RAIL_T_CM * CM, RAIL_T_CM * CM,
+                            wx(sx + ux * len / 2f), railY + riseRun / 2f, wz(sy + uy * len / 2f),
+                            rot, stairTileM, pitch)
+                        for (k in 0 until n) {
+                            val d = (k + 1) * tread
+                            buildBox(stairMi, BALUSTER_T_CM * CM, RAIL_H_M, BALUSTER_T_CM * CM,
+                                wx(sx + ux * d), baseY + (runStart[ri] + k + 1) * riser,
+                                wz(sy + uy * d), rot, stairTileM)
+                        }
+                    }
+
+                    // Landing at the top of every run but the last, guarded on the sides no run
+                    // arrives at — otherwise the two flights' rails just stop in mid-air.
                     if (!isLast) {
+                        val deckY = baseY + stepIndex * riser
                         st.landings().getOrNull(ri)?.let { (c, su, sv) ->
                             buildBox(stairMi, su * CM, riser, sv * CM,
-                                wx(c.x), baseY + (stepIndex - 1) * riser, wz(c.y),
-                                -st.rotationDeg, stairTileM)
+                                wx(c.x), deckY - riser, wz(c.y), -st.rotationDeg, stairTileM)
+                        }
+                        st.landingRails().getOrNull(ri)?.forEach { (ra, rb) ->
+                            val rl = hypot(rb.x - ra.x, rb.y - ra.y)
+                            if (rl < 1f) return@forEach
+                            val rux = (rb.x - ra.x) / rl; val ruy = (rb.y - ra.y) / rl
+                            val rrot = Math.toDegrees(atan2(-ruy.toDouble(), rux.toDouble())).toFloat()
+                            buildBox(stairMi, rl * CM, RAIL_T_CM * CM, RAIL_T_CM * CM,
+                                wx((ra.x + rb.x) / 2f), deckY + RAIL_H_M, wz((ra.y + rb.y) / 2f),
+                                rrot, stairTileM)
+                            val posts = (rl / 25f).roundToInt().coerceIn(2, 12)
+                            for (q in 0..posts) {
+                                val d = rl * q / posts
+                                buildBox(stairMi, BALUSTER_T_CM * CM, RAIL_H_M, BALUSTER_T_CM * CM,
+                                    wx(ra.x + rux * d), deckY, wz(ra.y + ruy * d), rrot, stairTileM)
+                            }
                         }
                     }
                 }
@@ -771,8 +813,14 @@ private class RoomScene(
 
     /** Box sx×sy×sz with its bottom centre at (px,py,pz), rotated about Y. Face UVs are in metres /
      *  [tileM] so the texture repeats at real size regardless of the box dimensions. */
+    /**
+     * [pitchDeg] tilts the box about its own length, so a box can rake: positive lifts its +X end.
+     * Rotation happens about the local origin — centred in X and Z, at the base in Y — so place a
+     * raking box at the midpoint of the line it should follow.
+     */
     private fun buildBox(mi: MaterialInstance, sx: Float, sy: Float, sz: Float,
-                         px: Float, py: Float, pz: Float, rotDeg: Float, tileM: Float): Int {
+                         px: Float, py: Float, pz: Float, rotDeg: Float, tileM: Float,
+                         pitchDeg: Float = 0f): Int {
         val w = sx / 2f; val h = sz / 2f; val t = 1f / tileM
         val qPZ = floatArrayOf(0f, 0f, 0f, 1f); val qNZ = floatArrayOf(0f, 1f, 0f, 0f)
         val qPX = floatArrayOf(0f, 0.70710678f, 0f, 0.70710678f); val qNX = floatArrayOf(0f, -0.70710678f, 0f, 0.70710678f)
@@ -790,7 +838,13 @@ private class RoomScene(
         for (f in 0 until 6) { val b = f * 4; intArrayOf(b, b + 1, b + 2, b, b + 2, b + 3).forEach { ib.putShort(it.toShort()) } }
         ib.flip()
         val rad = Math.toRadians(rotDeg.toDouble()); val c = cos(rad).toFloat(); val sn = sin(rad).toFloat()
-        val m = floatArrayOf(c, 0f, -sn, 0f, 0f, 1f, 0f, 0f, sn, 0f, c, 0f, px, py, pz, 1f)
+        val pr = Math.toRadians(pitchDeg.toDouble()); val cp = cos(pr).toFloat(); val sp = sin(pr).toFloat()
+        val m = floatArrayOf(
+            c * cp, sp, -sn * cp, 0f,
+            -c * sp, cp, sn * sp, 0f,
+            sn, 0f, c, 0f,
+            px, py, pz, 1f,
+        )
         return addMesh(vb, 24, ib, 36, mi, Box(0f, sy / 2f, 0f, w, sy / 2f, h), m, true)
     }
 

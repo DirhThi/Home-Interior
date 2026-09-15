@@ -20,6 +20,10 @@ everything below sits under Unreleased. When the first build goes out, cut a
   the open sides carry a floor slab edge — without those the corner flips inside
   out as a Necker cube. Canvas only: no 3D engine, no cached bitmap, and it cannot
   show a stale picture.
+- **Handrails on every flight.** A raking rail and balusters down both sides of each
+  run, and a guard on the landing sides no run arrives at, all derived from the same
+  nosing line so they meet whatever the pitch. `buildBox` gained a `pitchDeg` that
+  tilts a box about its own length — a pitched roof will want the same thing.
 - **Stair proportions per shape.** Each shape carries its own default depth, so a
   new flight gets a ~25 cm tread instead of 17.5 cm; `legCm` and `wellCm` are
   editable in the panel; and the panel warns when a flight is squeezed shallower

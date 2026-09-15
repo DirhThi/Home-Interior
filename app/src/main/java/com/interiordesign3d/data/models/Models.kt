@@ -98,11 +98,14 @@ data class Stair(
      * runs only — railing them continuously through a turn left the corner steps fanned out with
      * gaps between them instead of a platform.
      */
-    fun runs(): List<Pair<WallPoint, WallPoint>> {
+    fun runs(): List<Pair<WallPoint, WallPoint>> =
+        localRuns().map { (a, b) -> toPlanFromBox(a) to toPlanFromBox(b) }
+
+    private fun localRuns(): List<Pair<WallPoint, WallPoint>> {
         val w = widthCm
         val half = w / 2f
         val l = lengthCm
-        val local = when (shape) {
+        return when (shape) {
             StairShape.STRAIGHT -> listOf(WallPoint(half, 0f) to WallPoint(half, l))
             StairShape.L_SHAPED -> listOf(
                 WallPoint(half, 0f) to WallPoint(half, l - w),
@@ -113,20 +116,47 @@ data class Stair(
                 WallPoint(w + wellCm + half, l - w) to WallPoint(w + wellCm + half, 0f),
             )
         }
-        return local.map { (a, b) -> toPlanFromBox(a) to toPlanFromBox(b) }
     }
 
     /** Flat platforms where runs meet: centre in plan, plus size along the box's own axes. */
-    fun landings(): List<Triple<WallPoint, Float, Float>> {
+    fun landings(): List<Triple<WallPoint, Float, Float>> =
+        localLandings().map { (c, su, sv) -> Triple(toPlanFromBox(c), su, sv) }
+
+    private fun localLandings(): List<Triple<WallPoint, Float, Float>> {
         val w = widthCm
         val l = lengthCm
         return when (shape) {
             StairShape.STRAIGHT -> emptyList()
-            StairShape.L_SHAPED ->
-                listOf(Triple(toPlanFromBox(WallPoint(w / 2f, l - w / 2f)), w, w))
-            StairShape.U_SHAPED ->
-                listOf(Triple(toPlanFromBox(WallPoint(boxWidth / 2f, l - w / 2f)), boxWidth, w))
+            StairShape.L_SHAPED -> listOf(Triple(WallPoint(w / 2f, l - w / 2f), w, w))
+            StairShape.U_SHAPED -> listOf(Triple(WallPoint(boxWidth / 2f, l - w / 2f), boxWidth, w))
         }
+    }
+
+    /**
+     * Per landing, the edges no run arrives at — the open sides, which is exactly where a guard rail
+     * belongs. Deriving it beats hard-coding per shape: the L and U landings differ in which sides
+     * are free, and a new shape would get its rails for nothing.
+     */
+    fun landingRails(): List<List<Pair<WallPoint, WallPoint>>> {
+        val ends = localRuns().flatMap { listOf(it.first, it.second) }
+        return localLandings().map { (c, su, sv) ->
+            val x0 = c.x - su / 2f; val x1 = c.x + su / 2f
+            val y0 = c.y - sv / 2f; val y1 = c.y + sv / 2f
+            listOf(
+                WallPoint(x0, y0) to WallPoint(x1, y0),
+                WallPoint(x1, y0) to WallPoint(x1, y1),
+                WallPoint(x1, y1) to WallPoint(x0, y1),
+                WallPoint(x0, y1) to WallPoint(x0, y0),
+            ).filter { (a, b) -> ends.none { touchesSegment(it, a, b) } }
+                .map { (a, b) -> toPlanFromBox(a) to toPlanFromBox(b) }
+        }
+    }
+
+    private fun touchesSegment(p: WallPoint, a: WallPoint, b: WallPoint): Boolean {
+        val dx = b.x - a.x; val dy = b.y - a.y
+        val len2 = (dx * dx + dy * dy).coerceAtLeast(1e-3f)
+        val t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / len2).coerceIn(0f, 1f)
+        return kotlin.math.hypot(a.x + dx * t - p.x, a.y + dy * t - p.y) < 1f
     }
 
     private fun toPlanFromBox(p: WallPoint) =

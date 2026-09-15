@@ -8,7 +8,7 @@ debts that grew out of the stair work and were never on that list.
 
 | Group | Count | Who |
 |---|---|---|
-| [Debt](#debt) — fallout from work already landed | 1 | me |
+| [Debt](#debt) — fallout from work already landed | 0 | me |
 | [Step 7 — Exterior](exterior.md) | 6 | me |
 | [Verify on a device](#verify-on-a-device) | 6 | you |
 | [Drop](#drop-these-two) | 2 | — |
@@ -75,11 +75,15 @@ and `wellCm` are editable, and the panel warns when a flight ends up shallower
 than 22 cm because `fitStair` squeezed it into a small room. See
 [stairs.md § Proportions](stairs.md#proportions--done).
 
-### 3. No handrails
+### ~~3. No handrails~~ — done
 
-See [stairs.md § Handrails](stairs.md#open-handrails). No new GLB needed; the
-blocker is that `buildBox` can only rotate about Y, so a raking rail cannot be
-expressed yet. A pitched roof needs the same fix, so do it once for both.
+**Done** — `buildBox` gained a `pitchDeg` parameter, so boxes can rake. Runs get a
+rail and balusters down both sides; landings are guarded on the sides no run
+arrives at. See [stairs.md § Handrails](stairs.md#handrails--done). The same
+parameter is what a pitched roof needs, so [exterior.md](exterior.md) t7-3 is no
+longer blocked.
+
+Still open: the stairwell opening in the upper slab has no guard round it.
 
 ---
 

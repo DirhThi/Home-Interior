@@ -108,7 +108,28 @@ inside the 16–19 cm a stair should use. But 16 steps need roughly
 **Not** a fix, and still not: adding a step-count control. Rise is locked to one
 storey, so fewer steps only means a taller riser. Length is the honest lever.
 
-## Open: handrails
+## Handrails — done
+
+Built from boxes, no new asset, tinted with the Stairs preset so a handrail follows
+whatever timber the flight is set to.
+
+- **Raking rail**, one per side of every run: a single box along the nosing line,
+  tilted by `atan(rise / going)`.
+- **Balusters** standing on every nosing, `RAIL_H_M` tall, so rail and baluster meet
+  exactly whatever the pitch — both are derived from the same nosing line.
+- **Landing guard** on the sides no run arrives at. `Stair.landingRails()` derives
+  those sides rather than hard-coding them per shape: it takes the landing rectangle
+  and drops any edge a run endpoint touches. An L frees two sides, a U frees three,
+  and a new shape would get its rails for nothing.
+
+The blocker below is gone: `buildBox` now takes `pitchDeg`, which tilts a box about
+its own length. **A flat or single-pitch roof can use the same parameter** — see
+[exterior.md](exterior.md) t7-3.
+
+Not there yet: no rail where a flight meets the floor above, so the stairwell itself
+is still an unguarded hole in the upper slab.
+
+### How it was blocked
 
 No new asset needed. `runs()` and `landings()` already give the centre lines,
 and everything can be boxes tinted with the stair material (`stairMi`), so a
@@ -123,7 +144,7 @@ Three pieces, in increasing difficulty:
    Also pure `buildBox`. Skip any side that a wall already closes off.
 3. **The raking rail itself** — blocked.
 
-### Why 3 is blocked
+### Why the raking rail was blocked
 
 `buildBox` (`FilamentRoomViewport.kt:772`) builds its transform as a pure
 Y-rotation:

@@ -61,10 +61,8 @@ house span rather than a kilometre.
 
 ## t7-3 — Flat or single-pitch roof
 
-**Blocked on the same thing handrails are.** `buildBox`
-(`FilamentRoomViewport.kt:772`) builds a pure Y-rotation transform, so a slab
-cannot be tilted. Add a `pitchDeg` parameter there and both this and the raking
-handrail unblock — see [stairs.md § Why 3 is blocked](stairs.md#why-3-is-blocked).
+**No longer blocked.** `buildBox` takes a `pitchDeg` that tilts a box about its own
+length — added for the raking handrail, and exactly what a sloped slab needs.
 
 Then:
 
