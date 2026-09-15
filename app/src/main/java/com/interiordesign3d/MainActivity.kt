@@ -8,13 +8,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.interiordesign3d.data.repository.AppPrefs
+import com.interiordesign3d.data.repository.ThemeMode
 import com.interiordesign3d.ui.InteriorDesignNavHost
 import com.interiordesign3d.ui.theme.InteriorDesignTheme
 
 class InteriorDesignApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Init global singletons here (e.g. DB, DI, analytics)
+        AppPrefs.init(this)
     }
 }
 
@@ -27,7 +29,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            val darkTheme = isSystemInDarkTheme()
+            val darkTheme = when (AppPrefs.themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
             InteriorDesignTheme(darkTheme = darkTheme) {
                 InteriorDesignNavHost()
             }

@@ -23,19 +23,16 @@
 
     <!-- Model credits -->
     <string name="model_credits">3D model credits</string>
+    <string name="settings">Settings</string>
+    <string name="appearance">Appearance</string>
+    <string name="theme_system">Auto</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
     <string name="close">Close</string>
 
     <!-- Designer · top bar -->
-    <string name="floor_plan">Floor plan</string>
-    <string name="design_mode">Design</string>
-    <string name="hint_placing">Tap to place wall corners</string>
-    <string name="hint_closed">Room closed — tap Done to confirm</string>
-    <string name="hint_editing">Tap a corner to start another room</string>
     <string name="hint_design">Drag furniture to arrange it</string>
     <string name="back">Back</string>
-    <string name="save">Save</string>
-    <string name="saved">Saved</string>
-    <string name="edit_floor_plan">Edit floor plan</string>
     <string name="surfaces">Walls and floor</string>
 
     <!-- Designer · floor plan toolbar -->
@@ -64,7 +61,6 @@
     <string name="balcony_width_label">balcony width</string>
     <string name="balcony_depth">D %1$d</string>
     <string name="balcony_depth_label">how far it projects</string>
-    <string name="balcony_inside">This wall has rooms on both sides — a balcony on it would hang into the next room.</string>
     <string name="outside">Outside</string>
     <string name="roof">Roof</string>
     <string name="roof_flat">Flat</string>
@@ -100,11 +96,12 @@
     <string name="stair_width_label">stair width</string>
     <string name="stair_length_label">stair length</string>
     <string name="opening_hint">Tap a wall to place · tap a marker to remove</string>
-    <string name="exterior_mode">Exterior</string>
+    <string name="mode_plan">Plan</string>
+    <string name="mode_interior">Interior</string>
+    <string name="mode_exterior">Exterior</string>
+    <string name="tools">Placement tools</string>
+    <string name="close_tools">Close tools</string>
     <string name="hint_exterior">Orbit to see the outside</string>
-    <string name="go_outside">Step outside</string>
-    <string name="go_inside">Step inside</string>
-    <string name="design_room">Design room</string>
     <string name="add_level">Add storey</string>
     <string name="plan_hint_empty">Tap to place wall corners</string>
     <string name="plan_hint_close">Tap the first corner to close the room</string>

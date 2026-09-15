@@ -8,6 +8,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -30,3 +36,25 @@ fun Modifier.onClickNotRipple(enabled: Boolean = true, onClick: () -> Unit): Mod
 
 /** Keeps a control tappable at 48dp even when it is drawn smaller. */
 fun Modifier.touchTarget(size: Dp = MinTouchTarget) = defaultMinSize(size, size)
+
+/**
+ * Fades the trailing edge of a horizontally scrolling row.
+ *
+ * A chip row that runs off the screen gets cut through the middle of a glyph, which reads as broken
+ * rather than as "there is more over here". The fade says the row continues.
+ */
+fun Modifier.fadeTrailingEdge(width: Dp = 28.dp) = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val w = width.toPx().coerceAtMost(size.width)
+        drawRect(
+            brush = Brush.horizontalGradient(
+                0f to Color.Black,
+                1f to Color.Transparent,
+                startX = size.width - w,
+                endX = size.width,
+            ),
+            blendMode = BlendMode.DstIn,
+        )
+    }

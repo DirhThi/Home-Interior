@@ -1,5 +1,7 @@
 package com.interiordesign3d.ui.theme
 
+import android.app.Activity
+import android.content.ContextWrapper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -8,11 +10,14 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import com.interiordesign3d.ui.theme.InteriorColors as C
 
-private val LightColorScheme = lightColorScheme(
+val LightColorScheme = lightColorScheme(
     primary                 = C.Moss40,
     onPrimary               = Color.White,
     primaryContainer        = C.Moss95,
@@ -56,7 +61,7 @@ private val LightColorScheme = lightColorScheme(
     onErrorContainer        = C.Error10,
 )
 
-private val DarkColorScheme = darkColorScheme(
+val DarkColorScheme = darkColorScheme(
     primary                 = C.Moss80,
     onPrimary               = C.Moss20,
     primaryContainer        = C.Moss30,
@@ -113,8 +118,24 @@ fun InteriorDesignTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        // enableEdgeToEdge picks bar icons from the OS setting; the in-app switch has to win.
+        SideEffect {
+            var ctx = view.context
+            while (ctx is ContextWrapper && ctx !is Activity) ctx = ctx.baseContext
+            (ctx as? Activity)?.window?.let { window ->
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = !darkTheme
+                    isAppearanceLightNavigationBars = !darkTheme
+                }
+            }
+        }
+    }
+
     CompositionLocalProvider(
-        LocalInteriorAccents provides if (darkTheme) DarkAccents else LightAccents
+        LocalInteriorAccents provides if (darkTheme) DarkAccents else LightAccents,
+        LocalGlass provides if (darkTheme) StudioGlass else DayGlass,
     ) {
         MaterialTheme(
             colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
