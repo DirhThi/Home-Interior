@@ -11,6 +11,9 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Added
 
+- **The Home card reads the plan.** Each row now draws the actual floor plan as its
+  thumbnail and shows room count, area, storeys and ceiling height — all derived
+  from `floorPlanJson`. A room with nothing drawn says so instead of faking a size.
 - **Stairs**, straight, L-shaped and U-shaped. A flight is described as straight
   runs plus flat landings, cuts its own rectangular opening in the slab above,
   and is scaled down to fit inside one room on the storey above. Steps are shared
@@ -55,6 +58,13 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Fixed
 
+- **Every Home card showed the same frozen values** — `380 × 520 cm`, `Hardwood`
+  and one fixed pair of colours — because `DesignRoom` kept summary columns that
+  stopped being written once `FloorPlan` became the source of truth.
+- **A schema change crashed the app on launch** rather than wiping the database.
+  `fallbackToDestructiveMigration()` only runs when `@Database(version)` moves; at
+  an unchanged version Room compares a schema hash and throws. The version is now
+  bumped on every schema change.
 - Number dialog's Apply used the first value the field ever held, not what was
   typed. (`5917970`)
 - Toolbar labels clipped to `U n` / `Cl e`. (`e9a4984`)
@@ -71,6 +81,10 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Removed
 
+- Nine dead columns from `DesignRoom` (`widthCm`, `lengthCm`, `wallColor`,
+  `floorColor`, `floorMaterial`, `thumbnailPath`, `wallPointsJson`,
+  `wallPresetIdx`, `floorPresetIdx`), the `FloorMaterial` enum and both Room
+  `TypeConverter`s that existed only to serve them.
 - The legacy Canvas renderer (`Room3DViewport`), its toggle and the duplicate
   zoom buttons. Filament is the only renderer now, with no fallback. (`7c67454`)
 - `ColorPickerScreen` and its route — it never wrote to the database. Folded into

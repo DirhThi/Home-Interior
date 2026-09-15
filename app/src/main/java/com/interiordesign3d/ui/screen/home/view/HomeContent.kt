@@ -90,11 +90,11 @@ fun HomeContent(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(state.rooms, key = { it.id }) { room ->
+                items(state.rooms, key = { it.room.id }) { item ->
                     SwipeableRoomCard(
-                        room = room,
-                        onClick = { state.onOpenRoom(room.id) },
-                        onDelete = { state.onDeleteRoom(room) },
+                        item = item,
+                        onClick = { state.onOpenRoom(item.room.id) },
+                        onDelete = { state.onDeleteRoom(item.room) },
                     )
                 }
                 item { Spacer(Modifier.height(88.dp)) }

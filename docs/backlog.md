@@ -8,7 +8,7 @@ debts that grew out of the stair work and were never on that list.
 
 | Group | Count | Who |
 |---|---|---|
-| [Debt](#debt) — fallout from work already landed | 3 | me |
+| [Debt](#debt) — fallout from work already landed | 2 | me |
 | [Step 7 — Exterior](exterior.md) | 6 | me |
 | [Verify on a device](#verify-on-a-device) | 6 | you |
 | [Drop](#drop-these-two) | 2 | — |
@@ -17,7 +17,7 @@ debts that grew out of the stair work and were never on that list.
 
 ## Debt
 
-### 1. The Home card paints colours nothing writes any more
+### ~~1. The Home card paints colours nothing writes any more~~ — done
 
 **Where:** `ui/screen/home/view/RoomCard.kt:74-75`, `data/models/Models.kt:344-352`
 
@@ -35,7 +35,12 @@ wallColor        floorColor        wallPresetIdx        floorPresetIdx
 `#F5F0EB` wall over a `#C4A882` floor regardless of what the room actually
 looks like. It is not a crash, it is a thumbnail that stopped telling the truth.
 
-**Fix**
+**Done** — the card now reads the plan instead: `HomeViewModel` decodes
+`floorPlanJson` into a `RoomListItem`, the thumbnail is `PlanThumbnail` drawing the
+real outline, and the two text lines are room count + area and storeys + ceiling.
+Nine dead columns, the `FloorMaterial` enum and both `TypeConverter`s went with it.
+
+What it took, for the record:
 
 1. Decode `floorPlanJson` in `HomeViewModel` — not in the composable; the
    architecture rule is that composables never touch the DB or its payloads —
@@ -116,9 +121,25 @@ flight, so `FloorPlan.fitStair` has to scale it down.
 
 ---
 
+## Found while fixing debt 1
+
+### Drawing a plan and pressing Back throws it away
+
+`persistPlan()` runs only from **Save** and from entering Design mode
+(`DesignerViewModel.kt:48`, `:63`). `onBack()` just pops. Draw a room, press the
+system Back button, and the work is gone with no warning — I lost a storey to it
+while testing. One-line fix (persist, then pop), but back-button behaviour is worth
+a deliberate decision rather than a drive-by change.
+
+### `DesignRoom.heightCm` is the last summary column left
+
+It is genuinely maintained (`DesignerViewModel.kt:311`), so it is not stale. But
+ceiling height is a property of a storey, not of a building — it belongs on
+`LevelSurface` next to the wall and floor presets, and then the entity holds
+nothing but identity, timestamps and three viewer toggles.
+
 ## Dead code noticed while writing this
 
 - `Stair.centreLinePlan()` (`Models.kt:204`) — nothing calls it since the 2D
   canvas moved to `runs()`.
 - `Stair.centreLine()` is only reachable through `centreLinePlan()`.
-- `FloorMaterial` — see debt 1, point 4.

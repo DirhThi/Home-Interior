@@ -332,39 +332,26 @@ data class FloorPlan(
 
 // ─── DesignRoom ───────────────────────────────────────────────────────────────
 
+/**
+ * The room record. It deliberately holds nothing that [FloorPlan] already knows: size, shape, room
+ * count and every wall/floor finish live in [floorPlanJson]. Summary columns here went stale the
+ * moment the plan took over, and the Home card spent a while showing the values they froze at.
+ */
 @Entity(tableName = "rooms")
 @Parcelize
 @Serializable
 data class DesignRoom(
     @PrimaryKey val id: String,
     val name: String,
-    val widthCm: Float,
-    val lengthCm: Float,
     val heightCm: Float,
-    val wallColor: String = "#F5F0EB",
-    val floorMaterial: FloorMaterial = FloorMaterial.HARDWOOD,
-    val floorColor: String = "#C4A882",
-    val thumbnailPath: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val wallPointsJson: String = "",
-    val wallPresetIdx: Int = 0,
-    val floorPresetIdx: Int = 0,
     val stairPresetIdx: Int = 2,   // a different timber from the floor by default, so a flight reads
     val shadowsEnabled: Boolean = false,
     val autoHideWalls: Boolean = false,
     // JSON-encoded FloorPlan (multi-room with shared nodes)
     val floorPlanJson: String = ""
 ) : Parcelable
-
-enum class FloorMaterial(val displayName: String) {
-    HARDWOOD("Hardwood"),
-    MARBLE("Marble"),
-    TILE("Tile"),
-    CARPET("Carpet"),
-    CONCRETE("Concrete"),
-    LAMINATE("Laminate")
-}
 
 // ─── Placed Furniture (in a room) ─────────────────────────────────────────────
 

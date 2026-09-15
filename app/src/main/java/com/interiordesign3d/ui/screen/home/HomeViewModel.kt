@@ -6,14 +6,20 @@ import com.interiordesign3d.R
 import com.interiordesign3d.common.base.BaseViewModel
 import com.interiordesign3d.common.base.Navigator
 import com.interiordesign3d.data.models.DesignRoom
+import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.PlacedFurniture
 import com.interiordesign3d.data.plans.SamplePlan
 import com.interiordesign3d.data.plans.readSamplePlanJson
 import com.interiordesign3d.data.repository.AppDatabase
 import com.interiordesign3d.ui.Screen
 import com.interiordesign3d.ui.screen.home.state.HomeState
+import com.interiordesign3d.ui.screen.home.state.RoomListItem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import java.util.UUID
 
 class HomeViewModel(app: Application, navigator: Navigator) : BaseViewModel(app, navigator) {
@@ -30,10 +36,13 @@ class HomeViewModel(app: Application, navigator: Navigator) : BaseViewModel(app,
     init {
         screenState.loading = true
         viewModelScope.launch {
-            db.roomDao().getAllRooms().collect { rooms ->
-                screenState.rooms = rooms
-                screenState.loading = false
-            }
+            db.roomDao().getAllRooms()
+                .map { rooms -> rooms.map { RoomListItem(it, it.plan()) } }
+                .flowOn(Dispatchers.Default)
+                .collect { items ->
+                    screenState.rooms = items
+                    screenState.loading = false
+                }
         }
     }
 
@@ -45,8 +54,6 @@ class HomeViewModel(app: Application, navigator: Navigator) : BaseViewModel(app,
                 DesignRoom(
                     id = id,
                     name = plan?.label ?: app.getString(R.string.new_room),
-                    widthCm = 380f,
-                    lengthCm = 520f,
                     heightCm = 260f,
                     floorPlanJson = planJson,
                 )
@@ -55,6 +62,12 @@ class HomeViewModel(app: Application, navigator: Navigator) : BaseViewModel(app,
             navigateTo(Screen.RoomDesigner.createRoute(id))
         }
     }
+
+    /** A plan the card can read. A row written by a newer build may not decode — show it as empty. */
+    private fun DesignRoom.plan(): FloorPlan =
+        floorPlanJson.takeIf { it.isNotBlank() }
+            ?.let { runCatching { Json.decodeFromString<FloorPlan>(it) }.getOrNull() }
+            ?: FloorPlan()
 
     /** Deletes the room and its furniture, keeping both around so the snackbar can put them back. */
     private fun deleteRoom(room: DesignRoom) {

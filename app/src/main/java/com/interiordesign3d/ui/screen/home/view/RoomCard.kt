@@ -26,18 +26,19 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
-import com.interiordesign3d.data.models.DesignRoom
+import com.interiordesign3d.data.models.FloorPlan
+import com.interiordesign3d.data.plans.areaM2
 import com.interiordesign3d.ui.properties.CenterBox
 import com.interiordesign3d.ui.properties.CenterRow
-import com.interiordesign3d.ui.properties.parseHexColor
 import com.interiordesign3d.ui.properties.rounded
+import com.interiordesign3d.ui.screen.home.state.RoomListItem
 
 @Composable
-fun SwipeableRoomCard(room: DesignRoom, onClick: () -> Unit, onDelete: () -> Unit) {
+fun SwipeableRoomCard(item: RoomListItem, onClick: () -> Unit, onDelete: () -> Unit) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) { onDelete(); true } else false
@@ -65,14 +66,14 @@ fun SwipeableRoomCard(room: DesignRoom, onClick: () -> Unit, onDelete: () -> Uni
             }
         },
     ) {
-        RoomCard(room = room, onClick = onClick)
+        RoomCard(item = item, onClick = onClick)
     }
 }
 
 @Composable
-private fun RoomCard(room: DesignRoom, onClick: () -> Unit) {
-    val wallColor = parseHexColor(room.wallColor, MaterialTheme.colorScheme.surfaceContainerHighest)
-    val floorColor = parseHexColor(room.floorColor, MaterialTheme.colorScheme.tertiaryContainer)
+private fun RoomCard(item: RoomListItem, onClick: () -> Unit) {
+    val plan = item.plan
+    val drawn = plan.rooms.isNotEmpty()
 
     Card(
         onClick = onClick,
@@ -88,29 +89,33 @@ private fun RoomCard(room: DesignRoom, onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            RoomThumbnail(wallColor = wallColor, floorColor = floorColor)
+            RoomThumbnail(plan = plan, drawn = drawn)
 
             Column(Modifier.weight(1f)) {
                 Text(
-                    room.name,
+                    item.room.name,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                 )
                 Spacer(Modifier.height(3.dp))
                 Text(
-                    stringResource(
-                        R.string.room_size,
-                        room.widthCm.toInt(),
-                        room.lengthCm.toInt(),
-                        room.heightCm.toInt(),
-                    ),
+                    if (drawn) pluralStringResource(
+                        R.plurals.plan_rooms_area,
+                        plan.rooms.size,
+                        plan.rooms.size,
+                        plan.areaM2(),
+                    ) else stringResource(R.string.room_not_drawn),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    room.floorMaterial.displayName,
+                    if (drawn && plan.levelCount > 1) stringResource(
+                        R.string.room_levels_ceiling,
+                        plan.levelCount,
+                        item.room.heightCm.toInt(),
+                    ) else stringResource(R.string.room_ceiling, item.room.heightCm.toInt()),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -125,29 +130,26 @@ private fun RoomCard(room: DesignRoom, onClick: () -> Unit) {
     }
 }
 
-/** Wall colour as the tile, floor colour as the band underneath — a glanceable stand-in for a render. */
+/** The plan drawn to scale — a better stand-in for a render than a flat colour swatch was. */
 @Composable
-private fun RoomThumbnail(wallColor: Color, floorColor: Color) {
+private fun RoomThumbnail(plan: FloorPlan, drawn: Boolean) {
     Box(
         Modifier
             .size(64.dp)
             .rounded(12.dp)
-            .background(wallColor)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
     ) {
-        Box(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(18.dp)
-                .background(floorColor)
-        )
-        CenterBox(Modifier.fillMaxSize()) {
-            Icon(
-                Icons.Outlined.Weekend,
-                null,
-                Modifier.size(26.dp),
-                tint = MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f),
-            )
+        if (drawn) {
+            PlanThumbnail(plan, Modifier.fillMaxSize())
+        } else {
+            CenterBox(Modifier.fillMaxSize()) {
+                Icon(
+                    Icons.Outlined.Weekend,
+                    null,
+                    Modifier.size(26.dp),
+                    tint = MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f),
+                )
+            }
         }
     }
 }

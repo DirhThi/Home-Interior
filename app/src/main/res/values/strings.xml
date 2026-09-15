@@ -14,7 +14,9 @@
     <string name="start_from_plan">Start from a plan</string>
     <string name="sample_plans">Sample plans</string>
     <string name="sample_plans_body">Ready-made layouts you can furnish straight away, or reshape.</string>
-    <string name="room_size">%1$d × %2$d cm · ceiling %3$d cm</string>
+    <string name="room_not_drawn">No plan drawn yet</string>
+    <string name="room_ceiling">Ceiling %1$d cm</string>
+    <string name="room_levels_ceiling">%1$d storeys · ceiling %2$d cm</string>
     <string name="room_deleted">%1$s deleted</string>
     <string name="undo">Undo</string>
     <string name="delete">Delete</string>

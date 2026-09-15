@@ -10,7 +10,7 @@ how well it has actually been checked, and what is fragile.
 |---|---|
 | Version | `versionName 1.0`, `versionCode 1`, never released, no git tags |
 | Build | `./gradlew assembleDebug` green |
-| Database | Room v1, destructive fallback, no migrations by design |
+| Database | Room v2, destructive fallback, no migrations by design (bump the version on every schema change) |
 | Code | 45 Kotlin files, ~6,800 lines |
 | Assets | 6.7 MB — 145 GLB, 144 WebP previews, 4 sample plans |
 | Tests | none |
@@ -94,10 +94,9 @@ are no handrails and no pitched roof. One shared fix unblocks both — see
 `7c67454`. If Filament fails to initialise on a device, the design view shows
 nothing — there is no second path and no error state.
 
-**Four dead columns on `DesignRoom`.** `wallColor`, `floorColor`,
-`wallPresetIdx`, `floorPresetIdx` are no longer written; `RoomCard` still reads
-two of them, so every Home thumbnail shows the same colours. See
-[backlog.md § Debt](backlog.md#debt).
+**Drawing a plan and pressing Back discards it.** The plan is persisted only by
+Save and by entering Design mode, so the system Back button silently throws away
+whatever was drawn. See [backlog.md](backlog.md#found-while-fixing-debt-1).
 
 **Stair treads are ~17.5 cm at the defaults** where ~25 cm is normal. The riser
 is right; the run is too short. Workaround and fix in

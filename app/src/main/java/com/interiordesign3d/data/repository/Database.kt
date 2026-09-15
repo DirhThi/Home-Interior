@@ -4,18 +4,6 @@ import androidx.room.*
 import com.interiordesign3d.data.models.*
 import kotlinx.coroutines.flow.Flow
 
-// ─── Type Converters ──────────────────────────────────────────────────────────
-
-class Converters {
-    @TypeConverter fun fromStringList(value: List<String>): String =
-        value.joinToString(",")
-    @TypeConverter fun toStringList(value: String): List<String> =
-        if (value.isEmpty()) emptyList() else value.split(",")
-    @TypeConverter fun fromFloorMaterial(value: FloorMaterial): String = value.name
-    @TypeConverter fun toFloorMaterial(value: String): FloorMaterial =
-        FloorMaterial.valueOf(value)
-}
-
 // ─── DAOs ─────────────────────────────────────────────────────────────────────
 
 @Dao
@@ -56,12 +44,17 @@ interface PlacedFurnitureDao {
 
 // ─── Database ─────────────────────────────────────────────────────────────────
 
+/**
+ * Bump [version] on EVERY schema change. `fallbackToDestructiveMigration` only runs when the version
+ * moves — at an unchanged version Room compares a schema hash instead and throws "cannot verify the
+ * data integrity", which crashes the app on launch for anyone holding an older database. The version
+ * is a schema fingerprint here, not a migration count; there are still no Migration objects.
+ */
 @Database(
     entities = [DesignRoom::class, PlacedFurniture::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
-@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun roomDao(): RoomDao
     abstract fun placedFurnitureDao(): PlacedFurnitureDao
@@ -76,7 +69,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "interior_design_db"
                 )
-                    // Dev-only app with a single user: the schema is always v1 and a change wipes it.
+                    // Dev-only app with a single user: a schema change wipes rather than migrates.
                     .fallbackToDestructiveMigration()
                     .build().also { INSTANCE = it }
             }

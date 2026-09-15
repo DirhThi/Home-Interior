@@ -80,7 +80,7 @@ The old `color_picker/{roomId}` route and `ColorPickerScreen` are **gone** — t
 ### Data layer (`data/`)
 
 - `models/Models.kt` — All data classes & enums: `FurnitureItem`, `DesignRoom` (entity, table `rooms`), `PlacedFurniture` (entity, table `placed_furniture`, `roomId` FK), `WallPoint`, `WallOpening`, `FloorPlan`, `ColorPalette`; enums `FurnitureCategory`, `FloorMaterial`, `DesignStyle`, `OpeningType`.
-- `repository/Database.kt` — `AppDatabase` (DB name `interior_design_db`, **version 1**, destructive fallback), DAOs `RoomDao` + `PlacedFurnitureDao`. No migrations by design. `Converters` handle `List<String>` and `FloorMaterial`.
+- `repository/Database.kt` — `AppDatabase` (DB name `interior_design_db`, **version 2**, destructive fallback), DAOs `RoomDao` + `PlacedFurnitureDao`. No migrations and no `TypeConverters` — every column is a primitive or a String.
 - `repository/FurnitureRepository.kt` — Hardcoded furniture catalog (search/filter) **and** `ColorPaletteRepository` (object with static palettes by `DesignStyle`). Both live in this one file despite the name.
 
 **Floor-plan model:** A `FloorPlan` is `nodes: List<WallPoint>` (shared point pool, cm) + `rooms: List<List<Int>>` (each room = polygon of node indices, so adjacent rooms share edges) + `openings: List<WallOpening>` (doors/windows on a room edge, parameterized by `t∈[0,1]` along the edge). It is **serialized to a JSON string in `DesignRoom.floorPlanJson`** with `kotlinx.serialization` — it is *not* a Room entity.
@@ -119,7 +119,7 @@ Other screens: `ui/screen/home/` (room list, swipe-to-delete with snackbar undo,
 
 - **Min SDK 26** — guard newer APIs with version checks.
 - **Global opt-ins** in `build.gradle` `freeCompilerArgs`: `ExperimentalMaterial3Api`, `ExperimentalFoundationApi`, `ExperimentalAnimationApi` — **do not** add redundant `@OptIn` in files.
-- **DB schema:** Room is pinned at **version 1** with `fallbackToDestructiveMigration()`. This is a single-developer app with no installed users, so a schema change wipes the database instead of carrying a migration. Do **not** add `Migration` objects or bump the version — change the entity and let it wipe.
+- **DB schema:** no `Migration` objects, ever — this is a single-developer app with no installed users, so a schema change wipes the database. But you **must bump `version`** in `@Database` on every schema change. `fallbackToDestructiveMigration()` only fires when the version moves; leave it unchanged and Room compares a schema hash instead, finds a mismatch and throws *"Room cannot verify the data integrity"* — a crash on launch for anyone holding the older database (verified on an emulator, 2026-09-15). The version is a schema fingerprint here, not a migration count.
 - **`FloorPlan`** ↔ JSON via `kotlinx.serialization` (not Gson, despite Gson being a dependency).
 - **No tests** — `test`/`androidTest` dirs are empty though JUnit/Espresso/Compose-test deps are wired. `./gradlew test` passes trivially.
 - **No linter** (`kotlin.code.style=official` only; no detekt/ktlint).
