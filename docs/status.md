@@ -49,7 +49,9 @@ walls and floors. Details in [stairs.md](stairs.md).
 
 **Balconies.** Tap an outside wall and a railed slab hangs off it, width and
 projection editable. Interior walls are refused — a balcony there would hang into the
-next room.
+next room. On an upper storey it reads either way: over open air it cantilevers with a
+visible soffit, over the storey below's flat roof it sits flush on the terrace, and a
+door beside it opens onto it.
 
 **Furnish.** 145 Quaternius CC0 models in a tabbed sheet. Drag to place with
 real rules — pushed out of other furniture, snapped to walls within 8 cm,

@@ -724,7 +724,10 @@ private class RoomScene(
             rings.forEach { ring ->
                 val eaves = outset(ring, WALL_THICK_CM / 2f + ext.eaves)
                 val holes = above.filter { h -> h.all { pointInPoly(it, eaves) } }
-                buildFloorMesh(eaves, roofMi, roofTileM, baseY = roofY + ROOF_T_M, holes = holes)
+                // Walking surface AT the storey-above floor level, with the slab hanging below it.
+                // Sitting it on top instead put the terrace a slab's thickness above that storey, so
+                // a balcony hung off an upper wall was buried in its own roof.
+                buildFloorMesh(eaves, roofMi, roofTileM, baseY = roofY, holes = holes)
                 // Fascia: without a visible edge the roof read as a sheet of paper floating there.
                 eaves.indices.forEach { i ->
                     val a = eaves[i]; val b = eaves[(i + 1) % eaves.size]
@@ -734,7 +737,7 @@ private class RoomScene(
                         atan2(-((b.y - a.y) / len).toDouble(), ((b.x - a.x) / len).toDouble())
                     ).toFloat()
                     buildBox(roofMi, len * CM, ROOF_T_M, 0.02f,
-                        wx((a.x + b.x) / 2f), roofY, wz((a.y + b.y) / 2f), rot, roofTileM)
+                        wx((a.x + b.x) / 2f), roofY - ROOF_T_M, wz((a.y + b.y) / 2f), rot, roofTileM)
                 }
                 // A flat roof is a terrace you could stand on, so it gets a parapet — the wall
                 // carried up past the slab, which is also what stops it reading as a bare lid.
@@ -747,7 +750,7 @@ private class RoomScene(
                         atan2(-((b.y - a.y) / len).toDouble(), ((b.x - a.x) / len).toDouble())
                     ).toFloat()
                     buildBox(roofMi, len * CM, PARAPET_H_M, WALL_THICK_CM * CM,
-                        wx((a.x + b.x) / 2f), roofY + ROOF_T_M, wz((a.y + b.y) / 2f), rot, roofTileM)
+                        wx((a.x + b.x) / 2f), roofY, wz((a.y + b.y) / 2f), rot, roofTileM)
                 }
             }
         }

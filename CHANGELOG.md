@@ -48,6 +48,7 @@ everything below sits under Unreleased. When the first build goes out, cut a
   of it, railed on the three open sides, with width and projection editable. It only
   takes on a wall a single room uses, because one on an interior wall would hang into
   the next room. Pinned to the node pair like a door, so reshaping the plan carries it.
+  Put one on an upper storey with a door beside it and the door opens onto it.
 - **Guard rails where a floor opens or ends.** A parapet round every flat roof, so a
   terrace reads as somewhere you could stand, and a rail round the stairwell opening
   upstairs on every side but the one you step out of — `Stair.wellGuards` works that
@@ -104,6 +105,10 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Fixed
 
+- **A flat roof's surface sat a slab's thickness above the storey it belongs to.** A
+  balcony hung off an upper wall was then buried in its own roof, with only the top of
+  its rail showing. The slab now hangs below the walking surface instead of standing
+  on it, so a terrace and the storey above it share one level.
 - **The floor-plan tool row wrapped its last label to two lines** instead of admitting
   four chips no longer fit a phone. It scrolls sideways now.
 - **A roof tint could not make a dark tile red.** `baseColorFactor` multiplies the
