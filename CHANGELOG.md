@@ -105,6 +105,10 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Fixed
 
+- **The ground ran out before the camera did.** The lawn was sized from the house —
+  16 m for a plan the camera can back 60 m away from — so zooming out always found the
+  edge of the world. It is sized from the orbit's own reach now, which costs nothing:
+  the ground is one quad whatever its size.
 - **A balcony slab was 10 cm bigger than its own railing on every side**, and poked back
   through the wall it hangs on. `buildFloorMesh` always grew the polygon by a wall
   thickness — right for a room floor, which has to run under its walls, wrong for

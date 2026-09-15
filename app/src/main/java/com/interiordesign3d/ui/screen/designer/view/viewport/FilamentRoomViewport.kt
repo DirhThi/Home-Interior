@@ -69,6 +69,7 @@ private const val EAVES_CM = 25f
 private const val ROOF_T_M = 0.16f
 private const val PLOT_MARGIN_CM = 180f
 private const val GROUND_DROP_M = 0.06f
+private const val MIN_ZOOM = 0.4f        // pinch floor; also how far the camera can back off
 private const val PARAPET_H_M = 0.95f
 private const val FIELD_MODEL = "mat_grass005"
 private const val FIELD_TINT = "#FFFFFF"
@@ -677,13 +678,17 @@ private class RoomScene(
         val plotMi = materialOf("plot", groundModel, groundColorHex) ?: return
         val roofMi = materialOf("roof", roofModel, roofColorHex) ?: return
 
-        // A few house-widths across, no more: a plane the size of a field blows out the shadow
-        // cascade and turns every interior shadow to mush.
+        // Sized from how far the camera can actually get, not from the house: the orbit radius is
+        // bounded and so is the zoom, so there IS a furthest point, and past it the ground can never
+        // be seen to end. It costs nothing to be large — this is one quad whatever its size — but it
+        // is not unbounded either: the projection stops at 1000 m, and a plane that dwarfs the house
+        // would stretch the shadow cascade over ground nobody looks at.
         val pts = ground.flatten()
         val cx = (pts.minOf { it.x } + pts.maxOf { it.x }) / 2f
         val cy = (pts.minOf { it.y } + pts.maxOf { it.y }) / 2f
         val reach = maxOf(pts.maxOf { it.x } - pts.minOf { it.x }, pts.maxOf { it.y } - pts.minOf { it.y })
-        val half = reach * 1.6f + PLOT_MARGIN_CM
+        val camMaxM = (reach * CM * 2.1f + (topLevel + 1) * (hM + floorT)) / MIN_ZOOM
+        val half = maxOf(reach * 1.6f + PLOT_MARGIN_CM, camMaxM * 1.4f / CM)
         buildFloorMesh(
             listOf(
                 WallPoint(cx - half, cy - half), WallPoint(cx + half, cy - half),
@@ -1645,7 +1650,7 @@ private class RoomScene(
             MotionEvent.ACTION_POINTER_DOWN -> { lastDist = pinchDist(e); grabbedId = null }
             MotionEvent.ACTION_MOVE -> {
                 if (e.pointerCount >= 2) {
-                    val d = pinchDist(e); if (lastDist > 0f) zoom = (zoom * d / lastDist).coerceIn(0.4f, 4f); lastDist = d
+                    val d = pinchDist(e); if (lastDist > 0f) zoom = (zoom * d / lastDist).coerceIn(MIN_ZOOM, 4f); lastDist = d
                 } else {
                     moved += hypot(e.x - lastX, e.y - lastY)
                     val gid = grabbedId
