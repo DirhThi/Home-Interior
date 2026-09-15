@@ -20,6 +20,9 @@ everything below sits under Unreleased. When the first build goes out, cut a
   the open sides carry a floor slab edge — without those the corner flips inside
   out as a Necker cube. Canvas only: no 3D engine, no cached bitmap, and it cannot
   show a stale picture.
+- **Exterior finishes.** Roof and ground presets in a new Outside tab of the
+  surfaces sheet, stored on the plan. No new assets: every one is a tint over a
+  material the build already shipped.
 - **Exterior view.** A third editor mode that steps outside: every storey built, no
   walls hidden, a flat roof over each storey with the one above cut out of it, a
   paved plot and the ground the house stands on. `FloorPlan.outlineRings(level)`

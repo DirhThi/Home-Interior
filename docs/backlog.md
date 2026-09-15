@@ -9,7 +9,7 @@ debts that grew out of the stair work and were never on that list.
 | Group | Count | Who |
 |---|---|---|
 | [Debt](#debt) — fallout from work already landed | 0 | me |
-| [Step 7 — Exterior](exterior.md) | 2 of 6 left | me |
+| [Step 7 — Exterior](exterior.md) | 0 | me |
 | [Verify on a device](#verify-on-a-device) | 6 | you |
 | [Drop](#drop-these-two) | 2 | — |
 
@@ -89,9 +89,11 @@ Still open: the stairwell opening in the upper slab has no guard round it.
 
 ## Step 7 — Exterior
 
-Four of six done: outline rings, ground and plot, a flat roof per storey, and an
-exterior editor mode. Left: **t7-4** exterior material presets and **t7-6** the
-asset budget. Full write-up in [exterior.md](exterior.md).
+**Done.** Outline rings, ground and plot, a flat roof per storey, an exterior editor
+mode, roof and ground presets, and no new assets. Two things were deliberately left
+out and are written up in [exterior.md](exterior.md): a **single-pitch roof** (flat
+only for now, though `pitchDeg` exists for it) and a **separate exterior wall
+finish** (an outside face would need a second skin of boxes).
 
 ---
 

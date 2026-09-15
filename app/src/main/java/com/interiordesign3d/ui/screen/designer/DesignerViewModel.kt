@@ -309,6 +309,14 @@ class DesignerViewModel(
             floorPlan = floorPlan.withSurface(activeLevel) { it.copy(floorPresetIdx = index) }
         }
 
+        override fun onRoofPreset(index: Int) {
+            floorPlan = floorPlan.copy(exterior = floorPlan.exterior.copy(roofPresetIdx = index))
+        }
+
+        override fun onGroundPreset(index: Int) {
+            floorPlan = floorPlan.copy(exterior = floorPlan.exterior.copy(groundPresetIdx = index))
+        }
+
         override fun onStairPreset(index: Int) {
             stairPresetIdx = index
             persistSurfaces()

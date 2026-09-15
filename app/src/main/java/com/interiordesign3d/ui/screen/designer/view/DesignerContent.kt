@@ -169,6 +169,12 @@ private fun RoomDesignView(state: DesignerState, modifier: Modifier) {
             stairColorHex = state.stairPreset.colorHex,
             stairTileM = state.stairPreset.tileM,
             exterior = state.editorMode == EditorMode.EXTERIOR,
+            roofModel = state.roofPreset.model,
+            roofColorHex = state.roofPreset.colorHex,
+            roofTileM = state.roofPreset.tileM,
+            groundModel = state.groundPreset.model,
+            groundColorHex = state.groundPreset.colorHex,
+            groundTileM = state.groundPreset.tileM,
             shadows = state.shadowsOn,
             // Auto-hide is for looking in; from outside it would skin the house.
             autoHideWalls = state.autoHideWalls && state.editorMode != EditorMode.EXTERIOR,

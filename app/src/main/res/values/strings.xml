@@ -49,6 +49,9 @@
     <string name="door_open">Open</string>
     <string name="opening_width">width</string>
     <string name="stairs">Stairs</string>
+    <string name="outside">Outside</string>
+    <string name="roof">Roof</string>
+    <string name="ground">Ground</string>
     <string name="stair_straight">Straight</string>
     <string name="stair_l">L</string>
     <string name="stair_u">U</string>

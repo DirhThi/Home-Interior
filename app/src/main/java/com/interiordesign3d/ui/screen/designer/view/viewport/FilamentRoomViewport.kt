@@ -65,15 +65,9 @@ private const val EAVES_CM = 25f
 private const val ROOF_T_M = 0.16f
 private const val PLOT_MARGIN_CM = 180f
 private const val GROUND_DROP_M = 0.06f
-private const val GROUND_MODEL = "mat_concrete034"
-private const val GROUND_TINT = "#8FA184"
-private const val GROUND_TILE_M = 3f
-private const val PLOT_MODEL = "mat_pavingstones070"
-private const val PLOT_TINT = "#FFFFFF"
-private const val PLOT_TILE_M = 1.5f
-private const val ROOF_MODEL = "mat_concrete016"
-private const val ROOF_TINT = "#CBC6C0"
-private const val ROOF_TILE_M = 2f
+private const val FIELD_MODEL = "mat_concrete034"
+private const val FIELD_TINT = "#8FA184"
+private const val FIELD_TILE_M = 3f
 private const val OPEN_PLAN_MIN_CM = 200f        // a cased opening this wide loses its lintel
 private const val DOOR_HEIGHT_M = 2.10f
 private const val DOUBLE_DOOR_MIN_CM = 130f
@@ -94,6 +88,12 @@ fun FilamentRoomViewport(
     stairTileM: Float = 1f,
     /** Outside view: every storey, plus a roof and the ground the house sits on. */
     exterior: Boolean = false,
+    roofModel: String = "mat_concrete016",
+    roofColorHex: String = "#7E7A76",
+    roofTileM: Float = 2f,
+    groundModel: String = "mat_pavingstones070",
+    groundColorHex: String = "#FFFFFF",
+    groundTileM: Float = 1.5f,
     shadows: Boolean = false,
     autoHideWalls: Boolean = true,
     backgroundColor: Color = Color(0xFFDAD5C8),
@@ -140,7 +140,8 @@ fun FilamentRoomViewport(
                 s.onDropOpening = { r, e, t, w, id -> onDrop.value(r, e, t, w, id) }
                 s.onSelectOpening = { id -> onPickOpening.value(id) }
                 s.update(floorPlan, activeLevel, roomPolygons, floorPlan.openings, placedFurniture, roomHeight,
-                    stairModel, stairColorHex, stairTileM, exterior)
+                    stairModel, stairColorHex, stairTileM, exterior,
+                    roofModel, roofColorHex, roofTileM, groundModel, groundColorHex, groundTileM)
             }
         },
         onRelease = { sceneRef.value?.destroy(); sceneRef.value = null }
@@ -298,6 +299,8 @@ private class RoomScene(
         furniture: List<PlacedFurniture>, roomHeightCm: Float,
         stairModel: String, stairColorHex: String, stairTileM: Float,
         exterior: Boolean,
+        roofModel: String, roofColorHex: String, roofTileM: Float,
+        groundModel: String, groundColorHex: String, groundTileM: Float,
     ) {
         val allPts = roomPolygons.flatten()
         if (allPts.isEmpty()) return
@@ -311,13 +314,14 @@ private class RoomScene(
         val spanX = (maxX - minX).coerceAtLeast(1f); val spanZ = (maxZ - minZ).coerceAtLeast(1f)
 
         val sSig = roomPolygons.joinToString(";") { p -> p.joinToString(",") { "${it.x.toInt()}/${it.y.toInt()}" } } +
-                "|$activeLevel|${plan.stairs.joinToString(",") { "${it.level}/${it.x.toInt()}/${it.y.toInt()}/${it.widthCm}/${it.lengthCm}/${it.rotationDeg}" }}|${roomHeightCm.toInt()}|$stairModel|$stairColorHex|$exterior" +
+                "|$activeLevel|${plan.stairs.joinToString(",") { "${it.level}/${it.x.toInt()}/${it.y.toInt()}/${it.widthCm}/${it.lengthCm}/${it.rotationDeg}" }}|${roomHeightCm.toInt()}|$stairModel|$stairColorHex|$exterior|$roofModel$roofColorHex|$groundModel$groundColorHex" +
                 "|" + plan.levelSurfaces.joinToString(",") { "${it.wallPresetIdx}/${it.floorPresetIdx}/${it.wallColor}" } +
                 "|" + plan.stairs.joinToString(",") { "${it.shape}/${it.legCm}/${it.wellCm}" } +
                 "|" + openings.joinToString(",") { "${it.nodeA}/${it.nodeB}/${it.t}/${it.type}/${it.widthCm}/${it.style}/${it.leafHidden}/${it.leafOpen}" }
         if (sSig != structSig) {
             structSig = sSig
-            rebuildStructure(plan, activeLevel, roomHeightCm, stairModel, stairColorHex, stairTileM, exterior)
+            rebuildStructure(plan, activeLevel, roomHeightCm, stairModel, stairColorHex, stairTileM,
+                exterior, roofModel, roofColorHex, roofTileM, groundModel, groundColorHex, groundTileM)
             // frame the room only when its geometry changes (keeps user's orbit otherwise)
             // Frame the whole stack, not one storey — otherwise a two-storey plan opens with the
             // camera parked inside the upper floor.
@@ -349,6 +353,8 @@ private class RoomScene(
         roomHeightCm: Float,
         stairModel: String, stairColorHex: String, stairTileM: Float,
         exterior: Boolean,
+        roofModel: String, roofColorHex: String, roofTileM: Float,
+        groundModel: String, groundColorHex: String, groundTileM: Float,
     ) {
         structureAssets.forEach { runCatching { assetLoader.destroyAsset(it) } }
         structureAssets.clear()
@@ -607,7 +613,8 @@ private class RoomScene(
             }
         }
 
-        if (exterior) buildExterior(plan, topLevel, hM, floorT, ::wx, ::wz)
+        if (exterior) buildExterior(plan, topLevel, hM, floorT, ::wx, ::wz,
+            roofModel, roofColorHex, roofTileM, groundModel, groundColorHex, groundTileM)
     }
 
     /**
@@ -619,13 +626,16 @@ private class RoomScene(
     private fun buildExterior(
         plan: FloorPlan, topLevel: Int, hM: Float, floorT: Float,
         wx: (Float) -> Float, wz: (Float) -> Float,
+        roofModel: String, roofColorHex: String, roofTileM: Float,
+        groundModel: String, groundColorHex: String, groundTileM: Float,
     ) {
         val ground = plan.outlineRings(0).filter { signedArea(it) > 0f }
         if (ground.isEmpty()) return
 
-        val groundMi = materialOf("ground", GROUND_MODEL, GROUND_TINT) ?: return
-        val plotMi = materialOf("plot", PLOT_MODEL, PLOT_TINT) ?: return
-        val roofMi = materialOf("roof", ROOF_MODEL, ROOF_TINT) ?: return
+        // The field beyond the plot is always turf: it is scenery, not a finish anyone picks.
+        val fieldMi = materialOf("field", FIELD_MODEL, FIELD_TINT) ?: return
+        val plotMi = materialOf("plot", groundModel, groundColorHex) ?: return
+        val roofMi = materialOf("roof", roofModel, roofColorHex) ?: return
 
         // A few house-widths across, no more: a plane the size of a field blows out the shadow
         // cascade and turns every interior shadow to mush.
@@ -639,10 +649,10 @@ private class RoomScene(
                 WallPoint(cx - half, cy - half), WallPoint(cx + half, cy - half),
                 WallPoint(cx + half, cy + half), WallPoint(cx - half, cy + half),
             ),
-            groundMi, GROUND_TILE_M, baseY = -GROUND_DROP_M,
+            fieldMi, FIELD_TILE_M, baseY = -GROUND_DROP_M,
         )
         ground.forEach { ring ->
-            buildFloorMesh(outset(ring, PLOT_MARGIN_CM), plotMi, PLOT_TILE_M, baseY = -GROUND_DROP_M / 2f)
+            buildFloorMesh(outset(ring, PLOT_MARGIN_CM), plotMi, groundTileM, baseY = -GROUND_DROP_M / 2f)
         }
 
         for (level in 0..topLevel) {
@@ -657,7 +667,7 @@ private class RoomScene(
             rings.forEach { ring ->
                 val eaves = outset(ring, WALL_THICK_CM / 2f + EAVES_CM)
                 val holes = above.filter { h -> h.all { pointInPoly(it, eaves) } }
-                buildFloorMesh(eaves, roofMi, ROOF_TILE_M, baseY = roofY + ROOF_T_M, holes = holes)
+                buildFloorMesh(eaves, roofMi, roofTileM, baseY = roofY + ROOF_T_M, holes = holes)
                 // Fascia: without a visible edge the roof read as a sheet of paper floating there.
                 eaves.indices.forEach { i ->
                     val a = eaves[i]; val b = eaves[(i + 1) % eaves.size]
@@ -667,7 +677,7 @@ private class RoomScene(
                         atan2(-((b.y - a.y) / len).toDouble(), ((b.x - a.x) / len).toDouble())
                     ).toFloat()
                     buildBox(roofMi, len * CM, ROOF_T_M, 0.02f,
-                        wx((a.x + b.x) / 2f), roofY, wz((a.y + b.y) / 2f), rot, ROOF_TILE_M)
+                        wx((a.x + b.x) / 2f), roofY, wz((a.y + b.y) / 2f), rot, roofTileM)
                 }
             }
         }

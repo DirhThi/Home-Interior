@@ -45,6 +45,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.data.catalog.FLOOR_PRESETS
+import com.interiordesign3d.data.catalog.GROUND_PRESETS
+import com.interiordesign3d.data.catalog.ROOF_PRESETS
 import com.interiordesign3d.data.catalog.SurfacePreset
 import com.interiordesign3d.data.catalog.WALL_PRESETS
 import com.interiordesign3d.data.models.ColorPalette
@@ -69,7 +71,10 @@ private val PAINT_COLORS = listOf(
 @Composable
 fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
     var tab by remember { mutableIntStateOf(0) }
-    val tabs = listOf(R.string.walls, R.string.floor, R.string.stairs, R.string.wall_colour, R.string.palettes)
+    val tabs = listOf(
+        R.string.walls, R.string.floor, R.string.stairs,
+        R.string.outside, R.string.wall_colour, R.string.palettes,
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -119,7 +124,13 @@ fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
                 0 -> PresetRow(WALL_PRESETS, state.wallPresetIdx, state::onWallPreset)
                 1 -> PresetRow(FLOOR_PRESETS, state.floorPresetIdx, state::onFloorPreset)
                 2 -> PresetRow(FLOOR_PRESETS, state.stairPresetIdx, state::onStairPreset)
-                3 -> PaintRow(state.wallColorOverride, state::onWallColor)
+                3 -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    RowLabel(R.string.roof)
+                    PresetRow(ROOF_PRESETS, state.roofPresetIdx, state::onRoofPreset)
+                    RowLabel(R.string.ground)
+                    PresetRow(GROUND_PRESETS, state.groundPresetIdx, state::onGroundPreset)
+                }
+                4 -> PaintRow(state.wallColorOverride, state::onWallColor)
                 else -> PaletteRow(onApply = state::onApplyPalette)
             }
         }
@@ -167,6 +178,16 @@ private fun OptionChip(
         modifier = Modifier.height(MinTouchTarget),
         leadingIcon = { Icon(icon, null, Modifier.size(18.dp)) },
         label = { Text(label, style = MaterialTheme.typography.labelLarge) },
+    )
+}
+
+@Composable
+private fun RowLabel(res: Int) {
+    Text(
+        stringResource(res),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 20.dp),
     )
 }
 

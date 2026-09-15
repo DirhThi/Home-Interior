@@ -1,8 +1,8 @@
 # Step 7 — Exterior
 
-**t7-1, t7-2, t7-3 and t7-5 are done.** What is left is t7-4 (material presets)
-and t7-6 (asset budget). The rest of this file is kept as the record of how it was
-built and what was deliberately left out.
+**Done**, except that the roof is flat only — single-pitch is still open, and
+`buildBox`'s `pitchDeg` is what it needs. The rest of this file is the record of how
+it was built and what was deliberately left out.
 
 Six tasks.
 Today the app renders a house you can only ever stand *inside*: exterior walls
@@ -96,15 +96,20 @@ Hipped and gabled roofs are their own project: they need a straight-skeleton
 solve over the ring, which is a lot more than this step is worth. Say so in the
 UI rather than half-doing it.
 
-## t7-4 — Exterior material presets
+## t7-4 — Exterior material presets — done
 
-Reuse `SurfaceSheet` as-is. Add `EXTERIOR_PRESETS` and `ROOF_PRESETS` to
-`FurnitureCatalog.kt` beside `WALL_PRESETS` / `FLOOR_PRESETS`, and store the
-picks on `LevelSurface`'s sibling — a new `ExteriorSurface` on `FloorPlan`,
-since exterior finish is per building, not per storey.
+`ROOF_PRESETS` (5) and `GROUND_PRESETS` (6) sit beside `WALL_PRESETS` /
+`FLOOR_PRESETS`, and the picks live on `ExteriorSurface` in the plan — per building,
+not per storey. `SurfaceSheet` gained an **Outside** tab holding both rows.
 
-Most of the materials already exist: brick, render, plaster, concrete and paving
-stones are in `assets/models/`. Only a roof covering is genuinely missing.
+**Not built: a separate exterior wall finish.** An exterior wall is the same
+procedural box as the interior one, and a box carries a single material, so an
+outside face different from the inside needs a second skin of boxes over every
+exterior segment. That is a real chunk of work and it was not part of this step —
+outside walls take the storey's wall preset, like the inside.
+
+The field beyond the plot is fixed turf rather than a preset: it is scenery, not a
+finish anyone would pick.
 
 ## t7-5 — Outside camera mode — done
 
@@ -125,7 +130,7 @@ Two more things the mode has to change:
 Make it a third `EditorMode` rather than a flag on `DESIGN` — the top bar, the
 FAB and the furniture sheet all mean something different out there.
 
-## t7-6 — Asset budget
+## t7-6 — Asset budget — done, nothing added
 
 Where it stands now:
 
@@ -135,11 +140,11 @@ assets/previews   640 KB
 assets total      6.7 MB
 ```
 
-A `mat_*.glb` is a textured quad with one 512 px CC0 JPEG inside — ~60 KB each,
-the largest is 145 KB. So exterior finishes are close to free: a roof tile, a
-metal sheet and a grass/gravel ground is three new files, ~200 KB.
+**Nothing was added.** Every roof and ground preset is a tint over a `mat_*.glb`
+already in the build — brick for clay tile, concrete for slate and gravel, paving
+stones, plaster, timber. The figures above are the figures now.
 
-What would *not* be free is exterior props — trees, fences, cars. Those are real
-meshes and the interior pack is already 5 MB. Decide before importing any:
-either skip props entirely for this step, or set a hard ceiling (say 1 MB) and
-pick within it.
+**Decision on exterior props** (trees, fences, cars): skipped, not deferred. They
+are real meshes, the interior pack is already 5 MB of the 6.7, and a house that sits
+on a plot with a roof reads fine without them. Revisit only with a hard ceiling —
+1 MB — and pick within it.

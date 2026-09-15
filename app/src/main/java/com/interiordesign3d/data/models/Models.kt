@@ -267,6 +267,13 @@ data class LevelSurface(
     val wallColor: String = "",   // blank = take the tint from the wall preset
 )
 
+/** Finish of the things outside the house. One per building, not per storey. */
+@Serializable
+data class ExteriorSurface(
+    val roofPresetIdx: Int = 0,
+    val groundPresetIdx: Int = 0,
+)
+
 @Serializable
 data class FloorPlan(
     // Nodes are shared across storeys on purpose: upper walls land on lower ones, and the storey
@@ -277,7 +284,8 @@ data class FloorPlan(
     /** Parallel to [rooms]; an empty list means every room is on the ground floor. */
     val roomLevels: List<Int> = emptyList(),
     val stairs: List<Stair> = emptyList(),
-    val levelSurfaces: List<LevelSurface> = emptyList()
+    val levelSurfaces: List<LevelSurface> = emptyList(),
+    val exterior: ExteriorSurface = ExteriorSurface()
 ) {
     fun roomPolygon(idx: Int): List<WallPoint> = rooms[idx].map { nodes[it] }
 

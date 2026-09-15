@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.interiordesign3d.common.base.BaseScreenState
 import com.interiordesign3d.data.catalog.FLOOR_PRESETS
+import com.interiordesign3d.data.catalog.GROUND_PRESETS
+import com.interiordesign3d.data.catalog.ROOF_PRESETS
 import com.interiordesign3d.data.catalog.WALL_PRESETS
 import com.interiordesign3d.data.models.ColorPalette
 import com.interiordesign3d.data.models.FloorPlan
@@ -84,6 +86,10 @@ open class DesignerState : BaseScreenState() {
     val wallPreset get() = WALL_PRESETS[wallPresetIdx.coerceIn(WALL_PRESETS.indices)]
     val floorPreset get() = FLOOR_PRESETS[floorPresetIdx.coerceIn(FLOOR_PRESETS.indices)]
     val stairPreset get() = FLOOR_PRESETS[stairPresetIdx.coerceIn(FLOOR_PRESETS.indices)]
+    val roofPresetIdx: Int get() = floorPlan.exterior.roofPresetIdx
+    val groundPresetIdx: Int get() = floorPlan.exterior.groundPresetIdx
+    val roofPreset get() = ROOF_PRESETS[roofPresetIdx.coerceIn(ROOF_PRESETS.indices)]
+    val groundPreset get() = GROUND_PRESETS[groundPresetIdx.coerceIn(GROUND_PRESETS.indices)]
     val wallColorHex get() = wallColorOverride ?: wallPreset.colorHex
 
     // ── Navigation / persistence ──────────────────────────────────────────────
@@ -155,6 +161,8 @@ open class DesignerState : BaseScreenState() {
     open fun onWallPreset(index: Int) {}
     open fun onFloorPreset(index: Int) {}
     open fun onStairPreset(index: Int) {}
+    open fun onRoofPreset(index: Int) {}
+    open fun onGroundPreset(index: Int) {}
     open fun onWallColor(hex: String?) {}
     open fun onApplyPalette(palette: ColorPalette) {}
     open fun onRoomHeight(cm: Float) {}

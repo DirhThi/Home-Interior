@@ -198,6 +198,25 @@ val WALL_PRESETS = listOf(
     SurfacePreset("Marble", "mat_marble012", tileM = 2f),
 )
 
+// Outside finishes. Roof and apron are separate objects from the walls, so they get their own
+// lists; an exterior WALL finish would need a second skin of boxes and is not built.
+val ROOF_PRESETS = listOf(
+    SurfacePreset("Dark slate", "mat_concrete016", "#7E7A76", 2f),
+    SurfacePreset("Grey felt", "mat_concrete034", "#B4B0AA", 2f),
+    SurfacePreset("Bare concrete", "mat_concrete016", tileM = 2f),
+    SurfacePreset("Clay tile", "mat_bricks059", "#C4643F", 1.2f),
+    SurfacePreset("White deck", "mat_plaster001", "#F2F0EC", 2f),
+)
+
+val GROUND_PRESETS = listOf(
+    SurfacePreset("Paving", "mat_pavingstones070", tileM = 1.5f),
+    SurfacePreset("Gravel", "mat_concrete034", "#BBB4A6", 1f),
+    SurfacePreset("Lawn", "mat_concrete034", "#8FA184", 2f),
+    SurfacePreset("Timber deck", "mat_woodfloor043", tileM = 1.2f),
+    SurfacePreset("Sand", "mat_concrete034", "#D9C9A8", 2f),
+    SurfacePreset("Dark stone", "mat_marble006", tileM = 2f),
+)
+
 val FLOOR_PRESETS = listOf(
     SurfacePreset("Light oak", "mat_woodfloor051", tileM = 1f),
     SurfacePreset("Golden oak", "mat_woodfloor040", tileM = 1f),
