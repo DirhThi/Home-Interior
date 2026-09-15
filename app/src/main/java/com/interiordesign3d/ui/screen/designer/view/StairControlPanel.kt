@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
+import com.interiordesign3d.data.models.FLOOR_SLAB_CM
+import com.interiordesign3d.data.models.MIN_COMFORTABLE_TREAD_CM
 import com.interiordesign3d.data.models.Stair
 import com.interiordesign3d.data.models.StairShape
 import com.interiordesign3d.ui.properties.CenterRow
@@ -39,6 +41,8 @@ import com.interiordesign3d.ui.screen.designer.state.DesignerState
 private const val EDIT_NONE = 0
 private const val EDIT_WIDTH = 1
 private const val EDIT_LENGTH = 2
+private const val EDIT_LEG = 3
+private const val EDIT_WELL = 4
 
 @Composable
 fun StairControlPanel(stair: Stair, state: DesignerState) {
@@ -82,6 +86,15 @@ fun StairControlPanel(stair: Stair, state: DesignerState) {
                 )
             }
 
+            val tread = stair.treadCm(state.roomHeightCm + FLOOR_SLAB_CM)
+            if (tread < MIN_COMFORTABLE_TREAD_CM) {
+                Text(
+                    stringResource(R.string.stair_tread_shallow, tread.toInt()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(6.dp)) {
                 StairShape.entries.forEach { shape ->
                     FilterChip(
@@ -118,6 +131,15 @@ fun StairControlPanel(stair: Stair, state: DesignerState) {
                 TextButton(onClick = { editing = EDIT_LENGTH }) {
                     Text(stringResource(R.string.stair_length, stair.lengthCm.toInt()))
                 }
+                when (stair.shape) {
+                    StairShape.L_SHAPED -> TextButton(onClick = { editing = EDIT_LEG }) {
+                        Text(stringResource(R.string.stair_leg, stair.legCm.toInt()))
+                    }
+                    StairShape.U_SHAPED -> TextButton(onClick = { editing = EDIT_WELL }) {
+                        Text(stringResource(R.string.stair_well, stair.wellCm.toInt()))
+                    }
+                    StairShape.STRAIGHT -> Unit
+                }
             }
         }
     }
@@ -139,6 +161,24 @@ fun StairControlPanel(stair: Stair, state: DesignerState) {
             range = 180f..500f,
             step = 10f,
             onConfirm = state::onStairLength,
+            onDismiss = { editing = EDIT_NONE },
+        )
+        EDIT_LEG -> NumberInputDialog(
+            title = stringResource(R.string.edit_value, stringResource(R.string.stair_leg_label)),
+            suffix = "cm",
+            initial = stair.legCm,
+            range = 100f..400f,
+            step = 10f,
+            onConfirm = state::onStairLeg,
+            onDismiss = { editing = EDIT_NONE },
+        )
+        EDIT_WELL -> NumberInputDialog(
+            title = stringResource(R.string.edit_value, stringResource(R.string.stair_well_label)),
+            suffix = "cm",
+            initial = stair.wellCm,
+            range = 0f..60f,
+            step = 5f,
+            onConfirm = state::onStairWell,
             onDismiss = { editing = EDIT_NONE },
         )
     }

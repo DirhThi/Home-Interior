@@ -8,7 +8,7 @@ debts that grew out of the stair work and were never on that list.
 
 | Group | Count | Who |
 |---|---|---|
-| [Debt](#debt) — fallout from work already landed | 2 | me |
+| [Debt](#debt) — fallout from work already landed | 1 | me |
 | [Step 7 — Exterior](exterior.md) | 6 | me |
 | [Verify on a device](#verify-on-a-device) | 6 | you |
 | [Drop](#drop-these-two) | 2 | — |
@@ -67,12 +67,13 @@ What it took, for the record:
 
 Storey 0 is the right storey to show: it is the one a plan always has.
 
-### 2. Stair treads are too shallow at the default length
+### ~~2. Stair treads are too shallow at the default length~~ — done
 
-See [stairs.md § Proportions](stairs.md#open-proportions). Short version: the
-riser is already right (17.2 cm), the run is not — a U at the default
-`lengthCm = 240` gives a 17.5 cm tread where ~25 cm is the norm. You can work
-around it today by setting **L = 300** in the stair panel.
+**Done** — each shape now has its own default depth (straight 400, L 300 + leg
+200, U 300), which puts every shape at a 25 cm tread for a 2.70 m storey. `legCm`
+and `wellCm` are editable, and the panel warns when a flight ends up shallower
+than 22 cm because `fitStair` squeezed it into a small room. See
+[stairs.md § Proportions](stairs.md#proportions--done).
 
 ### 3. No handrails
 

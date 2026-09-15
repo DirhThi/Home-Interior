@@ -14,6 +14,10 @@ everything below sits under Unreleased. When the first build goes out, cut a
 - **The Home card reads the plan.** Each row now draws the actual floor plan as its
   thumbnail and shows room count, area, storeys and ceiling height — all derived
   from `floorPlanJson`. A room with nothing drawn says so instead of faking a size.
+- **Stair proportions per shape.** Each shape carries its own default depth, so a
+  new flight gets a ~25 cm tread instead of 17.5 cm; `legCm` and `wellCm` are
+  editable in the panel; and the panel warns when a flight is squeezed shallower
+  than 22 cm to fit the room above.
 - **Stairs**, straight, L-shaped and U-shaped. A flight is described as straight
   runs plus flat landings, cuts its own rectangular opening in the slab above,
   and is scaled down to fit inside one room on the storey above. Steps are shared

@@ -128,6 +128,8 @@ open class DesignerState : BaseScreenState() {
     open fun onStairWidth(cm: Float) {}
     open fun onStairLength(cm: Float) {}
     open fun onStairRotate(deg: Float) {}
+    open fun onStairLeg(cm: Float) {}
+    open fun onStairWell(cm: Float) {}
     open fun onStairShape(shape: StairShape) {}
     open fun onRemoveSelectedStair() {}
     open fun onDropOpening(nodeA: Int, nodeB: Int, t: Float, widthCm: Float, furnitureId: String) {}

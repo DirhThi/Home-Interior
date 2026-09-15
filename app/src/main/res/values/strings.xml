@@ -54,6 +54,11 @@
     <string name="stair_u">U</string>
     <string name="stair_no_opening">No opening upstairs — the whole flight has to sit inside one room on the storey above.</string>
     <string name="stair_width">W %1$d</string>
+    <string name="stair_leg">Leg %1$d</string>
+    <string name="stair_leg_label">second run</string>
+    <string name="stair_well">Well %1$d</string>
+    <string name="stair_well_label">gap between runs</string>
+    <string name="stair_tread_shallow">Steps are only %1$d cm deep — lengthen the flight for a comfortable stair.</string>
     <string name="stair_length">L %1$d</string>
     <string name="stair_width_label">stair width</string>
     <string name="stair_length_label">stair length</string>

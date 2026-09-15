@@ -199,7 +199,19 @@ class DesignerViewModel(
 
         override fun onStairRotate(deg: Float) = updateStair { it.copy(rotationDeg = deg) }
 
-        override fun onStairShape(shape: StairShape) = updateStair { it.copy(shape = shape) }
+        override fun onStairLeg(cm: Float) = updateStair { it.copy(legCm = cm) }
+
+        override fun onStairWell(cm: Float) = updateStair { it.copy(wellCm = cm) }
+
+        // Each shape wants its own depth, so carry the new default across — unless the length was
+        // hand-set, in which case it is the user's number and stays.
+        override fun onStairShape(shape: StairShape) = updateStair {
+            val keep = it.lengthCm != Stair.defaultLengthCm(it.shape)
+            it.copy(
+                shape = shape,
+                lengthCm = if (keep) it.lengthCm else Stair.defaultLengthCm(shape),
+            )
+        }
 
         override fun onRemoveSelectedStair() {
             val id = selectedStairId ?: return

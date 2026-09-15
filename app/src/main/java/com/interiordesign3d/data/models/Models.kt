@@ -4,6 +4,7 @@ import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.parcelize.Parcelize
+import kotlin.math.roundToInt
 import kotlinx.serialization.Serializable
 
 // ─── Furniture Item ────────────────────────────────────────────────────────────
@@ -79,8 +80,8 @@ data class Stair(
     val y: Float = 0f,
     val shape: StairShape = StairShape.STRAIGHT,
     val widthCm: Float = 100f,  // width of one run
-    val lengthCm: Float = 240f, // length of the first run, along the direction of travel
-    val legCm: Float = 160f,    // L only: the second run
+    val lengthCm: Float = 400f, // box length, along the first run
+    val legCm: Float = 200f,    // L only: the second run
     val wellCm: Float = 20f,    // U only: the gap between the two runs
     val rotationDeg: Float = 0f,
 ) {
@@ -200,9 +201,32 @@ data class Stair(
         return WallPoint(x + local.x * c - local.y * s, y + local.x * s + local.y * c)
     }
 
-    /** Centre line in plan coordinates. */
-    fun centreLinePlan(): List<WallPoint> =
-        centreLine().map { toPlan(WallPoint(it.x - boxWidth / 2f, it.y - boxLength / 2f)) }
+    /** Total distance walked, i.e. the sum of the runs. Landings are not walked up. */
+    fun goingCm(): Float = runs().sumOf { (a, b) ->
+        kotlin.math.hypot((b.x - a.x).toDouble(), (b.y - a.y).toDouble())
+    }.toFloat()
+
+    /** Depth of one step for a storey rising [riseCm]. Below [MIN_COMFORTABLE_TREAD_CM] it is a ladder. */
+    fun treadCm(riseCm: Float): Float = goingCm() / stepCount(riseCm)
+
+    companion object {
+        private const val TARGET_RISER_CM = 17f
+
+        /** One flight spans exactly one storey, so the step count follows from the rise alone. */
+        fun stepCount(riseCm: Float): Int =
+            (riseCm / TARGET_RISER_CM).roundToInt().coerceIn(10, 28)
+
+        /**
+         * Box length that leaves room for a comfortable tread at a normal storey height. It differs
+         * per shape because a turning flight gets a second run for free: a U walks 2 × (length −
+         * width), so it needs far less depth than a straight flight covering the same going.
+         */
+        fun defaultLengthCm(shape: StairShape): Float = when (shape) {
+            StairShape.STRAIGHT -> 400f
+            StairShape.L_SHAPED -> 300f
+            StairShape.U_SHAPED -> 300f
+        }
+    }
 }
 
 /** Wall and floor finish for one storey. Lives in the plan because it is per-storey data. */
@@ -421,3 +445,7 @@ fun pointInPolygon(pt: WallPoint, poly: List<WallPoint>): Boolean {
 
 const val MIN_STAIR_WIDTH_CM = 70f
 const val MIN_STAIR_LENGTH_CM = 150f
+/** A storey sits on the slab of the one below, not on its wall tops. */
+const val FLOOR_SLAB_CM = 5f
+/** Shallower than this and the flight reads as a ladder; the panel says so rather than blocking it. */
+const val MIN_COMFORTABLE_TREAD_CM = 22f

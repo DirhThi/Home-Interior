@@ -39,8 +39,10 @@ import com.google.android.filament.gltfio.FilamentAsset
 import com.google.android.filament.gltfio.ResourceLoader
 import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.utils.Utils
+import com.interiordesign3d.data.models.FLOOR_SLAB_CM
 import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
+import com.interiordesign3d.data.models.Stair
 import com.interiordesign3d.data.models.PlacedFurniture
 import com.interiordesign3d.data.models.WallOpening
 import com.interiordesign3d.data.models.WallPoint
@@ -53,7 +55,7 @@ private val filamentReady: Boolean by lazy { Utils.init(); true }
 private const val CM = 0.01f
 private const val WALL_THICK_CM = 10f
 private const val BRIDGE_NUDGE_CM = 0.15f
-private const val FLOOR_SLAB_M = 0.05f   // a storey sits on the slab of the one below, not on its wall tops
+private val FLOOR_SLAB_M = FLOOR_SLAB_CM * CM
 private const val OPENING_CASED = "doorway"      // cased opening: hole and reveal, no leaf
 private const val DOOR_OPEN_DEG = 78f
 private const val OPEN_PLAN_MIN_CM = 200f        // a cased opening this wide loses its lintel
@@ -480,7 +482,7 @@ private class RoomScene(
             // floorHoles(level + 1), from the very same footprint.
             plan.stairs.filter { it.level == level }.forEach { st ->
                 val rise = hM + floorT
-                val count = (rise / 0.17f).roundToInt().coerceIn(10, 28)
+                val count = Stair.stepCount(rise / CM)
                 val riser = rise / count
                 val runs = st.runs()
                 val runLen = runs.map { (a, b) -> hypot(b.x - a.x, b.y - a.y) }

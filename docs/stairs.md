@@ -13,8 +13,8 @@ things still missing. Everything here is procedural — there is no stair GLB.
 | `x`, `y` | — | centre of the bounding box, plan cm |
 | `shape` | `STRAIGHT` | `STRAIGHT` · `L_SHAPED` · `U_SHAPED` |
 | `widthCm` | 100 | width of **one** run |
-| `lengthCm` | 240 | box length, along the first run |
-| `legCm` | 160 | L only: the second run |
+| `lengthCm` | per shape | box length, along the first run — `Stair.defaultLengthCm` |
+| `legCm` | 200 | L only: the second run |
 | `wellCm` | 20 | U only: the gap between the two runs |
 | `rotationDeg` | 0 | about the box centre |
 
@@ -68,7 +68,30 @@ corner treads fan out with gaps between them — the bug this replaced.
 run**, leaving the landing square blank. That is how a turning flight reads on a
 real drawing, and it falls out of using the same `runs()` the 3D uses.
 
-## Open: proportions
+## Proportions — done
+
+The riser was always right; the run was not. Fixed by giving each shape its own
+default depth, since a turning flight gets its second run for free:
+
+| Shape | Default | Going | Tread at a 2.70 m storey |
+|---|---|---|---|
+| Straight | `L` 400 | 400 | 25.0 cm |
+| L | `L` 300, `leg` 200 | 400 | 25.0 cm |
+| U | `L` 300, `well` 20 | 400 | 25.0 cm |
+
+`Stair.stepCount(riseCm)` and `Stair.treadCm(riseCm)` now live on the model, so the
+viewport and the panel cannot disagree about how many steps a flight has — the
+viewport used to carry its own `0.17f` and `coerceIn(10, 28)`.
+
+`legCm` and `wellCm` are editable in the panel (they were not), shown only for the
+shape that uses them. And when the flight ends up shallow anyway — `fitStair`
+shrinks it into a small room — the panel says so rather than quietly producing a
+ladder: *"Steps are only 21 cm deep"*, below `MIN_COMFORTABLE_TREAD_CM`.
+
+Switching shape carries the new default across only when the length is still the
+old shape's default; a hand-set length is the user's number and survives.
+
+### The original numbers, for the record
 
 The riser is already right. The run is not.
 
@@ -82,23 +105,8 @@ inside the 16–19 cm a stair should use. But 16 steps need roughly
 | L | `(L − W) + leg` = 300 | **18.8 cm** (L 240, leg 160) | L 300 + leg 200 |
 | U | `2 × (L − W)` = 280 | **17.5 cm** (L 240, W 100) | **L 300** (W 100) |
 
-**Workaround today:** the stair panel already edits length (180–500 cm). Setting
-**L = 300** on a U gives a 25 cm tread with no code change.
-
-**Fix, cheapest first**
-
-1. Make `lengthCm`'s default depend on the shape — straight 380, L 300, U 300.
-   One `when`, and `fitStair` still shrinks it when the room above is small.
-   This is the one worth doing.
-2. Expose `legCm` and `wellCm` in `StairControlPanel`. Neither is editable now,
-   so an L flight's second run is stuck at 160 cm.
-3. Warn rather than silently produce a ladder: when tread < 22 cm, show the same
-   inline error style `stair_no_opening` already uses.
-
-**Not** a fix: adding a step-count control. Rise is locked to one storey, so
-fewer steps only means a taller riser. If you want it anyway, add
-`Stair.stepCount: Int = 0` (0 = auto) and read it in place of the `count`
-expression above — but length is the honest lever.
+**Not** a fix, and still not: adding a step-count control. Rise is locked to one
+storey, so fewer steps only means a taller riser. Length is the honest lever.
 
 ## Open: handrails
 
