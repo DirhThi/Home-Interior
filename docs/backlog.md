@@ -83,7 +83,7 @@ arrives at. See [stairs.md § Handrails](stairs.md#handrails--done). The same
 parameter is what a pitched roof needs, so [exterior.md](exterior.md) t7-3 is no
 longer blocked.
 
-Still open: the stairwell opening in the upper slab has no guard round it.
+The stairwell opening upstairs is guarded now too.
 
 ---
 

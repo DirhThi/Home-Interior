@@ -40,6 +40,7 @@ import com.google.android.filament.gltfio.ResourceLoader
 import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.utils.Utils
 import com.interiordesign3d.data.models.FLOOR_SLAB_CM
+import com.interiordesign3d.data.models.HOLE_MARGIN_CM
 import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.Stair
@@ -66,6 +67,7 @@ private const val EAVES_CM = 25f
 private const val ROOF_T_M = 0.16f
 private const val PLOT_MARGIN_CM = 180f
 private const val GROUND_DROP_M = 0.06f
+private const val PARAPET_H_M = 0.95f
 private const val FIELD_MODEL = "mat_concrete034"
 private const val FIELD_TINT = "#8FA184"
 private const val FIELD_TILE_M = 3f
@@ -218,6 +220,9 @@ private class RoomScene(
     private var azimuth = 35f; private var elevation = 28f; private var zoom = 1f
     private var centerX = 0f; private var centerY = 0.8f; private var centerZ = 0f
     private var radius = 6f
+    /** Orbit parked when the other mode took over, so stepping back in returns the old viewpoint. */
+    private var parkedOrbit: FloatArray? = null
+    private var wasExterior: Boolean? = null
     private var eX = 0f; private var eY = 0f; private var eZ = 0f
     private val fwd = FloatArray(3); private val rgt = FloatArray(3); private val upv = FloatArray(3)
     private var vpW = 1f; private var vpH = 1f
@@ -327,6 +332,16 @@ private class RoomScene(
             // frame the room only when its geometry changes (keeps user's orbit otherwise)
             // Frame the whole stack, not one storey — otherwise a two-storey plan opens with the
             // camera parked inside the upper floor.
+            // Outside invites a low, level view; inside that angle is under the floor, looking at
+            // nothing. Park each mode's orbit and hand it back rather than carrying one across.
+            if (wasExterior != null && wasExterior != exterior) {
+                val park = floatArrayOf(azimuth, elevation, zoom)
+                parkedOrbit?.let { azimuth = it[0]; elevation = it[1]; zoom = it[2] }
+                    ?: run { elevation = if (exterior) 18f else 28f; zoom = 1f }
+                parkedOrbit = park
+            }
+            wasExterior = exterior
+
             val storeys = if (exterior) plan.levelCount else activeLevel + 1
             val stackH = storeys.coerceAtLeast(1) * (roomHeightCm * CM + FLOOR_SLAB_M)
             centerX = 0f; centerZ = 0f; centerY = stackH * (if (exterior) 0.4f else 0.45f)
@@ -570,20 +585,19 @@ private class RoomScene(
                                 wx(c.x), deckY - riser, wz(c.y), -st.rotationDeg, stairTileM)
                         }
                         st.landingRails().getOrNull(ri)?.forEach { (ra, rb) ->
-                            val rl = hypot(rb.x - ra.x, rb.y - ra.y)
-                            if (rl < 1f) return@forEach
-                            val rux = (rb.x - ra.x) / rl; val ruy = (rb.y - ra.y) / rl
-                            val rrot = Math.toDegrees(atan2(-ruy.toDouble(), rux.toDouble())).toFloat()
-                            buildBox(stairMi, rl * CM, RAIL_T_CM * CM, RAIL_T_CM * CM,
-                                wx((ra.x + rb.x) / 2f), deckY + RAIL_H_M, wz((ra.y + rb.y) / 2f),
-                                rrot, stairTileM)
-                            val posts = (rl / 25f).roundToInt().coerceIn(2, 12)
-                            for (q in 0..posts) {
-                                val d = rl * q / posts
-                                buildBox(stairMi, BALUSTER_T_CM * CM, RAIL_H_M, BALUSTER_T_CM * CM,
-                                    wx(ra.x + rux * d), deckY, wz(ra.y + ruy * d), rrot, stairTileM)
-                            }
+                            railRun(ra, rb, deckY, stairMi, stairTileM, ::wx, ::wz)
                         }
+                    }
+                }
+            }
+
+            // Guard the hole this flight leaves in the floor above, on every side but the one you
+            // step out of. Without it the upper storey has an unfenced opening in it.
+            if (level < activeLevel || (exterior && level < topLevel)) {
+                plan.stairs.filter { it.level == level }.forEach { st ->
+                    val deckY = baseY + hM + floorT
+                    st.wellGuards(HOLE_MARGIN_CM).forEach { (a, b) ->
+                        railRun(a, b, deckY, stairMi, stairTileM, ::wx, ::wz)
                     }
                 }
             }
@@ -704,7 +718,39 @@ private class RoomScene(
                     buildBox(roofMi, len * CM, ROOF_T_M, 0.02f,
                         wx((a.x + b.x) / 2f), roofY, wz((a.y + b.y) / 2f), rot, roofTileM)
                 }
+                // A flat roof is a terrace you could stand on, so it gets a parapet — the wall
+                // carried up past the slab, which is also what stops it reading as a bare lid.
+                val wallLine = outset(ring, WALL_THICK_CM / 2f)
+                wallLine.indices.forEach { i ->
+                    val a = wallLine[i]; val b = wallLine[(i + 1) % wallLine.size]
+                    val len = hypot(b.x - a.x, b.y - a.y)
+                    if (len < 1f) return@forEach
+                    val rot = Math.toDegrees(
+                        atan2(-((b.y - a.y) / len).toDouble(), ((b.x - a.x) / len).toDouble())
+                    ).toFloat()
+                    buildBox(roofMi, len * CM, PARAPET_H_M, WALL_THICK_CM * CM,
+                        wx((a.x + b.x) / 2f), roofY + ROOF_T_M, wz((a.y + b.y) / 2f), rot, roofTileM)
+                }
             }
+        }
+    }
+
+    /** A horizontal rail with posts along one plan segment: stairwell guards and landing rails. */
+    private fun railRun(
+        a: WallPoint, b: WallPoint, deckY: Float, mi: MaterialInstance, tileM: Float,
+        wx: (Float) -> Float, wz: (Float) -> Float,
+    ) {
+        val len = hypot(b.x - a.x, b.y - a.y)
+        if (len < 1f) return
+        val ux = (b.x - a.x) / len; val uy = (b.y - a.y) / len
+        val rot = Math.toDegrees(atan2(-uy.toDouble(), ux.toDouble())).toFloat()
+        buildBox(mi, len * CM, RAIL_T_CM * CM, RAIL_T_CM * CM,
+            wx((a.x + b.x) / 2f), deckY + RAIL_H_M, wz((a.y + b.y) / 2f), rot, tileM)
+        val posts = (len / 25f).roundToInt().coerceIn(2, 14)
+        for (q in 0..posts) {
+            val d = len * q / posts
+            buildBox(mi, BALUSTER_T_CM * CM, RAIL_H_M, BALUSTER_T_CM * CM,
+                wx(a.x + ux * d), deckY, wz(a.y + uy * d), rot, tileM)
         }
     }
 

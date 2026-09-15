@@ -214,6 +214,21 @@ data class Stair(
             .map { (u, v) -> toPlan(WallPoint(u, v)) }
     }
 
+    /**
+     * Sides of the stairwell that need guarding upstairs: every edge of [wellOpening] except the one
+     * the flight arrives at, which has to stay open to walk out of. Derived from where the last run
+     * actually ends, so it follows the shape instead of assuming a side.
+     */
+    fun wellGuards(marginCm: Float = 0f): List<Pair<WallPoint, WallPoint>> {
+        val well = wellOpening(marginCm)
+        val arrival = runs().lastOrNull()?.second ?: return emptyList()
+        val edges = well.indices.map { well[it] to well[(it + 1) % well.size] }
+        val open = edges.minByOrNull { (a, b) ->
+            kotlin.math.hypot((a.x + b.x) / 2f - arrival.x, (a.y + b.y) / 2f - arrival.y)
+        }
+        return edges.filter { it !== open }
+    }
+
     /** The footprint in plan centimetres; [marginCm] grows it so the opening is not pinched. */
     fun footprint(marginCm: Float = 0f): List<WallPoint> {
         val bw = boxWidth

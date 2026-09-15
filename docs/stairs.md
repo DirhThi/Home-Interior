@@ -126,8 +126,9 @@ The blocker below is gone: `buildBox` now takes `pitchDeg`, which tilts a box ab
 its own length. **A flat or single-pitch roof can use the same parameter** — see
 [exterior.md](exterior.md) t7-3.
 
-Not there yet: no rail where a flight meets the floor above, so the stairwell itself
-is still an unguarded hole in the upper slab.
+The stairwell upstairs is guarded too: `Stair.wellGuards` takes the rectangular
+opening and drops the edge nearest where the last run ends, since that side has to
+stay open to walk out of. The rest get a rail with posts.
 
 ### How it was blocked
 

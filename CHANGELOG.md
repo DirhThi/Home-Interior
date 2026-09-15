@@ -39,6 +39,10 @@ everything below sits under Unreleased. When the first build goes out, cut a
   walks the edges exactly one room uses to get the storey's outline, so an L-shaped
   or split plan roofs correctly — and a courtyard comes back as a ring wound the
   other way, which is how callers can tell it apart.
+- **Guard rails where a floor opens or ends.** A parapet round every flat roof, so a
+  terrace reads as somewhere you could stand, and a rail round the stairwell opening
+  upstairs on every side but the one you step out of — `Stair.wellGuards` works that
+  side out from where the last run actually ends.
 - **Handrails on every flight.** A raking rail and balusters down both sides of each
   run, and a guard on the landing sides no run arrives at, all derived from the same
   nosing line so they meet whatever the pitch. `buildBox` gained a `pitchDeg` that
@@ -91,6 +95,9 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Fixed
 
+- **Stepping inside after looking round the outside showed a black screen.** The
+  orbit carried across: a low, level angle is natural outside and under the floor
+  inside. Each mode now parks its own viewpoint and gets it back.
 - **Pitched roofs floated above the walls.** Eaves were placed at the storey above's
   floor level, which is right for a flat slab and a slab's thickness too high for a
   pitched one; and the Thai masses were stepped *up* from there, lifting the smaller
