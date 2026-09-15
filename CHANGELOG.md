@@ -25,15 +25,6 @@ everything below sits under Unreleased. When the first build goes out, cut a
   catalogue are pushed over the shell rather than living in tabs, so they get the whole screen —
   stacking a second bar under the designer's own mode bar would be worse than having none.
 
-### Changed
-
-- **The toolchain moved a long way**: Gradle 8.0 → 9.5, AGP 8.1.2 → 9.3.1, Kotlin 1.9.20 → 2.4.10,
-  Compose BOM 2024.06 → 2026.08, compileSdk/targetSdk 36 → 37, Room 2.6.1 → 2.8.5, kapt → KSP, and
-  **minSdk 26 → 31**. AGP 9 carries Kotlin itself, so the `kotlin.android` plugin is gone and its
-  options moved to `kotlin { compilerOptions { } }`. Filament 1.49.1 came through unchanged.
-- The room list moved from `ui/screen/home` to `ui/screen/project`; `ui/screen/home` is now the
-  landing.
-
 - **A floating tab bar for the three editor modes.** Plan / Interior / Exterior were
   the app's real top-level navigation but lived as two unlabelled icon buttons in the
   top bar, so there was no way to tell where you were or what else existed. They are
@@ -46,7 +37,7 @@ everything below sits under Unreleased. When the first build goes out, cut a
   a soft shadow, as a `GlassTokens` set plus `Modifier.glass`. Deliberately no backdrop
   blur: the 3D viewport is a `SurfaceView` on its own compositor layer, so nothing drawn
   above it can sample its pixels, and `Modifier.blur` blurs a node's own content rather
-  than what is behind it. Works down to minSdk 26 for the cost of one draw call.
+  than what is behind it. Costs one draw call, and now that minSdk is 31 a real backdrop blur is finally an option.
 
   The edge is what carries it: the rim runs bright along the top, fades out by the
   middle and returns half-strength at the bottom — the way light catches both edges of
@@ -55,8 +46,7 @@ everything below sits under Unreleased. When the first build goes out, cut a
   costs legibility everywhere else.
 - **A theme switch in Settings.** Auto / Light / Dark, kept in SharedPreferences and held
   in Compose state so the whole tree repaints the moment it changes. A plain on/off toggle
-  could not express "follow the system", so it is a three-way segmented control. Home's two
-  header icons became Sample plans and Settings; model credits moved inside the sheet.
+  could not express "follow the system", so it is a three-way segmented control. It started as a sheet on Home and is now a tab of its own.
 - **One control vocabulary, everywhere.** Three different Material components were being used
   to say "pick one of these" — `FilterChip` rows in the panels, `ScrollableTabRow` in the
   sheets, and a hand-rolled row in Settings. They are now one `SegmentedPills` for small fixed
@@ -69,10 +59,15 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Changed
 
+- **The toolchain moved a long way**: Gradle 8.0 → 9.5, AGP 8.1.2 → 9.3.1, Kotlin 1.9.20 → 2.4.10,
+  Compose BOM 2024.06 → 2026.08, compileSdk/targetSdk 36 → 37, Room 2.6.1 → 2.8.5, kapt → KSP, and
+  **minSdk 26 → 31**. AGP 9 carries Kotlin itself, so the `kotlin.android` plugin is gone and its
+  options moved to `kotlin { compilerOptions { } }`. Filament 1.49.1 came through unchanged.
+- The room list moved from `ui/screen/home` to `ui/screen/project`; `ui/screen/home` is now the
+  landing.
 - **Actions cut from four surfaces to two.** The top bar went from five controls to a
   round back button: mode switching moved to the tab bar, surfaces to the action
-  clusters, and **Save is gone** because the plan already auto-saves 400 ms after the
-  last edit. `FloorPlanToolbar` — a full-width opaque bar holding four chips and four
+  clusters, and **Save is gone** because the plan auto-saves shortly after the last edit. `FloorPlanToolbar` — a full-width opaque bar holding four chips and four
   buttons, taking permanent height off the canvas — is deleted; in its place are
   floating clusters at the vertical centre of each edge, with the four placement tools
   folded into one speed-dial that wears the armed tool's own icon while collapsed.
@@ -109,7 +104,7 @@ everything below sits under Unreleased. When the first build goes out, cut a
 - **The room card was tinted red at rest.** `SwipeToDismissBox` painted its delete background
   under every card, which showed through once the cards became glass. It is only drawn while
   the card is actually being swiped.
-- **Back could drop the last edit.** Auto-save is debounced at 400 ms and there is no Save
+- **Back could drop the last edit.** Auto-save coalesces and there is no Save
   button to fall back on any more, so `onBack` now flushes the plan and the furniture
   before it pops.
 
