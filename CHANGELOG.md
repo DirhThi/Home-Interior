@@ -44,6 +44,14 @@ everything below sits under Unreleased. When the first build goes out, cut a
   walks the edges exactly one room uses to get the storey's outline, so an L-shaped
   or split plan roofs correctly — and a courtyard comes back as a ring wound the
   other way, which is how callers can tell it apart.
+- **Walls you can open up.** Tap a wall in the plan and it becomes selectable — **Full**
+  as before, **Half** at counter height for a kitchen divider (open above, joinery
+  dropped, capped with a coping), or **Open**, which builds no wall at all and stands a
+  column at each end to carry the storey above. Columns are the catalogue's own
+  `q_column_*` models, so they are the same object you can already place by hand, and
+  the round/square/short choice is in the panel. Stored per node pair like a door, so
+  reshaping the plan carries it; a wall back to Full stores nothing.
+- **A balcony can span a whole frontage** — the width cap went from 6 m to 20 m.
 - **Balconies.** A fourth placement tool: tap a wall and a slab hangs off the outside
   of it, railed on the three open sides, with width and projection editable. It only
   takes on a wall a single room uses, because one on an interior wall would hang into
@@ -130,6 +138,8 @@ everything below sits under Unreleased. When the first build goes out, cut a
   balcony hung off an upper wall was then buried in its own roof, with only the top of
   its rail showing. The slab now hangs below the walking surface instead of standing
   on it, so a terrace and the storey above it share one level.
+- **Tapping a wall in the plan dropped a stray node** instead of doing anything useful.
+  It selects the wall now.
 - **The floor-plan tool row wrapped its last label to two lines** instead of admitting
   four chips no longer fit a phone. It scrolls sideways now.
 - **A roof tint could not make a dark tile red.** `baseColorFactor` multiplies the

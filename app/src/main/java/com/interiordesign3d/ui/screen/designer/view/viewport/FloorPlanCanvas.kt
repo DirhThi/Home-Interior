@@ -64,6 +64,8 @@ fun WallDrawingCanvas(
     onPlaceBalcony: (nodeA: Int, nodeB: Int, t: Float) -> Unit = { _, _, _ -> },
     onTapBalcony: (String) -> Unit = {},
     selectedBalconyId: String? = null,
+    onTapWall: (Pair<Int, Int>?) -> Unit = {},
+    selectedWall: Pair<Int, Int>? = null,
     onMoveStair: (id: String, x: Float, y: Float) -> Unit = { _, _, _ -> },
     onTapStair: (id: String) -> Unit = {},
     selectedStairId: String? = null,
@@ -109,6 +111,7 @@ fun WallDrawingCanvas(
     val onPlaceStairRef = rememberUpdatedState(onPlaceStair)
     val onPlaceBalconyRef = rememberUpdatedState(onPlaceBalcony)
     val onTapBalconyRef = rememberUpdatedState(onTapBalcony)
+    val onTapWallRef = rememberUpdatedState(onTapWall)
     val onMoveStairRef  = rememberUpdatedState(onMoveStair)
     val onTapStairRef   = rememberUpdatedState(onTapStair)
     val placedFurRef    = rememberUpdatedState(placedFurniture)
@@ -420,10 +423,30 @@ fun WallDrawingCanvas(
                                             tappedId = op.id; break
                                         }
                                     }
+                                    // A wall under the finger is selected rather than ignored. It
+                                    // also stops a tap meant for a wall dropping a stray node.
+                                    var wallEdge: Pair<Int, Int>? = null
+                                    if (balcony == null && tappedId == null && nearNodeIdx < 0) {
+                                        var best = hitPx * 1.2f
+                                        plan.roomsOnLevel(levelRef.value).forEach { ri ->
+                                            val room = plan.rooms[ri]
+                                            room.indices.forEach { i ->
+                                                val ai = room[i]; val bi = room[(i + 1) % room.size]
+                                                val aS = screenOf(plan.nodes[ai]); val bS = screenOf(plan.nodes[bi])
+                                                val e = bS - aS
+                                                val l2 = (e.x * e.x + e.y * e.y).coerceAtLeast(0.001f)
+                                                val t = ((downPos - aS).let { it.x * e.x + it.y * e.y } / l2)
+                                                    .coerceIn(0f, 1f)
+                                                val d = (Offset(aS.x + e.x * t, aS.y + e.y * t) - downPos).getDistance()
+                                                if (d < best) { best = d; wallEdge = ai to bi }
+                                            }
+                                        }
+                                    }
                                     when {
                                         balcony != null -> onTapBalconyRef.value(balcony.id)
                                         tappedId != null -> onTapOp.value(tappedId!!)
                                         nearNodeIdx >= 0 -> onFromNode.value(nearNodeIdx)
+                                        wallEdge != null -> onTapWallRef.value(wallEdge)
                                         else -> onNewPt.value(tapCm)
                                     }
                                 }
@@ -527,6 +550,29 @@ fun WallDrawingCanvas(
                             awayFrom = roomCentroid,
                         )
                     }
+                }
+            }
+
+            // ── Walls that are not plain full-height ─────────────────────────
+            floorPlan.roomsOnLevel(activeLevel).forEach { ri ->
+                val room = floorPlan.rooms[ri]
+                room.indices.forEach { i ->
+                    val ai = room[i]; val bi = room[(i + 1) % room.size]
+                    val st = floorPlan.wallStyleOn(ai, bi, activeLevel)?.style
+                    val picked = selectedWall?.let { (p, q) -> (p == ai && q == bi) || (p == bi && q == ai) } == true
+                    if (st == null && !picked) return@forEach
+                    val aS = toScreen(floorPlan.nodes[ai]); val bS = toScreen(floorPlan.nodes[bi])
+                    when (st) {
+                        WallStyle.OPEN -> drawLine(
+                            selectColor, aS, bS, strokeWidth = 5f,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 10f)),
+                        )
+                        WallStyle.HALF -> drawLine(
+                            accents.canvasWall.copy(alpha = 0.45f), aS, bS, strokeWidth = 7f,
+                        )
+                        else -> Unit
+                    }
+                    if (picked) drawLine(selectColor, aS, bS, strokeWidth = 3f)
                 }
             }
 

@@ -47,6 +47,11 @@ above and forces itself to fit inside a single room up there. Width, length,
 rotation and shape are editable; the material is its own preset, separate from
 walls and floors. Details in [stairs.md](stairs.md).
 
+**Open plans.** Any wall can be full height, a counter-height divider, or left out
+entirely with columns at its ends — enough for a kitchen half-wall or a living room
+that opens onto the stair. The columns come from the furniture catalogue, so they are
+customisable like any other object.
+
 **Balconies.** Tap an outside wall and a railed slab hangs off it, width and
 projection editable. Interior walls are refused — a balcony there would hang into the
 next room. On an upper storey it reads either way: over open air it cantilevers with a

@@ -17,6 +17,7 @@ import com.interiordesign3d.data.models.PlacedFurniture
 import com.interiordesign3d.data.models.Stair
 import com.interiordesign3d.data.models.StairShape
 import com.interiordesign3d.data.models.WallOpening
+import com.interiordesign3d.data.models.WallStyle
 import com.interiordesign3d.data.models.WallPoint
 import com.interiordesign3d.data.repository.AppDatabase
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
@@ -221,6 +222,16 @@ class DesignerViewModel(
                 shape = shape,
                 lengthCm = if (keep) it.lengthCm else Stair.defaultLengthCm(shape),
             )
+        }
+
+        override fun onWallStyle(style: WallStyle) {
+            val (a, b) = selectedWall ?: return
+            floorPlan = floorPlan.withWallStyle(a, b, activeLevel) { it.copy(style = style) }
+        }
+
+        override fun onWallColumn(key: String) {
+            val (a, b) = selectedWall ?: return
+            floorPlan = floorPlan.withWallStyle(a, b, activeLevel) { it.copy(columnKey = key) }
         }
 
         override fun onPlaceBalcony(nodeA: Int, nodeB: Int, t: Float) {

@@ -50,6 +50,16 @@
     <string name="opening_width">width</string>
     <string name="stairs">Stairs</string>
     <string name="balcony">Balcony</string>
+    <string name="wall">Wall</string>
+    <string name="wall_full">Full</string>
+    <string name="wall_half">Half</string>
+    <string name="wall_open">Open</string>
+    <string name="column_round">Round</string>
+    <string name="column_square">Square</string>
+    <string name="column_square_short">Short</string>
+    <string name="wall_note_full">Floor to ceiling, and it takes doors and windows.</string>
+    <string name="wall_note_half">Counter height — a kitchen divider, open above. Doors and windows are dropped.</string>
+    <string name="wall_note_open">No wall: a column stands at each end to carry the storey above.</string>
     <string name="balcony_width">W %1$d</string>
     <string name="balcony_width_label">balcony width</string>
     <string name="balcony_depth">D %1$d</string>

@@ -19,6 +19,8 @@ import com.interiordesign3d.data.models.RoofShape
 import com.interiordesign3d.data.models.Stair
 import com.interiordesign3d.data.models.StairShape
 import com.interiordesign3d.data.models.WallOpening
+import com.interiordesign3d.data.models.WallStyle
+import com.interiordesign3d.data.models.WallTreatment
 import com.interiordesign3d.data.models.WallPoint
 import com.interiordesign3d.ui.screen.designer.DrawingPhase
 import com.interiordesign3d.ui.screen.designer.EditorMode
@@ -40,6 +42,8 @@ open class DesignerState : BaseScreenState() {
     var selectedOpeningId by mutableStateOf<String?>(null)
     var selectedStairId by mutableStateOf<String?>(null)
     var selectedBalconyId by mutableStateOf<String?>(null)
+    /** Wall under edit, as its node pair — walls have no id of their own. */
+    var selectedWall by mutableStateOf<Pair<Int, Int>?>(null)
 
     var editorMode by mutableStateOf(EditorMode.DRAW_WALLS)
     var activeLevel by mutableStateOf(0)
@@ -81,6 +85,9 @@ open class DesignerState : BaseScreenState() {
     val selectedOpening: WallOpening? by derivedStateOf {
         floorPlan.openings.firstOrNull { it.id == selectedOpeningId }
     }
+
+    val selectedWallStyle: WallTreatment?
+        get() = selectedWall?.let { (a, b) -> floorPlan.wallStyleOn(a, b, activeLevel) }
 
     val selectedBalcony: Balcony?
         get() = floorPlan.balconies.firstOrNull { it.id == selectedBalconyId }
@@ -151,6 +158,9 @@ open class DesignerState : BaseScreenState() {
     open fun onStairLeg(cm: Float) {}
     open fun onStairWell(cm: Float) {}
     open fun onStairShape(shape: StairShape) {}
+    open fun onSelectWall(edge: Pair<Int, Int>?) { selectedWall = edge }
+    open fun onWallStyle(style: WallStyle) {}
+    open fun onWallColumn(key: String) {}
     open fun onPlaceBalcony(nodeA: Int, nodeB: Int, t: Float) {}
     open fun onMoveBalcony(id: String, t: Float) {}
     open fun onSelectBalcony(id: String?) { selectedBalconyId = id }

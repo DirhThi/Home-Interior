@@ -282,6 +282,31 @@ data class LevelSurface(
     val wallColor: String = "",   // blank = take the tint from the wall preset
 )
 
+@Serializable
+enum class WallStyle {
+    /** Floor to ceiling. */
+    FULL,
+    /** A counter-height divider — the kitchen/living split, open above. */
+    HALF,
+    /** No wall at all: the span is carried on columns at either end. */
+    OPEN,
+}
+
+/**
+ * How one wall is built. Keyed by node pair like [WallOpening], so reshaping the plan carries it,
+ * and absent means [WallStyle.FULL] — the plan only stores the walls that differ.
+ */
+@Serializable
+data class WallTreatment(
+    val nodeA: Int = 0,
+    val nodeB: Int = 0,
+    val level: Int = 0,
+    val style: WallStyle = WallStyle.FULL,
+    /** Catalogue key of the column to stand at each end when the wall is open. */
+    val columnKey: String = "q_column_round",
+    val columnScale: Float = 1f,
+)
+
 /**
  * A slab hung off the outside of a wall, with a rail round the three open sides. Like [WallOpening]
  * it is pinned to a node pair rather than to a room, so moving a corner carries it along.
@@ -353,6 +378,7 @@ data class FloorPlan(
     val stairs: List<Stair> = emptyList(),
     val levelSurfaces: List<LevelSurface> = emptyList(),
     val balconies: List<Balcony> = emptyList(),
+    val wallStyles: List<WallTreatment> = emptyList(),
     val exterior: ExteriorSurface = ExteriorSurface()
 ) {
     fun roomPolygon(idx: Int): List<WallPoint> = rooms[idx].map { nodes[it] }
@@ -610,6 +636,19 @@ data class FloorPlan(
         )
     }
 
+    /** How this wall is built; null means the default, a full-height one. */
+    fun wallStyleOn(a: Int, b: Int, level: Int): WallTreatment? = wallStyles.firstOrNull {
+        it.level == level && ((it.nodeA == a && it.nodeB == b) || (it.nodeA == b && it.nodeB == a))
+    }
+
+    fun withWallStyle(a: Int, b: Int, level: Int, transform: (WallTreatment) -> WallTreatment): FloorPlan {
+        val cur = wallStyleOn(a, b, level) ?: WallTreatment(nodeA = a, nodeB = b, level = level)
+        val next = transform(cur)
+        val rest = wallStyles.filterNot { it === cur }
+        // A wall that is back to full carries no information, so it leaves the list entirely.
+        return copy(wallStyles = if (next.style == WallStyle.FULL) rest else rest + next)
+    }
+
     fun openingsOn(a: Int, b: Int, level: Int): List<WallOpening> = openings.filter {
         it.level == level && ((it.nodeA == a && it.nodeB == b) || (it.nodeA == b && it.nodeB == a))
     }
@@ -716,6 +755,8 @@ fun signedArea2(poly: List<WallPoint>): Float {
 }
 
 const val WALL_THICK_CM = 10f
+/** Counter height: tall enough to divide a kitchen, low enough to see over. */
+const val HALF_WALL_CM = 110f
 const val MIN_STAIR_WIDTH_CM = 70f
 const val MIN_STAIR_LENGTH_CM = 150f
 /** A storey sits on the slab of the one below, not on its wall tops. */

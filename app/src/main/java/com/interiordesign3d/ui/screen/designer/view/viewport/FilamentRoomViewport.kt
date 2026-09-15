@@ -48,7 +48,10 @@ import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.Stair
 import com.interiordesign3d.data.models.PlacedFurniture
 import com.interiordesign3d.data.models.RoofShape
+import com.interiordesign3d.data.models.HALF_WALL_CM
 import com.interiordesign3d.data.models.WallOpening
+import com.interiordesign3d.data.models.WallStyle
+import com.interiordesign3d.data.models.WallTreatment
 import com.interiordesign3d.data.models.WallPoint
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -391,6 +394,7 @@ private class RoomScene(
         // One floor per room, built from the room polygon itself and grown outward by the wall
         // thickness so it runs under the walls (a bbox slab would poke past off-square edges).
         val nodes = plan.nodes
+        val openWallNodes = mutableListOf<Pair<Int, WallTreatment>>()
         // Storeys stack: everything from the ground up to the one being edited is built, and
         // each storey's floor slab doubles as the ceiling of the one below.
         val topLevel = if (exterior) plan.levelCount - 1 else activeLevel.coerceAtMost(plan.levelCount - 1)
@@ -453,6 +457,18 @@ private class RoomScene(
                 val off = if (exterior) WALL_THICK_CM / 2f else 0f
                 val edgeEnts = mutableListOf<Int>()
 
+                // How this wall is built. An open one is not built at all — it leaves a column at
+                // each end instead, which is what holds the storey above in a room without a wall.
+                val treat = plan.wallStyleOn(n0, n1, level)
+                val style = treat?.style ?: WallStyle.FULL
+                if (style == WallStyle.OPEN) {
+                    openWallNodes += n0 to (treat ?: WallTreatment(nodeA = n0, nodeB = n1, level = level))
+                    openWallNodes += n1 to (treat ?: WallTreatment(nodeA = n0, nodeB = n1, level = level))
+                    continue
+                }
+                // A half wall is a divider: it stops at counter height and carries no joinery.
+                val wallTopY = if (style == WallStyle.HALF) HALF_WALL_CM * CM else hM
+
                 fun along(t: Float) = (a.x + ux * t * lenCm) to (a.y + uz * t * lenCm)
                 fun slab(t0: Float, t1: Float, y0: Float, y1: Float) {
                     val segLen = (t1 - t0) * lenCm; if (segLen < 1f || y1 - y0 < 0.005f) return
@@ -473,7 +489,8 @@ private class RoomScene(
                     if (!exterior) baseboardSide(t0, t1, 1f)
                 }
 
-                val edgeOpenings = plan.openingsOn(n0, n1, level).sortedBy { op ->
+                val edgeOpenings = if (style == WallStyle.HALF) emptyList()
+                else plan.openingsOn(n0, n1, level).sortedBy { op ->
                     if (op.nodeA == n0) op.t else 1f - op.t
                 }
                 var tPrev = 0f
@@ -501,17 +518,17 @@ private class RoomScene(
 
                     val halfT = (cutW / CM / 2f) / lenCm
                     val tS = (t - halfT).coerceIn(0f, 1f); val tE = (t + halfT).coerceIn(0f, 1f)
-                    if (tS > tPrev + 1e-3f) { slab(tPrev, tS, -floorT, hM); baseboard(tPrev, tS) }
+                    if (tS > tPrev + 1e-3f) { slab(tPrev, tS, -floorT, wallTopY); baseboard(tPrev, tS) }
                     val (ox, oz) = along(t)
                     val lx = wx(ox + nx * off); val lz = wz(oz + nz * off)
 
                     // A cased opening wider than a doorway reads as one shared space: no lintel at all.
                     val openPlan = isDoor && model == null && op.widthCm >= OPEN_PLAN_MIN_CM
                     if (isDoor) {
-                        if (!openPlan) slab(tS, tE, cutH, hM)
+                        if (!openPlan) slab(tS, tE, cutH, wallTopY)
                     } else {
                         slab(tS, tE, -floorT, sill); baseboard(tS, tE)
-                        slab(tS, tE, sill + cutH, hM)
+                        slab(tS, tE, sill + cutH, wallTopY)
                     }
                     openingWorld[op.id] = floatArrayOf(lx, baseY + sill + cutH / 2f, lz)
                     if (path != null) {
@@ -521,7 +538,13 @@ private class RoomScene(
                     }
                     tPrev = tE
                 }
-                if (tPrev < 1f - 1e-3f) { slab(tPrev, 1f, -floorT, hM); baseboard(tPrev, 1f) }
+                if (tPrev < 1f - 1e-3f) { slab(tPrev, 1f, -floorT, wallTopY); baseboard(tPrev, 1f) }
+                // A half wall reads as a stub without something to cap it; a slim coping does the job.
+                if (style == WallStyle.HALF) {
+                    val (mx, mz) = along(0.5f)
+                    edgeEnts += buildBox(trimMi, lenCm * CM, 0.04f, wt + 0.03f,
+                        wx(mx + nx * off), baseY + wallTopY, wz(mz + nz * off), rotDeg, 1f)
+                }
                 wallSegs.add(WallSeg(n0, n1, exterior, nx, nz, off,
                     wx((a.x + b.x) / 2f + nx * off), wz((a.y + b.y) / 2f + nz * off), edgeEnts.toIntArray()))
             }
@@ -630,6 +653,14 @@ private class RoomScene(
             // One post per plan corner. It has to sit where its walls actually are: an exterior wall is
             // pushed out by half its thickness, so the post follows by the sum of those pushes — parked
             // on the bare node it left a step at every outside corner.
+            // Columns where walls were left out. One per node however many open walls meet there.
+            openWallNodes.groupBy({ it.first }, { it.second }).forEach { (nodeIdx, treats) ->
+                val v = nodes.getOrNull(nodeIdx) ?: return@forEach
+                val t = treats.first()
+                placeColumn(t.columnKey, t.columnScale, wx(v.x), baseY, wz(v.y), hM)
+            }
+            openWallNodes.clear()
+
             val usedNodes = rooms.flatten().toSet()
             for (nodeIdx in usedNodes) {
                 val v = nodes[nodeIdx]
@@ -1415,6 +1446,25 @@ private class RoomScene(
      * inside [fitW] × [fitH] and centred there. Doors and windows go through this; [place]
      * stretches three axes independently, which squashed every leaf to the opening it sat in.
      */
+    /**
+     * The column that stands in for a wall that was left out. It uses the catalogue's own column
+     * models, so it is the same object the user can already drop in by hand — and it is stretched to
+     * the storey, because a column that does not reach the ceiling is not holding anything up.
+     */
+    private fun placeColumn(key: String, scale: Float, px: Float, baseY: Float, pz: Float, hM: Float) {
+        val asset = load("models/$key.glb") ?: return
+        val bb = asset.boundingBox
+        val ey = (bb.halfExtent[1] * 2f).coerceAtLeast(1e-4f)
+        // Girth comes from the catalogue's own unit scale — the Quaternius packs are authored at 2×,
+        // so a scale of 1 gives a column the size of a table. Only the height is stretched, because
+        // a column has to reach the ceiling whatever the storey.
+        val sxz = (catalogItem(key)?.unitScale ?: 0.5f) * scale
+        val sy = hM / ey
+        applyTransform(asset, sxz, sy, sxz, bb.center, bb.halfExtent, px, baseY, pz, 0f, -1)
+        scene.addEntities(asset.entities)
+        structureAssets += asset
+    }
+
     private fun placeFitted(
         path: String, fitW: Float, fitH: Float,
         px: Float, py: Float, pz: Float, rotDeg: Float,

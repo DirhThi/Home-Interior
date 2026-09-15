@@ -86,7 +86,7 @@ fun BalconyControlPanel(balcony: Balcony, state: DesignerState) {
     when (editing) {
         EDIT_WIDTH -> NumberInputDialog(
             title = stringResource(R.string.edit_value, stringResource(R.string.balcony_width_label)),
-            suffix = "cm", initial = balcony.widthCm, range = 90f..600f, step = 10f,
+            suffix = "cm", initial = balcony.widthCm, range = 90f..2000f, step = 10f,
             onConfirm = state::onBalconyWidth, onDismiss = { editing = EDIT_NONE },
         )
         EDIT_DEPTH -> NumberInputDialog(
