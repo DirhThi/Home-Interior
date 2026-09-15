@@ -148,6 +148,30 @@ ceiling height is a property of a storey, not of a building — it belongs on
 `LevelSurface` next to the wall and floor presets, and then the entity holds
 nothing but identity, timestamps and three viewer toggles.
 
+## Parked: more furniture models
+
+Looked into, not started — the decision is the user's and it was deferred.
+
+**Sketchfab can be browsed but not fetched.** The search API answers without auth; the
+download endpoint returns `401` and needs an account token, which is a credential and
+not something to hand to an agent. Its results are also mostly **CC Attribution**, not
+CC0, so each model would need its author credited individually.
+
+**Poly Haven is fetchable today**: public API, 521 models, ~48 that suit an interior
+app, all CC0, shipping glTF. A contact sheet of those 48 was rendered for review.
+
+Three things that make it a real decision rather than a shopping trip:
+
+- **Style clash.** Poly Haven is photoreal and leans antique/gothic. The existing
+  catalogue is stylised Quaternius. In one room they read as two different apps.
+- **Weight.** A Poly Haven model at 1K is 0.4–1.3 MB against roughly 40 KB for a
+  Quaternius one. All 48 is about +35 MB on an `assets/` folder that is 7.6 MB today.
+  Downscaling to 512 px would cut that a lot but never to Quaternius levels.
+- **Junk in the set.** A rubber duck, a boombox, a camera, a carved elephant.
+
+If the style clash is the blocker, the cheaper path is the remaining **Quaternius CC0
+packs**, which match what is already there.
+
 ## Dead code noticed while writing this
 
 - `Stair.centreLinePlan()` (`Models.kt:204`) — nothing calls it since the 2D
