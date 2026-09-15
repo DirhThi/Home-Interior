@@ -11,7 +11,16 @@ Longer-form notes live in `docs/`, not here:
 - [`docs/status.md`](docs/status.md) — what the app does today, how well it has actually been verified, what is fragile
 - [`docs/backlog.md`](docs/backlog.md) — everything still open, and why two roadmap tasks should be dropped
 - [`docs/stairs.md`](docs/stairs.md) — how a flight is described, plus the tread-depth and handrail gaps
-- [`docs/exterior.md`](docs/exterior.md) — the spec for the unstarted exterior step
+- [`docs/exterior.md`](docs/exterior.md) — how ground, roofs, parapets and balconies were built, and what was left out
+
+## Working agreement
+
+Two rules that otherwise live only in one machine's session memory, so they are written down here instead:
+
+- **Never run `git commit` unprompted.** Finish the code, get `./gradlew assembleDebug` green, report — and leave the change in the working tree. The developer commits, or asks for it explicitly.
+- **When asked to commit: one short line saying what the change does.** No body, no bullet list, and no `Co-Authored-By` or other attribution trailer. Same for PR descriptions.
+
+On-device verification is theirs, not yours — build to prove it compiles, then hand off.
 
 ## Changelog — required
 

@@ -11,6 +11,85 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Added
 
+- **A floating tab bar for the three editor modes.** Plan / Interior / Exterior were
+  the app's real top-level navigation but lived as two unlabelled icon buttons in the
+  top bar, so there was no way to tell where you were or what else existed. They are
+  now a glass pill at the bottom of the designer, icon and label, with the current one
+  filled and a spring indicator. Interior and Exterior stay disabled until a room is
+  drawn. `DesignerState` gained one `onModeChange(mode)` in place of
+  `onEnterDesign` / `onEditFloorPlan` / `onToggleExterior`, and it flushes whatever the
+  mode being left owns.
+- **Glass chrome, hand-rolled.** `ui/theme/Glass.kt` — tint, a rim lit from the top and
+  a soft shadow, as a `GlassTokens` set plus `Modifier.glass`. Deliberately no backdrop
+  blur: the 3D viewport is a `SurfaceView` on its own compositor layer, so nothing drawn
+  above it can sample its pixels, and `Modifier.blur` blurs a node's own content rather
+  than what is behind it. Works down to minSdk 26 for the cost of one draw call.
+
+  The edge is what carries it: the rim runs bright along the top, fades out by the
+  middle and returns half-strength at the bottom — the way light catches both edges of
+  a real pane — with a sheen washed across the top. Transparency alone only pays off
+  over a textured backdrop, and over a viewport the backdrop is usually flat, while it
+  costs legibility everywhere else.
+- **A theme switch in Settings.** Auto / Light / Dark, kept in SharedPreferences and held
+  in Compose state so the whole tree repaints the moment it changes. A plain on/off toggle
+  could not express "follow the system", so it is a three-way segmented control. Home's two
+  header icons became Sample plans and Settings; model credits moved inside the sheet.
+- **One control vocabulary, everywhere.** Three different Material components were being used
+  to say "pick one of these" — `FilterChip` rows in the panels, `ScrollableTabRow` in the
+  sheets, and a hand-rolled row in Settings. They are now one `SegmentedPills` for small fixed
+  sets and one `ChoiceChip` for rows that scroll, with `ValueChip` for a number you tap to edit
+  and `PanelIconButton` for close/delete. Controls that sit *on* a glass pane are tonal rather
+  than glass: glass inside glass goes muddy and flattens the hierarchy.
+- **One palette for the whole app.** Light means light everywhere, dark means dark
+  everywhere — including the 3D viewport, whose background used to be a fixed dark brown
+  regardless of theme. System bar icons follow the in-app choice, not the OS setting.
+
+### Changed
+
+- **Actions cut from four surfaces to two.** The top bar went from five controls to a
+  round back button: mode switching moved to the tab bar, surfaces to the action
+  clusters, and **Save is gone** because the plan already auto-saves 400 ms after the
+  last edit. `FloorPlanToolbar` — a full-width opaque bar holding four chips and four
+  buttons, taking permanent height off the canvas — is deleted; in its place are
+  floating clusters at the vertical centre of each edge, with the four placement tools
+  folded into one speed-dial that wears the armed tool's own icon while collapsed.
+  Buttons now carry three weights (primary / selected / plain) so a toggle like
+  snap-to-grid is no longer the loudest control on the screen.
+- **Control panels float.** All six are inset, fully rounded glass sitting above the tab
+  bar instead of full-width slabs pinned to the bottom. They no longer collide with the
+  primary action, so the five `selectedX == null` conditions that used to hide the FAB
+  are gone.
+- **Home leads with the content.** The title scrolls with the list rather than sitting in
+  a pinned `TopAppBar`, and the room cards got a larger thumbnail and more air.
+
+### Fixed
+
+- **The plan editor framed every plan as if it were 6 m wide.** `scale = width * 0.8 / 600`
+  was a constant, so anything larger opened half off-screen — a 11.6 m townhouse showed
+  about two-thirds of itself. It now measures the plan's own bounds and centres them,
+  leaving room for the dimension labels drawn outside the polygon. It runs from an effect
+  rather than `onSizeChanged` because the plan arrives from the database a frame or two
+  after first layout.
+- **Two hint chips fought for the top of the screen.** `FloorPlanCanvas` drew its own
+  room-count pill with no status-bar inset, which rode up into the status bar once the
+  canvas went full-bleed. It is deleted; the designer's single hint chip absorbed the
+  area readout.
+- **Auto-save ran a deep comparison of the whole plan on every frame of a drag.**
+  `snapshotFlow { floorPlan }` compares with `equals`, and both the plan and the furniture list
+  are structures of lists, so each frame walked all of it. They are now watched through
+  revision counters bumped in the setters — an Int compare — and the coalescing delay dropped
+  from 400 ms to 150 ms. The delay stays because it is what folds a whole drag into a single
+  write; without it a gesture would write the plan to SQLite sixty times a second.
+- **Back left the designer while something was still selected.** The handler covered furniture
+  and openings only, so Back with a stair, balcony or wall selected — or a placement tool armed —
+  dropped you out of the screen instead of clearing the selection.
+- **The room card was tinted red at rest.** `SwipeToDismissBox` painted its delete background
+  under every card, which showed through once the cards became glass. It is only drawn while
+  the card is actually being swiped.
+- **Back could drop the last edit.** Auto-save is debounced at 400 ms and there is no Save
+  button to fall back on any more, so `onBack` now flushes the plan and the furniture
+  before it pops.
+
 - **The Home card reads the plan.** Each row shows room count, area, storeys and
   ceiling height, all derived from `floorPlanJson`; a room with nothing drawn says
   so instead of faking a size. The thumbnail is an axonometric doll's house drawn
