@@ -132,7 +132,6 @@ fun SurfaceSheet(state: DesignerState, onDismiss: () -> Unit) {
                 2 -> PresetRow(FLOOR_PRESETS, state.stairPresetIdx, state::onStairPreset)
                 3 -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     RowLabel(R.string.roof)
-                    RoofShapeRow(state)
                     PresetRow(ROOF_PRESETS, state.roofPresetIdx, state::onRoofPreset)
                     RowLabel(R.string.ground)
                     PresetRow(GROUND_PRESETS, state.groundPresetIdx, state::onGroundPreset)
@@ -186,96 +185,6 @@ private fun OptionChip(
         leadingIcon = { Icon(icon, null, Modifier.size(18.dp)) },
         label = { Text(label, style = MaterialTheme.typography.labelLarge) },
     )
-}
-
-@Composable
-private fun RoofShapeRow(state: DesignerState) {
-    var editing by remember { mutableIntStateOf(0) }
-    val ext = state.exteriorSurface
-    val flat = ext.roofShape == RoofShape.FLAT
-
-    Column(
-        Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(6.dp)) {
-            RoofShape.entries.forEach { shape ->
-                FilterChip(
-                    selected = ext.roofShape == shape,
-                    onClick = { state.onRoofShape(shape) },
-                    modifier = Modifier.height(MinTouchTarget),
-                    label = {
-                        Text(
-                            stringResource(
-                                when (shape) {
-                                    RoofShape.FLAT -> R.string.roof_flat
-                                    RoofShape.HIP -> R.string.roof_hip
-                                    RoofShape.THAI -> R.string.roof_thai
-                                }
-                            ),
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    },
-                )
-            }
-        }
-
-        if (!flat) {
-            CenterRow(Modifier.fillMaxWidth(), Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = { editing = 1 }) {
-                    Text(stringResource(R.string.roof_pitch, ext.pitch.toInt()))
-                }
-                TextButton(onClick = { editing = 2 }) {
-                    Text(stringResource(R.string.roof_eaves, ext.eaves.toInt()))
-                }
-                TextButton(onClick = { editing = 3 }) {
-                    Text(stringResource(R.string.roof_taper, (ext.hipFactor * 100f).toInt()))
-                }
-            }
-        }
-
-        // Say what this pick will actually do to THIS plan, rather than letting the 3D be a surprise.
-        val note = when {
-            flat -> R.string.roof_note_flat
-            !state.roofCanPitch -> R.string.roof_note_slanted
-            ext.roofShape == RoofShape.HIP && state.roofMassCount > 1 -> R.string.roof_note_covers_notch
-            ext.roofShape == RoofShape.THAI && state.roofMassCount == 1 -> R.string.roof_note_single_mass
-            ext.roofShape == RoofShape.THAI -> null
-            else -> null
-        }
-        if (note != null) {
-            Text(
-                stringResource(note),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (state.roofCanPitch) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.error,
-            )
-        } else if (!flat && state.roofMassCount > 1) {
-            Text(
-                pluralStringResource(R.plurals.roof_masses, state.roofMassCount, state.roofMassCount),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-
-    when (editing) {
-        1 -> NumberInputDialog(
-            title = stringResource(R.string.roof_pitch_label), suffix = "°",
-            initial = ext.pitch, range = 5f..55f, step = 1f,
-            onConfirm = state::onRoofPitch, onDismiss = { editing = 0 },
-        )
-        2 -> NumberInputDialog(
-            title = stringResource(R.string.roof_eaves_label), suffix = "cm",
-            initial = ext.eaves, range = 0f..150f, step = 5f,
-            onConfirm = state::onRoofEaves, onDismiss = { editing = 0 },
-        )
-        3 -> NumberInputDialog(
-            title = stringResource(R.string.roof_taper_label), suffix = "%",
-            initial = ext.hipFactor * 100f, range = 0f..100f, step = 10f,
-            onConfirm = state::onRoofHipFactor, onDismiss = { editing = 0 },
-        )
-    }
 }
 
 @Composable

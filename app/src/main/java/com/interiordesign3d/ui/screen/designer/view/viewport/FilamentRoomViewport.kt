@@ -66,7 +66,6 @@ private const val EAVES_CM = 25f
 private const val ROOF_T_M = 0.16f
 private const val PLOT_MARGIN_CM = 180f
 private const val GROUND_DROP_M = 0.06f
-private const val THAI_STEP_M = 0.45f   // how much each smaller mass drops below the main ridge
 private const val FIELD_MODEL = "mat_concrete034"
 private const val FIELD_TINT = "#8FA184"
 private const val FIELD_TILE_M = 3f
@@ -678,10 +677,14 @@ private class RoomScene(
                 }
                 // Stepping the ridges is what makes a mái Thái read as separate volumes rather than
                 // one lid folded over the plan; a single-mass plan steps by nothing.
-                masses.sortedByDescending { area(it) }.forEachIndexed { i, mass ->
-                    val step = if (ext.roofShape == RoofShape.THAI) i * THAI_STEP_M else 0f
-                    buildHip(mass, roofY + step, ext.pitch, ext.eaves, ext.hipFactor,
-                        roofMi, roofTileM, wx, wz)
+                // Eaves rest on the wall head, not on the next storey's floor level: that extra
+                // slab thickness is right for a flat roof and leaves a pitched one floating.
+                // Every mass sits at the same height — a narrower mass already gets a lower ridge
+                // from its own width, so nothing needs stepping, and stepping it only lifted the
+                // smaller roofs clear of their walls.
+                val eavesY = level * (hM + floorT) + hM
+                masses.forEach { mass ->
+                    buildHip(mass, eavesY, ext.pitch, ext.eaves, ext.hipFactor, roofMi, roofTileM, wx, wz)
                 }
                 continue
             }
@@ -748,7 +751,7 @@ private class RoomScene(
         return listOf(WallPoint(x0, y0), WallPoint(x1, y0), WallPoint(x1, y1), WallPoint(x0, y1))
     }
 
-    private fun area(poly: List<WallPoint>): Float = abs(signedArea(poly))
+
 
     private fun edgeKey(a: Int, b: Int): Long = minOf(a, b).toLong() * 100_000L + maxOf(a, b)
 

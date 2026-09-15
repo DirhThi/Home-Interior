@@ -108,6 +108,12 @@ from each end: 1 is a full hip, 0 leaves the ridge running out to the wall and t
 end plane stands upright as a triangle. Everything between is a half-hip. One number
 instead of three separate shapes.
 
+Height caught me out too: **eaves rest on the wall head**, not on the floor level of
+the storey above. That extra slab thickness is right for a flat roof and leaves a
+pitched one hovering. And the Thai masses were briefly stepped up from there, which
+lifted the smaller roofs clear of their own walls — a narrower mass already gets a
+lower ridge from its own width, so nothing needs stepping at all.
+
 Two things that bit while building it, both about winding:
 - Roof planes are single-sided, so **winding decides whether a face exists at all**.
   Flipping only the shading normal left half the roof invisible.

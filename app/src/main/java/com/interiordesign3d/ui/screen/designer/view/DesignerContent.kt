@@ -192,13 +192,18 @@ private fun RoomDesignView(state: DesignerState, modifier: Modifier) {
         }
 
         AnimatedVisibility(
-            visible = state.selectedItem != null || state.selectedOpening != null,
+            visible = state.editorMode == EditorMode.EXTERIOR ||
+                state.selectedItem != null || state.selectedOpening != null,
             enter = slideInVertically { it },
             exit = slideOutVertically { it },
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            state.selectedItem?.let { FurnitureControlPanel(item = it, state = state) }
-                ?: state.selectedOpening?.let { OpeningControlPanel(opening = it, state = state) }
+            when {
+                state.editorMode == EditorMode.EXTERIOR -> RoofControlPanel(state)
+                state.selectedItem != null ->
+                    state.selectedItem?.let { FurnitureControlPanel(item = it, state = state) }
+                else -> state.selectedOpening?.let { OpeningControlPanel(opening = it, state = state) }
+            }
         }
     }
 }

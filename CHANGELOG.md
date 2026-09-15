@@ -27,8 +27,9 @@ everything below sits under Unreleased. When the first build goes out, cut a
   the main one. Pitch, eaves and an **end taper** are all adjustable, and the taper
   is what turns a hip into a gable: 100% pulls the ridge fully in (chóp), 0% runs it
   out to the wall so the end plane stands up as a triangle (tam giác). The panel
-  says what each pick will do to *this* plan — how many masses it will use, or that
-  a single hip will overhang the notch — rather than letting the 3D be a surprise.
+  sits at the bottom of the exterior view, next to the roof it changes, and says what
+  each pick will do to *this* plan — how many masses it will use, or that a single hip
+  will overhang the notch — rather than letting the 3D be a surprise.
 - **Exterior finishes.** Roof and ground presets in a new Outside tab of the
   surfaces sheet, stored on the plan. No new assets: every one is a tint over a
   material the build already shipped.
@@ -90,6 +91,11 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Fixed
 
+- **Pitched roofs floated above the walls.** Eaves were placed at the storey above's
+  floor level, which is right for a flat slab and a slab's thickness too high for a
+  pitched one; and the Thai masses were stepped *up* from there, lifting the smaller
+  roofs clear of their own walls. Every mass now rests on the wall head, and ridge
+  heights differ from mass width alone, which is where the difference belongs.
 - **The plan was only saved by Save or by entering Design mode.** Draw a room and
   press Back and it was gone; the same went for every wall, floor, stair and roof
   pick, which all live on the plan now. It auto-saves on the same 400 ms debounce
