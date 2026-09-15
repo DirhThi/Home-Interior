@@ -1,4 +1,4 @@
-package com.interiordesign3d.ui.screen.home.view
+package com.interiordesign3d.ui.screen.project.view
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable

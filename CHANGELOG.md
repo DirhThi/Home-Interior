@@ -11,6 +11,29 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Added
 
+- **Three top-level destinations, on a floating tab bar.** Home / Projects / Settings. Home is two
+  cards — start a project, or explore furniture — because those are the only two things you can do
+  from a standing start. Projects is the saved room list. Settings is a screen now rather than a
+  sheet, with room for the options that will accumulate.
+- **A catalogue you can browse without a room open**, and an item screen that renders **just that
+  model in 3D**, on a turntable, framed from the camera's own field of view so a tall chair and a
+  wide sofa both fit. "Add to a room" drops it into a project; with no projects yet it offers to
+  make one first. It is a separate, much smaller Filament scene — `FilamentRoomViewport` exists to
+  build walls, floors and roofs from a plan, and none of that applies to one glTF sitting on nothing.
+- **Navigation3 and Koin**, replacing Navigation-Compose and the hand-rolled `rememberScreenViewModel`
+  DI stand-in. `Dest` is the root back stack; `DestMain` is the tabs' own. The designer and the
+  catalogue are pushed over the shell rather than living in tabs, so they get the whole screen —
+  stacking a second bar under the designer's own mode bar would be worse than having none.
+
+### Changed
+
+- **The toolchain moved a long way**: Gradle 8.0 → 9.5, AGP 8.1.2 → 9.3.1, Kotlin 1.9.20 → 2.4.10,
+  Compose BOM 2024.06 → 2026.08, compileSdk/targetSdk 36 → 37, Room 2.6.1 → 2.8.5, kapt → KSP, and
+  **minSdk 26 → 31**. AGP 9 carries Kotlin itself, so the `kotlin.android` plugin is gone and its
+  options moved to `kotlin { compilerOptions { } }`. Filament 1.49.1 came through unchanged.
+- The room list moved from `ui/screen/home` to `ui/screen/project`; `ui/screen/home` is now the
+  landing.
+
 - **A floating tab bar for the three editor modes.** Plan / Interior / Exterior were
   the app's real top-level navigation but lived as two unlabelled icon buttons in the
   top bar, so there was no way to tell where you were or what else existed. They are

@@ -1,4 +1,4 @@
-package com.interiordesign3d.ui.screen.home.view
+package com.interiordesign3d.ui.screen.project.view
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement

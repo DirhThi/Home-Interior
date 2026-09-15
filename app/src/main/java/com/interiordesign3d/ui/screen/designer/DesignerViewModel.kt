@@ -1,11 +1,12 @@
 package com.interiordesign3d.ui.screen.designer
 
 import android.app.Application
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.viewModelScope
 import com.interiordesign3d.R
 import com.interiordesign3d.common.base.BaseViewModel
-import com.interiordesign3d.common.base.Navigator
 import com.interiordesign3d.data.catalog.catalogItem
 import com.interiordesign3d.data.models.ColorPalette
 import com.interiordesign3d.data.models.Balcony
@@ -37,9 +38,9 @@ private const val AUTO_SAVE_DELAY_MS = 150L
 
 class DesignerViewModel(
     app: Application,
-    navigator: Navigator,
+    backStack: NavBackStack<NavKey>,
     private val roomId: String,
-) : BaseViewModel(app, navigator) {
+) : BaseViewModel(app, backStack) {
 
     private val db = AppDatabase.getInstance(app)
     private var loaded = false

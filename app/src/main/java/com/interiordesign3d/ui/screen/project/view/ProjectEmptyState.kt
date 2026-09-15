@@ -1,4 +1,4 @@
-package com.interiordesign3d.ui.screen.home.view
+package com.interiordesign3d.ui.screen.project.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +27,7 @@ import com.interiordesign3d.ui.properties.ChoiceChip
 import com.interiordesign3d.ui.properties.GlassPillButton
 
 @Composable
-fun HomeEmptyState(
+fun ProjectEmptyState(
     onCreate: () -> Unit,
     onBrowsePlans: () -> Unit,
     modifier: Modifier = Modifier,

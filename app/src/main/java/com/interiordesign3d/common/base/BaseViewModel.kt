@@ -4,6 +4,10 @@ import android.app.Application
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
+import com.interiordesign3d.common.utils.NavigationUtil.navigateTo
+import com.interiordesign3d.common.utils.NavigationUtil.popLast
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
@@ -17,15 +21,18 @@ data class UiMessage(
 
 open class BaseViewModel(
     protected val app: Application,
-    private val navigator: Navigator,
+    private val backStack: NavBackStack<NavKey>,
 ) : ViewModel() {
 
     private val _messages = MutableSharedFlow<UiMessage>()
     val messages = _messages.asSharedFlow()
 
-    protected fun navigateTo(route: String) = navigator.to(route)
+    protected fun navigateTo(dest: NavKey, popupTos: List<Class<out NavKey>> = listOf()) =
+        backStack.navigateTo(dest, popupTos)
 
-    protected fun pops() = navigator.back()
+    protected fun pops() {
+        backStack.popLast()
+    }
 
     protected fun notify(@StringRes res: Int) = notify(app.getString(res))
 

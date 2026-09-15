@@ -1,4 +1,4 @@
-package com.interiordesign3d.ui.screen.home.view
+package com.interiordesign3d.ui.screen.project.view
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -35,7 +35,7 @@ import com.interiordesign3d.ui.properties.GlassPane
 import com.interiordesign3d.ui.properties.CenterRow
 import com.interiordesign3d.ui.properties.onClickNotRipple
 import com.interiordesign3d.ui.properties.rounded
-import com.interiordesign3d.ui.screen.home.state.RoomListItem
+import com.interiordesign3d.ui.screen.project.state.RoomListItem
 
 @Composable
 fun SwipeableRoomCard(item: RoomListItem, onClick: () -> Unit, onDelete: () -> Unit) {
