@@ -65,6 +65,13 @@ class DesignerViewModel(
             }
         }
 
+        override fun onToggleExterior() {
+            selectedId = null
+            selectedOpeningId = null
+            editorMode =
+                if (editorMode == EditorMode.EXTERIOR) EditorMode.DESIGN else EditorMode.EXTERIOR
+        }
+
         // ── Wall drawing ──────────────────────────────────────────────────────
 
         override fun onAddNewPoint(point: WallPoint) {

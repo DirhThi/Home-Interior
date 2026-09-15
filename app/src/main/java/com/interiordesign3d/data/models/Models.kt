@@ -378,6 +378,72 @@ data class FloorPlan(
     }
 
     /** Openings on the wall between two nodes, whichever order they were stored in. */
+    /**
+     * The storey's outline, as ordered rings of plan points. Built from the edges exactly one room
+     * uses: taken in that room's own winding they already point the same way round the outside, so
+     * walking them needs no geometry beyond following the chain.
+     *
+     * More than one ring means the storey is in disconnected pieces; a ring wound the other way is
+     * a courtyard. Both are things a user can draw, so callers get a list, not one polygon.
+     */
+    fun outlineRings(level: Int): List<List<WallPoint>> {
+        val here = roomsOnLevel(level)
+        if (here.isEmpty()) return emptyList()
+
+        val shared = HashSet<Long>()
+        val seen = HashSet<Long>()
+        val rings = here.map { ri ->
+            val ring = rooms[ri]
+            if (signedArea2(ring.map { nodes[it] }) < 0f) ring.reversed() else ring
+        }
+        rings.forEach { ring ->
+            ring.indices.forEach { i ->
+                val k = edgeKey(ring[i], ring[(i + 1) % ring.size])
+                if (!seen.add(k)) shared += k
+            }
+        }
+
+        val next = HashMap<Int, MutableList<Int>>()
+        rings.forEach { ring ->
+            ring.indices.forEach { i ->
+                val a = ring[i]; val b = ring[(i + 1) % ring.size]
+                if (edgeKey(a, b) !in shared) next.getOrPut(a) { mutableListOf() } += b
+            }
+        }
+
+        val out = mutableListOf<List<WallPoint>>()
+        while (next.values.any { it.isNotEmpty() }) {
+            val start = next.entries.first { it.value.isNotEmpty() }.key
+            val path = mutableListOf(start)
+            var cur = start
+            var prev = -1
+            while (true) {
+                val outs = next[cur] ?: break
+                if (outs.isEmpty()) break
+                // A pinch point has several ways on; the sharpest left turn hugs this ring.
+                val pick = if (outs.size == 1 || prev < 0) 0 else outs.indices.maxBy {
+                    turn(nodes[prev], nodes[cur], nodes[outs[it]])
+                }
+                val nxt = outs.removeAt(pick)
+                if (nxt == start) break
+                if (nxt in path) break        // ran into itself: stop rather than loop forever
+                path += nxt
+                prev = cur
+                cur = nxt
+            }
+            if (path.size >= 3) out += path.map { nodes[it] }
+        }
+        return out
+    }
+
+    private fun turn(a: WallPoint, b: WallPoint, c: WallPoint): Float {
+        val ax = b.x - a.x; val ay = b.y - a.y
+        val bx = c.x - b.x; val by = c.y - b.y
+        return Math.atan2((ax * by - ay * bx).toDouble(), (ax * bx + ay * by).toDouble()).toFloat()
+    }
+
+    private fun edgeKey(a: Int, b: Int): Long = minOf(a, b).toLong() * 100_000L + maxOf(a, b)
+
     fun openingsOn(a: Int, b: Int, level: Int): List<WallOpening> = openings.filter {
         it.level == level && ((it.nodeA == a && it.nodeB == b) || (it.nodeA == b && it.nodeB == a))
     }
@@ -471,6 +537,16 @@ fun pointInPolygon(pt: WallPoint, poly: List<WallPoint>): Boolean {
         j = i
     }
     return inside
+}
+
+/** Twice the signed area; positive means counter-clockwise in plan coordinates. */
+fun signedArea2(poly: List<WallPoint>): Float {
+    var a = 0f
+    for (i in poly.indices) {
+        val p = poly[i]; val q = poly[(i + 1) % poly.size]
+        a += p.x * q.y - q.x * p.y
+    }
+    return a
 }
 
 const val MIN_STAIR_WIDTH_CM = 70f

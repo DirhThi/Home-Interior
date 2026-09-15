@@ -63,6 +63,10 @@
     <string name="stair_width_label">stair width</string>
     <string name="stair_length_label">stair length</string>
     <string name="opening_hint">Tap a wall to place · tap a marker to remove</string>
+    <string name="exterior_mode">Exterior</string>
+    <string name="hint_exterior">Orbit to see the outside</string>
+    <string name="go_outside">Step outside</string>
+    <string name="go_inside">Step inside</string>
     <string name="design_room">Design room</string>
     <string name="add_level">Add storey</string>
     <string name="plan_hint_empty">Tap to place wall corners</string>

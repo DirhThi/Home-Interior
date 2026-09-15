@@ -1,6 +1,10 @@
 # Step 7 — Exterior
 
-The last feature block on the roadmap, and the only one not started. Six tasks.
+**t7-1, t7-2, t7-3 and t7-5 are done.** What is left is t7-4 (material presets)
+and t7-6 (asset budget). The rest of this file is kept as the record of how it was
+built and what was deliberately left out.
+
+Six tasks.
 Today the app renders a house you can only ever stand *inside*: exterior walls
 are hidden the moment the camera faces them, there is no ground, no roof, and
 every material in the catalogue is an interior finish.
@@ -18,7 +22,7 @@ every material in the catalogue is an interior finish.
 
 ---
 
-## t7-1 — Outer shell from the union boundary
+## t7-1 — Outer shell from the union boundary — done
 
 `exterior` per segment is not the same as an ordered ring, and a shell, a roof
 edge and an overhang all need the ring.
@@ -32,6 +36,13 @@ Build it from the edges that exactly one room uses:
 3. Wind the result consistently (`signedArea` is already in the file) so
    `outset` pushes outward rather than inward.
 
+Built as `FloorPlan.outlineRings(level)`. Each room's ring is normalised to
+counter-clockwise first, so the edges only one room uses already point the same way
+round the outside and walking them needs no geometry beyond following the chain. A
+pinch point — two rooms meeting at a single corner — is resolved by taking the
+sharpest left turn. Checked against all four sample plans (ring area matches the
+stated floor area exactly) and against every trap below.
+
 Traps, all of which a user can draw today:
 
 - **Two rings.** Two rooms that share no edge give two separate boundaries. Walk
@@ -40,12 +51,14 @@ Traps, all of which a user can draw today:
 - **A node with four boundary edges** — two rooms touching only at a corner. The
   walk has to pick the turn that keeps the ring, not just "the other edge".
 - **A courtyard** — a room-shaped hole inside the ring. That is an inner ring,
-  wound the other way, and it is a hole for the roof and the ground.
+  wound the other way, and it is a hole for the roof and the ground. Verified: a
+  donut of six rooms returns the 54 m² outer ring counter-clockwise and the 9 m²
+  courtyard clockwise, so `filter { signedArea(it) > 0f }` picks out the outsides.
 
 Put this on `FloorPlan` next to `roomsOnLevel`, not in the viewport: the 2D
 canvas will want it too, and it is pure geometry with no Filament in it.
 
-## t7-2 — Ground plane and plot boundary
+## t7-2 — Ground plane and plot boundary — done
 
 Cheapest useful version: one large quad at `y = 0` under the whole stack, its
 own material slot, extending well past the house so the horizon never shows a
@@ -59,7 +72,7 @@ Watch the shadow map: a ground plane much larger than the house will blow out
 the shadow cascade and make interior shadows mushy. Keep it to a few times the
 house span rather than a kilometre.
 
-## t7-3 — Flat or single-pitch roof
+## t7-3 — Flat or single-pitch roof — flat done
 
 **No longer blocked.** `buildBox` takes a `pitchDeg` that tilts a box about its own
 length — added for the raking handrail, and exactly what a sloped slab needs.
@@ -72,6 +85,12 @@ Then:
 - **Single pitch**: same deck, tilted about one edge of the ring's bounding box,
   with a triangular gable filling each side wall. The gable is not a box — it
   needs a small custom mesh or a triangulated polygon.
+
+**Built: flat only.** One roof per storey, each cut with the storey above as a hole
+— without the hole a smaller upper floor reads as a lid on a lid instead of a box
+standing on a terrace, and the two slabs z-fight. `buildFloorMesh` already takes
+holes, so this costs nothing. Single-pitch is still open, and `pitchDeg` is now
+there for it.
 
 Hipped and gabled roofs are their own project: they need a straight-skeleton
 solve over the ring, which is a lot more than this step is worth. Say so in the
@@ -87,7 +106,7 @@ since exterior finish is per building, not per storey.
 Most of the materials already exist: brick, render, plaster, concrete and paving
 stones are in `assets/models/`. Only a roof covering is genuinely missing.
 
-## t7-5 — Outside camera mode
+## t7-5 — Outside camera mode — done
 
 `autoHideWalls` (`FilamentRoomViewport.kt:1067`) hides any exterior wall that
 faces the camera or that the camera is outside of. That is exactly right for

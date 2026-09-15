@@ -56,7 +56,7 @@ fun DesignerContent(
     ) { modifier ->
         when (state.editorMode) {
             EditorMode.DRAW_WALLS -> PlanEditor(state, modifier)
-            EditorMode.DESIGN -> RoomDesignView(state, modifier)
+            EditorMode.DESIGN, EditorMode.EXTERIOR -> RoomDesignView(state, modifier)
         }
     }
 
@@ -90,6 +90,9 @@ private fun DesignerFab(state: DesignerState) {
                 contentColor = MaterialTheme.colorScheme.onPrimary,
             )
         }
+
+        // Nothing to add from outside the house.
+        EditorMode.EXTERIOR -> Unit
 
         // Hidden while an item is selected: it would float over the control panel.
         EditorMode.DESIGN -> AnimatedVisibility(
@@ -165,8 +168,10 @@ private fun RoomDesignView(state: DesignerState, modifier: Modifier) {
             stairModel = state.stairPreset.model,
             stairColorHex = state.stairPreset.colorHex,
             stairTileM = state.stairPreset.tileM,
+            exterior = state.editorMode == EditorMode.EXTERIOR,
             shadows = state.shadowsOn,
-            autoHideWalls = state.autoHideWalls,
+            // Auto-hide is for looking in; from outside it would skin the house.
+            autoHideWalls = state.autoHideWalls && state.editorMode != EditorMode.EXTERIOR,
             activeLevel = state.activeLevel,
             backgroundColor = LocalInteriorAccents.current.viewportBackground,
             onDropOpening = state::onDropOpening,
@@ -176,7 +181,9 @@ private fun RoomDesignView(state: DesignerState, modifier: Modifier) {
             modifier = Modifier.fillMaxSize(),
         )
 
-        LevelSwitcher(state, Modifier.align(Alignment.TopStart).padding(12.dp))
+        if (state.editorMode != EditorMode.EXTERIOR) {
+            LevelSwitcher(state, Modifier.align(Alignment.TopStart).padding(12.dp))
+        }
 
         AnimatedVisibility(
             visible = state.selectedItem != null || state.selectedOpening != null,

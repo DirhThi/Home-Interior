@@ -91,6 +91,7 @@ open class DesignerState : BaseScreenState() {
     open fun onSave() {}
     open fun onEditFloorPlan() {}
     open fun onEnterDesign() {}
+    open fun onToggleExterior() {}
     open fun onSelectLevel(level: Int) {
         activeLevel = level
         selectedId = null

@@ -20,6 +20,12 @@ everything below sits under Unreleased. When the first build goes out, cut a
   the open sides carry a floor slab edge — without those the corner flips inside
   out as a Necker cube. Canvas only: no 3D engine, no cached bitmap, and it cannot
   show a stale picture.
+- **Exterior view.** A third editor mode that steps outside: every storey built, no
+  walls hidden, a flat roof over each storey with the one above cut out of it, a
+  paved plot and the ground the house stands on. `FloorPlan.outlineRings(level)`
+  walks the edges exactly one room uses to get the storey's outline, so an L-shaped
+  or split plan roofs correctly — and a courtyard comes back as a ring wound the
+  other way, which is how callers can tell it apart.
 - **Handrails on every flight.** A raking rail and balusters down both sides of each
   run, and a guard on the landing sides no run arrives at, all derived from the same
   nosing line so they meet whatever the pitch. `buildBox` gained a `pitchDeg` that

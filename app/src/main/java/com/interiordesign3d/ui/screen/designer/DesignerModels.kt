@@ -4,7 +4,13 @@ import com.interiordesign3d.data.models.WallPoint
 
 // ─── Editor / View state enums ────────────────────────────────────────────────
 
-enum class EditorMode { DRAW_WALLS, DESIGN }
+enum class EditorMode {
+    DRAW_WALLS,
+    /** Inside: storeys up to the active one, walls facing the camera hidden. */
+    DESIGN,
+    /** Outside: every storey, a roof, the ground, and nothing hidden. */
+    EXTERIOR,
+}
 
 /**
  * PLACING  — user is tapping to add wall corners
