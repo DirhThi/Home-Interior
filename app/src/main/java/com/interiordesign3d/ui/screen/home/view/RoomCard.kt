@@ -1,6 +1,5 @@
 package com.interiordesign3d.ui.screen.home.view
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,8 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Weekend
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
@@ -34,7 +31,9 @@ import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.PlacedFurniture
 import com.interiordesign3d.data.plans.areaM2
 import com.interiordesign3d.ui.properties.CenterBox
+import com.interiordesign3d.ui.properties.GlassPane
 import com.interiordesign3d.ui.properties.CenterRow
+import com.interiordesign3d.ui.properties.onClickNotRipple
 import com.interiordesign3d.ui.properties.rounded
 import com.interiordesign3d.ui.screen.home.state.RoomListItem
 
@@ -51,19 +50,23 @@ fun SwipeableRoomCard(item: RoomListItem, onClick: () -> Unit, onDelete: () -> U
         state = dismissState,
         enableDismissFromStartToEnd = false,
         backgroundContent = {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .rounded(14.dp)
-                    .background(MaterialTheme.colorScheme.errorContainer)
-                    .padding(end = 24.dp),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                Icon(
-                    Icons.Outlined.Delete,
-                    stringResource(R.string.delete),
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                )
+            // Only while the card is actually moving: the card in front is glass, so a red slab
+            // painted under a resting one tints it through.
+            if (dismissState.dismissDirection != SwipeToDismissBoxValue.Settled) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .rounded(20.dp)
+                        .background(MaterialTheme.colorScheme.errorContainer)
+                        .padding(end = 24.dp),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Icon(
+                        Icons.Outlined.Delete,
+                        stringResource(R.string.delete),
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
             }
         },
     ) {
@@ -76,18 +79,14 @@ private fun RoomCard(item: RoomListItem, onClick: () -> Unit) {
     val plan = item.plan
     val drawn = plan.rooms.isNotEmpty()
 
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    GlassPane(
+        modifier = Modifier.fillMaxWidth().onClickNotRipple(onClick = onClick),
+        shape = MaterialTheme.shapes.large,
+        strong = true,
+        elevation = 6.dp,
     ) {
         CenterRow(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             RoomThumbnail(plan = plan, furniture = item.furniture, drawn = drawn)
@@ -136,8 +135,8 @@ private fun RoomCard(item: RoomListItem, onClick: () -> Unit) {
 private fun RoomThumbnail(plan: FloorPlan, furniture: List<PlacedFurniture>, drawn: Boolean) {
     Box(
         Modifier
-            .size(64.dp)
-            .rounded(12.dp)
+            .size(72.dp)
+            .rounded(14.dp)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
     ) {
         if (drawn) {
@@ -147,7 +146,7 @@ private fun RoomThumbnail(plan: FloorPlan, furniture: List<PlacedFurniture>, dra
                 Icon(
                     Icons.Outlined.Weekend,
                     null,
-                    Modifier.size(26.dp),
+                    Modifier.size(28.dp),
                     tint = MaterialTheme.colorScheme.scrim.copy(alpha = 0.35f),
                 )
             }

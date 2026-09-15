@@ -12,11 +12,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Weekend
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +23,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.ui.properties.CenterBox
+import com.interiordesign3d.ui.properties.ChoiceChip
+import com.interiordesign3d.ui.properties.GlassPillButton
 
 @Composable
 fun HomeEmptyState(
@@ -63,14 +63,16 @@ fun HomeEmptyState(
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(28.dp))
-        Button(onClick = onCreate) {
-            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp))
-            Spacer(Modifier.size(8.dp))
-            Text(stringResource(R.string.home_empty_cta))
-        }
-        Spacer(Modifier.height(6.dp))
-        TextButton(onClick = onBrowsePlans) {
-            Text(stringResource(R.string.start_from_plan))
-        }
+        GlassPillButton(
+            icon = Icons.Outlined.Add,
+            label = stringResource(R.string.home_empty_cta),
+            onClick = onCreate,
+        )
+        Spacer(Modifier.height(14.dp))
+        ChoiceChip(
+            label = stringResource(R.string.start_from_plan),
+            selected = false,
+            onClick = onBrowsePlans,
+        )
     }
 }

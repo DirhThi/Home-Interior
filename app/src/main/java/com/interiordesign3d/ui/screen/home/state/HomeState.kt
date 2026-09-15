@@ -26,6 +26,7 @@ open class HomeState : BaseScreenState() {
     var rooms by mutableStateOf<List<RoomListItem>>(emptyList())
     var showCredits by mutableStateOf(false)
     var showPlans by mutableStateOf(false)
+    var showSettings by mutableStateOf(false)
 
     open fun onCreateRoom() {}
     open fun onOpenRoom(roomId: String) {}
@@ -33,6 +34,8 @@ open class HomeState : BaseScreenState() {
     open fun onShowPlans() { showPlans = true }
     open fun onDismissPlans() { showPlans = false }
     open fun onCreateFromPlan(plan: SamplePlan) {}
-    open fun onShowCredits() { showCredits = true }
+    open fun onShowSettings() { showSettings = true }
+    open fun onDismissSettings() { showSettings = false }
+    open fun onShowCredits() { showSettings = false; showCredits = true }
     open fun onDismissCredits() { showCredits = false }
 }
