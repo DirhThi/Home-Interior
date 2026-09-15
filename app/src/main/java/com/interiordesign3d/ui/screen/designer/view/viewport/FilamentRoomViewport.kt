@@ -73,6 +73,7 @@ private const val ROOF_T_M = 0.16f
 private const val PLOT_MARGIN_CM = 180f
 private const val GROUND_DROP_M = 0.06f
 private const val MIN_ZOOM = 0.4f        // pinch floor; also how far the camera can back off
+private const val COLUMN_SPACING_CM = 400f   // a porch column every four metres
 private const val PARAPET_H_M = 0.95f
 private const val FIELD_MODEL = "mat_grass005"
 private const val FIELD_TINT = "#FFFFFF"
@@ -736,7 +737,12 @@ private class RoomScene(
 
         val ext = plan.exterior
         for (level in 0..topLevel) {
-            val rings = plan.outlineRings(level).filter { signedArea(it) > 0f }
+            // The top roof can be carried out to the storey below, which is what covers a set-back
+            // terrace. Everything downstream — masses, eaves, parapet — follows from this one ring.
+            val reachOut = ext.coverTerrace && level == topLevel && topLevel > 0
+            val ownRings = plan.outlineRings(level).filter { signedArea(it) > 0f }
+            val rings = if (reachOut) plan.outlineRings(level - 1).filter { signedArea(it) > 0f }
+                        else ownRings
             if (rings.isEmpty()) continue
             val above = if (level < topLevel) {
                 plan.outlineRings(level + 1).filter { signedArea(it) > 0f }
@@ -748,8 +754,9 @@ private class RoomScene(
             // makes their uncovered part a terrace. Slanted plans fall back to flat, because the
             // mass split only holds for an orthogonal outline.
             if (ext.roofShape != RoofShape.FLAT && level == topLevel && plan.isOrthogonal(level)) {
-                val masses = when (ext.roofShape) {
-                    RoofShape.HIP -> listOf(boundingRing(rings.flatten()))
+                val masses = when {
+                    ext.roofShape == RoofShape.HIP -> listOf(boundingRing(rings.flatten()))
+                    reachOut -> plan.roofMasses(level - 1)
                     else -> plan.roofMasses(level)
                 }
                 // Stepping the ridges is what makes a mái Thái read as separate volumes rather than
@@ -763,6 +770,7 @@ private class RoomScene(
                 masses.forEach { mass ->
                     buildHip(mass, eavesY, ext.pitch, ext.eaves, ext.hipFactor, roofMi, roofTileM, wx, wz)
                 }
+                if (reachOut) terraceColumns(plan, rings, ownRings, level, hM, floorT, wx, wz)
                 continue
             }
 
@@ -773,6 +781,7 @@ private class RoomScene(
                 // Sitting it on top instead put the terrace a slab's thickness above that storey, so
                 // a balcony hung off an upper wall was buried in its own roof.
                 buildFloorMesh(eaves, roofMi, roofTileM, baseY = roofY, holes = holes, outsetCm = 0f)
+                if (reachOut) terraceColumns(plan, rings, ownRings, level, hM, floorT, wx, wz)
                 // Fascia: without a visible edge the roof read as a sheet of paper floating there.
                 eaves.indices.forEach { i ->
                     val a = eaves[i]; val b = eaves[(i + 1) % eaves.size]
@@ -856,6 +865,35 @@ private class RoomScene(
             buildFace(listOf(c1, c2, r1, r0), mi, tileM, core)
             buildFace(listOf(c2, c3, r1), mi, tileM, core)
             buildFace(listOf(c3, c0, r0, r1), mi, tileM, core)
+        }
+    }
+
+    /**
+     * Columns under the part of the roof that overhangs nothing. A corner of the lower outline that
+     * falls outside the storey's own walls has no wall to sit on, so it gets a column; a long run
+     * between corners gets more, because one post every 8 m is not holding a roof up.
+     */
+    private fun terraceColumns(
+        plan: FloorPlan, roofRings: List<List<WallPoint>>, ownRings: List<List<WallPoint>>,
+        level: Int, hM: Float, floorT: Float, wx: (Float) -> Float, wz: (Float) -> Float,
+    ) {
+        val deckY = level * (hM + floorT)
+        val key = plan.wallStyles.firstOrNull()?.columnKey ?: "q_column_round"
+        val placed = mutableListOf<WallPoint>()
+        roofRings.forEach { ring ->
+            ring.indices.forEach { i ->
+                val a = ring[i]; val b = ring[(i + 1) % ring.size]
+                val len = hypot(b.x - a.x, b.y - a.y)
+                val n = (len / COLUMN_SPACING_CM).roundToInt().coerceAtLeast(1)
+                for (q in 0 until n) {
+                    val t = q.toFloat() / n
+                    val p = WallPoint(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+                    if (ownRings.any { pointInPoly(p, it) }) continue          // a wall already carries it
+                    if (placed.any { hypot(it.x - p.x, it.y - p.y) < 30f }) continue
+                    placed += p
+                    placeColumn(key, 1f, wx(p.x), deckY, wz(p.y), hM)
+                }
+            }
         }
     }
 

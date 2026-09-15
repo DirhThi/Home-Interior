@@ -194,6 +194,7 @@ open class DesignerState : BaseScreenState() {
     open fun onRoofPitch(deg: Float) {}
     open fun onRoofEaves(cm: Float) {}
     open fun onRoofHipFactor(pct: Float) {}
+    open fun onRoofCoverTerrace(on: Boolean) {}
     open fun onRoofPreset(index: Int) {}
     open fun onGroundPreset(index: Int) {}
     open fun onWallColor(hex: String?) {}

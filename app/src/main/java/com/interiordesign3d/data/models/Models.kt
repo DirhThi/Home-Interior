@@ -347,6 +347,12 @@ data class ExteriorSurface(
      * covers the whole family instead of three separate shapes.
      */
     val hipFactor: Float = 1f,
+    /**
+     * Carry the top roof out to the storey BELOW's outline. A set-back upper floor then gets a roof
+     * that reaches the building edge, turning the leftover terrace into a covered loggia — the deep
+     * front porch of a mái Thái house — with columns where there is no wall under the overhang.
+     */
+    val coverTerrace: Boolean = false,
 ) {
     val pitch: Float get() = if (pitchDeg > 0f) pitchDeg else defaultPitch(roofShape)
     val eaves: Float get() = if (eavesCm > 0f) eavesCm else defaultEaves(roofShape)

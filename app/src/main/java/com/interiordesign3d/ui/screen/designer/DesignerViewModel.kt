@@ -363,6 +363,8 @@ class DesignerViewModel(
 
         override fun onRoofHipFactor(pct: Float) = withExterior { it.copy(hipFactor = pct / 100f) }
 
+        override fun onRoofCoverTerrace(on: Boolean) = withExterior { it.copy(coverTerrace = on) }
+
         override fun onRoofPreset(index: Int) {
             floorPlan = floorPlan.copy(exterior = floorPlan.exterior.copy(roofPresetIdx = index))
         }

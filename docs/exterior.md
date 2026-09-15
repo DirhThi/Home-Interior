@@ -121,6 +121,11 @@ Two things that bit while building it, both about winding:
   of the two ends always came out culled. Faces are wound away from the mass centre
   instead.
 
+**Covering a set-back terrace** is a toggle rather than a separate roof: the top storey
+simply takes the ring of the storey *below*, so masses, eaves and parapet all follow
+from that one substitution. Columns then go at points along that ring which fall
+outside the top storey's own walls — the overhang has nothing else holding it up.
+
 Hipped and gabled roofs are their own project: they need a straight-skeleton
 solve over the ring, which is a lot more than this step is worth. Say so in the
 UI rather than half-doing it.

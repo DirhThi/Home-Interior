@@ -44,6 +44,11 @@ everything below sits under Unreleased. When the first build goes out, cut a
   walks the edges exactly one room uses to get the storey's outline, so an L-shaped
   or split plan roofs correctly — and a courtyard comes back as a ring wound the
   other way, which is how callers can tell it apart.
+- **A roof that covers the terrace.** One toggle in the exterior panel carries the top
+  roof out to the storey below's outline, so a set-back upper floor stops leaving its
+  terrace open to the sky and becomes a covered loggia — the deep front porch of a mái
+  Thái house. Columns go in wherever the overhang has no wall under it, every four
+  metres along the edge.
 - **Walls you can open up.** Tap a wall in the plan and it becomes selectable — **Full**
   as before, **Half** at counter height for a kitchen divider (open above, joinery
   dropped, capped with a coping), or **Open**, which builds no wall at all and stands a

@@ -90,6 +90,19 @@ fun RoofControlPanel(state: DesignerState) {
                 }
             }
 
+            // Only worth offering when there is a storey under the top one to reach out over.
+            if (state.topLevel > 0) {
+                FilterChip(
+                    selected = ext.coverTerrace,
+                    onClick = { state.onRoofCoverTerrace(!ext.coverTerrace) },
+                    modifier = Modifier.height(MinTouchTarget),
+                    label = {
+                        Text(stringResource(R.string.roof_cover_terrace),
+                            style = MaterialTheme.typography.labelLarge)
+                    },
+                )
+            }
+
             // Say what this pick does to THIS plan, so the 3D behind is never a surprise.
             val note = when {
                 flat -> R.string.roof_note_flat

@@ -68,6 +68,7 @@
     <string name="outside">Outside</string>
     <string name="roof">Roof</string>
     <string name="roof_flat">Flat</string>
+    <string name="roof_cover_terrace">Cover the terrace</string>
     <string name="roof_hip">Single hip</string>
     <string name="roof_thai">Thai</string>
     <string name="roof_pitch">Pitch %1$d°</string>
