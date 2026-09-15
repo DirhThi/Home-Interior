@@ -64,6 +64,7 @@ private const val DOOR_OPEN_DEG = 78f
 private const val RAIL_H_M = 0.90f       // handrail above the nosing line
 private const val RAIL_T_CM = 4f
 private const val BALUSTER_T_CM = 3.5f
+private const val POST_SPACING_CM = 40f   // sparser than a real balustrade; each post is geometry
 private const val EAVES_CM = 25f
 private const val ROOF_T_M = 0.16f
 private const val PLOT_MARGIN_CM = 180f
@@ -320,12 +321,12 @@ private class RoomScene(
         houseCx = (minX + maxX) / 2f; houseCz = (minZ + maxZ) / 2f
         val spanX = (maxX - minX).coerceAtLeast(1f); val spanZ = (maxZ - minZ).coerceAtLeast(1f)
 
-        val sSig = roomPolygons.joinToString(";") { p -> p.joinToString(",") { "${it.x.toInt()}/${it.y.toInt()}" } } +
-                "|$activeLevel|${plan.stairs.joinToString(",") { "${it.level}/${it.x.toInt()}/${it.y.toInt()}/${it.widthCm}/${it.lengthCm}/${it.rotationDeg}" }}|${roomHeightCm.toInt()}|$stairModel|$stairColorHex|$exterior|$roofModel$roofColorHex|$groundModel$groundColorHex" +
-                "|${plan.exterior.roofShape}/${plan.exterior.pitch}/${plan.exterior.eaves}/${plan.exterior.hipFactor}" +
-                "|" + plan.levelSurfaces.joinToString(",") { "${it.wallPresetIdx}/${it.floorPresetIdx}/${it.wallColor}" } +
-                "|" + plan.stairs.joinToString(",") { "${it.shape}/${it.legCm}/${it.wellCm}" } +
-                "|" + openings.joinToString(",") { "${it.nodeA}/${it.nodeB}/${it.t}/${it.type}/${it.widthCm}/${it.style}/${it.leafHidden}/${it.leafOpen}" }
+        // Cheap fingerprint, not a description: this runs on every recomposition, and the old one
+        // concatenated every polygon, opening, stair and surface into a fresh multi-kilobyte string.
+        val sSig = roomPolygons.hashCode().toString() + "|" + plan.hashCode() + "|" +
+                activeLevel + "|" + roomHeightCm.toInt() + "|" + exterior +
+                "|" + stairModel + stairColorHex + "|" + roofModel + roofColorHex +
+                "|" + groundModel + groundColorHex
         if (sSig != structSig) {
             structSig = sSig
             rebuildStructure(plan, activeLevel, roomHeightCm, stairModel, stairColorHex, stairTileM,
@@ -527,6 +528,7 @@ private class RoomScene(
             // Stairs rising from this storey to the next. The hole they need overhead is cut by
             // floorHoles(level + 1), from the very same footprint.
             plan.stairs.filter { it.level == level }.forEach { st ->
+                val parts = mutableListOf<BoxSpec>()
                 val rise = hM + floorT
                 val count = Stair.stepCount(rise / CM)
                 val riser = rise / count
@@ -551,8 +553,8 @@ private class RoomScene(
                     for (k in 0 until n) {
                         val d = (k + 0.5f) * tread
                         val h = stepIndex + k
-                        buildBox(stairMi, tread * CM, riser, st.widthCm * CM,
-                            wx(a.x + ux * d), baseY + h * riser, wz(a.y + uy * d), rot, stairTileM)
+                        parts += BoxSpec(tread * CM, riser, st.widthCm * CM,
+                            wx(a.x + ux * d), baseY + h * riser, wz(a.y + uy * d), rot)
                     }
                     stepIndex += n
 
@@ -566,14 +568,15 @@ private class RoomScene(
                     for (side in intArrayOf(-1, 1)) {
                         val off = side * (st.widthCm / 2f - RAIL_T_CM / 2f)
                         val sx = a.x + nX * off; val sy = a.y + nY * off
-                        buildBox(stairMi, railLen, RAIL_T_CM * CM, RAIL_T_CM * CM,
+                        parts += BoxSpec(railLen, RAIL_T_CM * CM, RAIL_T_CM * CM,
                             wx(sx + ux * len / 2f), railY + riseRun / 2f, wz(sy + uy * len / 2f),
-                            rot, stairTileM, pitch)
-                        for (k in 0 until n) {
+                            rot, pitch)
+                        val step = (POST_SPACING_CM / tread).roundToInt().coerceAtLeast(1)
+                        for (k in step - 1 until n step step) {
                             val d = (k + 1) * tread
-                            buildBox(stairMi, BALUSTER_T_CM * CM, RAIL_H_M, BALUSTER_T_CM * CM,
+                            parts += BoxSpec(BALUSTER_T_CM * CM, RAIL_H_M, BALUSTER_T_CM * CM,
                                 wx(sx + ux * d), baseY + (runStart[ri] + k + 1) * riser,
-                                wz(sy + uy * d), rot, stairTileM)
+                                wz(sy + uy * d), rot)
                         }
                     }
 
@@ -582,24 +585,27 @@ private class RoomScene(
                     if (!isLast) {
                         val deckY = baseY + stepIndex * riser
                         st.landings().getOrNull(ri)?.let { (c, su, sv) ->
-                            buildBox(stairMi, su * CM, riser, sv * CM,
-                                wx(c.x), deckY - riser, wz(c.y), -st.rotationDeg, stairTileM)
+                            parts += BoxSpec(su * CM, riser, sv * CM,
+                                wx(c.x), deckY - riser, wz(c.y), -st.rotationDeg)
                         }
                         st.landingRails().getOrNull(ri)?.forEach { (ra, rb) ->
-                            railRun(ra, rb, deckY, stairMi, stairTileM, ::wx, ::wz)
+                            railRun(ra, rb, deckY, parts, ::wx, ::wz)
                         }
                     }
                 }
+                buildBoxes(stairMi, parts, stairTileM)
             }
 
             // Balconies hang off the outside, so they belong to the storey whose wall carries them.
             plan.balconies.filter { it.level == level }.forEach { b ->
                 val slab = plan.balconySlab(b) ?: return@forEach
-                buildFloorMesh(slab, floorMi, floorTileM, baseY = baseY)
+                buildFloorMesh(slab, floorMi, floorTileM, baseY = baseY, outsetCm = 0f)
                 // Rail the three open sides; the fourth is the wall it hangs from.
+                val rails = mutableListOf<BoxSpec>()
                 for (i in 1 until slab.size) {
-                    railRun(slab[i], slab[(i + 1) % slab.size], baseY, wallMi, wallTileM, ::wx, ::wz)
+                    railRun(slab[i], slab[(i + 1) % slab.size], baseY, rails, ::wx, ::wz)
                 }
+                buildBoxes(wallMi, rails, wallTileM)
                 // Soffit, so it does not read as a floating sheet from below.
                 val cx = slab.map { it.x }.average().toFloat()
                 val cy = slab.map { it.y }.average().toFloat()
@@ -612,12 +618,12 @@ private class RoomScene(
             // Guard the hole this flight leaves in the floor above, on every side but the one you
             // step out of. Without it the upper storey has an unfenced opening in it.
             if (level < activeLevel || (exterior && level < topLevel)) {
+                val guards = mutableListOf<BoxSpec>()
                 plan.stairs.filter { it.level == level }.forEach { st ->
                     val deckY = baseY + hM + floorT
-                    st.wellGuards(HOLE_MARGIN_CM).forEach { (a, b) ->
-                        railRun(a, b, deckY, stairMi, stairTileM, ::wx, ::wz)
-                    }
+                    st.wellGuards(HOLE_MARGIN_CM).forEach { (a, b) -> railRun(a, b, deckY, guards, ::wx, ::wz) }
                 }
+                buildBoxes(stairMi, guards, stairTileM)
             }
 
             // One post per plan corner. It has to sit where its walls actually are: an exterior wall is
@@ -683,10 +689,13 @@ private class RoomScene(
                 WallPoint(cx - half, cy - half), WallPoint(cx + half, cy - half),
                 WallPoint(cx + half, cy + half), WallPoint(cx - half, cy + half),
             ),
-            fieldMi, FIELD_TILE_M, baseY = -GROUND_DROP_M,
+            fieldMi, FIELD_TILE_M, baseY = -GROUND_DROP_M, outsetCm = 0f,
         )
         ground.forEach { ring ->
-            buildFloorMesh(outset(ring, PLOT_MARGIN_CM), plotMi, groundTileM, baseY = -GROUND_DROP_M / 2f)
+            buildFloorMesh(
+                outset(ring, PLOT_MARGIN_CM), plotMi, groundTileM,
+                baseY = -GROUND_DROP_M / 2f, outsetCm = 0f,
+            )
         }
 
         val ext = plan.exterior
@@ -727,7 +736,7 @@ private class RoomScene(
                 // Walking surface AT the storey-above floor level, with the slab hanging below it.
                 // Sitting it on top instead put the terrace a slab's thickness above that storey, so
                 // a balcony hung off an upper wall was buried in its own roof.
-                buildFloorMesh(eaves, roofMi, roofTileM, baseY = roofY, holes = holes)
+                buildFloorMesh(eaves, roofMi, roofTileM, baseY = roofY, holes = holes, outsetCm = 0f)
                 // Fascia: without a visible edge the roof read as a sheet of paper floating there.
                 eaves.indices.forEach { i ->
                     val a = eaves[i]; val b = eaves[(i + 1) % eaves.size]
@@ -742,6 +751,7 @@ private class RoomScene(
                 // A flat roof is a terrace you could stand on, so it gets a parapet — the wall
                 // carried up past the slab, which is also what stops it reading as a bare lid.
                 val wallLine = outset(ring, WALL_THICK_CM / 2f)
+                val parapet = mutableListOf<BoxSpec>()
                 wallLine.indices.forEach { i ->
                     val a = wallLine[i]; val b = wallLine[(i + 1) % wallLine.size]
                     val len = hypot(b.x - a.x, b.y - a.y)
@@ -749,29 +759,30 @@ private class RoomScene(
                     val rot = Math.toDegrees(
                         atan2(-((b.y - a.y) / len).toDouble(), ((b.x - a.x) / len).toDouble())
                     ).toFloat()
-                    buildBox(roofMi, len * CM, PARAPET_H_M, WALL_THICK_CM * CM,
-                        wx((a.x + b.x) / 2f), roofY, wz((a.y + b.y) / 2f), rot, roofTileM)
+                    parapet += BoxSpec(len * CM, PARAPET_H_M, WALL_THICK_CM * CM,
+                        wx((a.x + b.x) / 2f), roofY, wz((a.y + b.y) / 2f), rot)
                 }
+                buildBoxes(roofMi, parapet, roofTileM)
             }
         }
     }
 
     /** A horizontal rail with posts along one plan segment: stairwell guards and landing rails. */
     private fun railRun(
-        a: WallPoint, b: WallPoint, deckY: Float, mi: MaterialInstance, tileM: Float,
+        a: WallPoint, b: WallPoint, deckY: Float, into: MutableList<BoxSpec>,
         wx: (Float) -> Float, wz: (Float) -> Float,
     ) {
         val len = hypot(b.x - a.x, b.y - a.y)
         if (len < 1f) return
         val ux = (b.x - a.x) / len; val uy = (b.y - a.y) / len
         val rot = Math.toDegrees(atan2(-uy.toDouble(), ux.toDouble())).toFloat()
-        buildBox(mi, len * CM, RAIL_T_CM * CM, RAIL_T_CM * CM,
-            wx((a.x + b.x) / 2f), deckY + RAIL_H_M, wz((a.y + b.y) / 2f), rot, tileM)
-        val posts = (len / 25f).roundToInt().coerceIn(2, 14)
+        into += BoxSpec(len * CM, RAIL_T_CM * CM, RAIL_T_CM * CM,
+            wx((a.x + b.x) / 2f), deckY + RAIL_H_M, wz((a.y + b.y) / 2f), rot)
+        val posts = (len / POST_SPACING_CM).roundToInt().coerceIn(2, 14)
         for (q in 0..posts) {
             val d = len * q / posts
-            buildBox(mi, BALUSTER_T_CM * CM, RAIL_H_M, BALUSTER_T_CM * CM,
-                wx(a.x + ux * d), deckY, wz(a.y + uy * d), rot, tileM)
+            into += BoxSpec(BALUSTER_T_CM * CM, RAIL_H_M, BALUSTER_T_CM * CM,
+                wx(a.x + ux * d), deckY, wz(a.y + uy * d), rot)
         }
     }
 
@@ -1044,6 +1055,95 @@ private class RoomScene(
 
     /** Box sx×sy×sz with its bottom centre at (px,py,pz), rotated about Y. Face UVs are in metres /
      *  [tileM] so the texture repeats at real size regardless of the box dimensions. */
+    /** One box in a batch; the same numbers [buildBox] takes, minus the material and tiling. */
+    private class BoxSpec(
+        val sx: Float, val sy: Float, val sz: Float,
+        val px: Float, val py: Float, val pz: Float,
+        val rotDeg: Float, val pitchDeg: Float = 0f,
+    )
+
+    /**
+     * Many boxes, one renderable. Filament draws each renderable separately, so a balustrade built a
+     * baluster at a time cost one draw call per post — a single U flight ran to over a hundred, which
+     * is fine on a desktop GPU and not on a phone. Here the transform is baked into the vertices
+     * instead of living on the entity, which is the whole reason they can share one buffer.
+     */
+    private fun buildBoxes(mi: MaterialInstance, boxes: List<BoxSpec>, tileM: Float) {
+        if (boxes.isEmpty()) return
+        val vb = ByteBuffer.allocateDirect(boxes.size * 24 * VSTRIDE).order(ByteOrder.nativeOrder())
+        val ib = ByteBuffer.allocateDirect(boxes.size * 36 * 2).order(ByteOrder.nativeOrder())
+        var minX = Float.MAX_VALUE; var minY = Float.MAX_VALUE; var minZ = Float.MAX_VALUE
+        var maxX = -Float.MAX_VALUE; var maxY = -Float.MAX_VALUE; var maxZ = -Float.MAX_VALUE
+
+        boxes.forEachIndexed { bi, b ->
+            val rad = Math.toRadians(b.rotDeg.toDouble()); val c = cos(rad).toFloat(); val sn = sin(rad).toFloat()
+            val pr = Math.toRadians(b.pitchDeg.toDouble()); val cp = cos(pr).toFloat(); val sp = sin(pr).toFloat()
+            // Columns of the same rotation buildBox uses, as the images of local x, y, z.
+            val ax = c * cp; val ay = sp; val az = -sn * cp
+            val bx = -c * sp; val by = cp; val bz = sn * sp
+            val cx = sn; val cy = 0f; val cz = c
+            val qR = quatOf(ax, ay, az, bx, by, bz, cx, cy, cz)
+            val w = b.sx / 2f; val h = b.sz / 2f; val t = 1f / tileM
+            fun put(lx: Float, ly: Float, lz: Float, q: FloatArray, u: Float, v: Float) {
+                val x = b.px + ax * lx + bx * ly + cx * lz
+                val y = b.py + ay * lx + by * ly + cy * lz
+                val z = b.pz + az * lx + bz * ly + cz * lz
+                if (x < minX) minX = x; if (x > maxX) maxX = x
+                if (y < minY) minY = y; if (y > maxY) maxY = y
+                if (z < minZ) minZ = z; if (z > maxZ) maxZ = z
+                vb.vertex(x, y, z, quatMul(qR, q), u, v)
+            }
+            val qPZ = floatArrayOf(0f, 0f, 0f, 1f); val qNZ = floatArrayOf(0f, 1f, 0f, 0f)
+            val qPX = floatArrayOf(0f, 0.70710678f, 0f, 0.70710678f); val qNX = floatArrayOf(0f, -0.70710678f, 0f, 0.70710678f)
+            val qPY = floatArrayOf(-0.70710678f, 0f, 0f, 0.70710678f); val qNY = floatArrayOf(0.70710678f, 0f, 0f, 0.70710678f)
+            put(-w, 0f, h, qPZ, -w * t, 0f); put(w, 0f, h, qPZ, w * t, 0f); put(w, b.sy, h, qPZ, w * t, b.sy * t); put(-w, b.sy, h, qPZ, -w * t, b.sy * t)
+            put(w, 0f, -h, qNZ, w * t, 0f); put(-w, 0f, -h, qNZ, -w * t, 0f); put(-w, b.sy, -h, qNZ, -w * t, b.sy * t); put(w, b.sy, -h, qNZ, w * t, b.sy * t)
+            put(w, 0f, h, qPX, h * t, 0f); put(w, 0f, -h, qPX, -h * t, 0f); put(w, b.sy, -h, qPX, -h * t, b.sy * t); put(w, b.sy, h, qPX, h * t, b.sy * t)
+            put(-w, 0f, -h, qNX, -h * t, 0f); put(-w, 0f, h, qNX, h * t, 0f); put(-w, b.sy, h, qNX, h * t, b.sy * t); put(-w, b.sy, -h, qNX, -h * t, b.sy * t)
+            put(-w, b.sy, h, qPY, -w * t, h * t); put(w, b.sy, h, qPY, w * t, h * t); put(w, b.sy, -h, qPY, w * t, -h * t); put(-w, b.sy, -h, qPY, -w * t, -h * t)
+            put(w, 0f, h, qNY, w * t, h * t); put(-w, 0f, h, qNY, -w * t, h * t); put(-w, 0f, -h, qNY, -w * t, -h * t); put(w, 0f, -h, qNY, w * t, -h * t)
+            val base = bi * 24
+            for (f in 0 until 6) {
+                val o = base + f * 4
+                intArrayOf(o, o + 1, o + 2, o, o + 2, o + 3).forEach { ib.putShort(it.toShort()) }
+            }
+        }
+        vb.flip(); ib.flip()
+        addMesh(
+            vb, boxes.size * 24, ib, boxes.size * 36, mi,
+            Box((minX + maxX) / 2f, (minY + maxY) / 2f, (minZ + maxZ) / 2f,
+                (maxX - minX) / 2f + 0.01f, (maxY - minY) / 2f + 0.01f, (maxZ - minZ) / 2f + 0.01f),
+            null, true,
+        )
+    }
+
+    /** Rotation matrix (given as its three column vectors) to a quaternion. */
+    private fun quatOf(
+        ax: Float, ay: Float, az: Float, bx: Float, by: Float, bz: Float, cx: Float, cy: Float, cz: Float,
+    ): FloatArray {
+        val tr = ax + by + cz
+        return if (tr > 0f) {
+            val s = sqrt(tr + 1f) * 2f
+            floatArrayOf((bz - cy) / s, (cx - az) / s, (ay - bx) / s, 0.25f * s)
+        } else if (ax > by && ax > cz) {
+            val s = sqrt(1f + ax - by - cz) * 2f
+            floatArrayOf(0.25f * s, (bx + ay) / s, (cx + az) / s, (bz - cy) / s)
+        } else if (by > cz) {
+            val s = sqrt(1f + by - ax - cz) * 2f
+            floatArrayOf((bx + ay) / s, 0.25f * s, (cy + bz) / s, (cx - az) / s)
+        } else {
+            val s = sqrt(1f + cz - ax - by) * 2f
+            floatArrayOf((cx + az) / s, (cy + bz) / s, 0.25f * s, (ay - bx) / s)
+        }
+    }
+
+    private fun quatMul(a: FloatArray, b: FloatArray) = floatArrayOf(
+        a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+        a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+        a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+        a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+    )
+
     /**
      * [pitchDeg] tilts the box about its own length, so a box can rake: positive lifts its +X end.
      * Rotation happens about the local origin — centred in X and Z, at the base in Y — so place a
@@ -1142,12 +1242,17 @@ private class RoomScene(
         return floatArrayOf(qx / n2, qy / n2, qz / n2, w / n2)
     }
 
+    /**
+     * [outsetCm] defaults to the wall thickness because a room floor has to run under its walls. It
+     * is wrong for anything that is not a room: a balcony slab grew 10 cm on every side, poking past
+     * its own railing and back through the wall it hangs on.
+     */
     private fun buildFloorMesh(
         poly: List<WallPoint>, mi: MaterialInstance, tileM: Float, baseY: Float = 0f,
-        holes: List<List<WallPoint>> = emptyList(),
+        holes: List<List<WallPoint>> = emptyList(), outsetCm: Float = WALL_THICK_CM,
     ) {
         if (poly.size < 3) return
-        var pts = outset(poly, WALL_THICK_CM)
+        var pts = if (outsetCm != 0f) outset(poly, outsetCm) else poly
         // Only holes lying WHOLLY inside this room. Bridging a hole that pokes past the outer ring
         // produces a self-crossing polygon, which the ear clipper abandons half-done.
         holes.filter { h -> h.all { pointInPoly(it, pts) } }.forEach { pts = bridgeHole(pts, it) }

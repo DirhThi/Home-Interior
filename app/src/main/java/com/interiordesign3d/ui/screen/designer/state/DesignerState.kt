@@ -93,9 +93,11 @@ open class DesignerState : BaseScreenState() {
     val floorPreset get() = FLOOR_PRESETS[floorPresetIdx.coerceIn(FLOOR_PRESETS.indices)]
     val stairPreset get() = FLOOR_PRESETS[stairPresetIdx.coerceIn(FLOOR_PRESETS.indices)]
     val exteriorSurface get() = floorPlan.exterior
-    /** Rectangles the roof would be split into, and whether a pitched roof is possible at all. */
-    val roofMassCount: Int get() = floorPlan.roofMasses(topLevel).size
-    val roofCanPitch: Boolean get() = floorPlan.isOrthogonal(topLevel)
+    // Rectangles the roof splits into, and whether a pitched roof is possible at all. Both walk the
+    // whole outline, so they are cached: as plain getters they re-ran the decomposition on every
+    // recomposition of the panel that shows them.
+    val roofMassCount: Int by derivedStateOf { floorPlan.roofMasses(topLevel).size }
+    val roofCanPitch: Boolean by derivedStateOf { floorPlan.isOrthogonal(topLevel) }
     val topLevel: Int get() = (floorPlan.levelCount - 1).coerceAtLeast(0)
     val roofPresetIdx: Int get() = floorPlan.exterior.roofPresetIdx
     val groundPresetIdx: Int get() = floorPlan.exterior.groundPresetIdx

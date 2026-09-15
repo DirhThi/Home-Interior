@@ -105,6 +105,23 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Fixed
 
+- **A balcony slab was 10 cm bigger than its own railing on every side**, and poked back
+  through the wall it hangs on. `buildFloorMesh` always grew the polygon by a wall
+  thickness — right for a room floor, which has to run under its walls, wrong for
+  everything else. It is a parameter now, and the roof's eaves are exactly the number
+  the panel shows rather than that plus 10 cm.
+- **The 3D view built one draw call per baluster.** A two-storey plan with one U flight
+  came to 177 renderables inside and 282 outside, most of them posts. Boxes that share a
+  material are batched into one mesh with the transform baked into the vertices: **80 and
+  116**. Posts also sit every 40 cm now instead of on every tread.
+- **The viewport's rebuild check rebuilt a multi-kilobyte string on every recomposition**,
+  concatenating every polygon, opening, stair and surface. It hashes instead — which also
+  fixes editing a balcony not redrawing, since balconies were never in that string.
+- **Home re-parsed every room's plan whenever any furniture moved**, and the isometric
+  thumbnail redid its edge census inside the draw lambda, on every scroll frame. Both are
+  cached on the thing they actually depend on.
+- **`roofMassCount` and `roofCanPitch` re-ran the whole outline walk on every
+  recomposition** of the roof panel. Both are `derivedStateOf` now.
 - **A flat roof's surface sat a slab's thickness above the storey it belongs to.** A
   balcony hung off an upper wall was then buried in its own roof, with only the top of
   its rail showing. The slab now hangs below the walking surface instead of standing

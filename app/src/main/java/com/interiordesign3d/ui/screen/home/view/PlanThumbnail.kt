@@ -2,6 +2,7 @@ package com.interiordesign3d.ui.screen.home.view
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -44,6 +45,9 @@ fun PlanThumbnail(
     modifier: Modifier = Modifier,
     furniture: List<PlacedFurniture> = emptyList(),
 ) {
+    // The edge census and the projected extent depend only on the plan, but they used to be redone
+    // inside the draw lambda — every scroll frame, for every card on screen.
+    val shell = remember(plan) { thumbShell(plan) }
     val accents = LocalInteriorAccents.current
     val floorFill = accents.thumbFloor
     val faceTone = accents.thumbWallFace
@@ -56,26 +60,9 @@ fun PlanThumbnail(
 
     Canvas(modifier) {
         val nodes = plan.nodes
-        if (nodes.isEmpty() || plan.rooms.isEmpty()) return@Canvas
-
-        // Every edge, with the rooms that use it: one user means it is on the outside.
-        val uses = HashMap<Long, MutableList<Int>>()
-        plan.rooms.forEachIndexed { ri, room ->
-            room.indices.forEach { i ->
-                val a = room[i]; val b = room[(i + 1) % room.size]
-                uses.getOrPut(edgeKey(a, b)) { mutableListOf() } += ri
-            }
-        }
-
+        if (shell == null) return@Canvas
+        val (uses, minX, maxX, minY, maxY) = shell
         val levels = plan.levelCount
-        val corners = buildList {
-            for (lv in 0 until levels) for (n in nodes) {
-                add(iso(n.x, n.y, lv * STOREY_CM))
-                add(iso(n.x, n.y, lv * STOREY_CM + WALL_H_CM))
-            }
-        }
-        val minX = corners.minOf { it.x }; val maxX = corners.maxOf { it.x }
-        val minY = corners.minOf { it.y }; val maxY = corners.maxOf { it.y }
         val pad = size.minDimension * 0.07f
         val scale = minOf(
             (size.width - pad * 2) / (maxX - minX).coerceAtLeast(1f),
@@ -155,6 +142,32 @@ fun PlanThumbnail(
 }
 
 private fun edgeKey(a: Int, b: Int): Long = minOf(a, b).toLong() * 100_000L + maxOf(a, b)
+
+/** Plan-only part of the drawing: which edges are on the outside, and the projected bounds. */
+private data class ThumbShell(
+    val uses: Map<Long, List<Int>>,
+    val minX: Float, val maxX: Float, val minY: Float, val maxY: Float,
+)
+
+private fun thumbShell(plan: FloorPlan): ThumbShell? {
+    if (plan.nodes.isEmpty() || plan.rooms.isEmpty()) return null
+    val uses = HashMap<Long, MutableList<Int>>()
+    plan.rooms.forEachIndexed { ri, room ->
+        room.indices.forEach { i ->
+            uses.getOrPut(edgeKey(room[i], room[(i + 1) % room.size])) { mutableListOf() } += ri
+        }
+    }
+    var minX = Float.MAX_VALUE; var maxX = -Float.MAX_VALUE
+    var minY = Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
+    for (lv in 0 until plan.levelCount) for (n in plan.nodes) {
+        for (z in listOf(lv * STOREY_CM, lv * STOREY_CM + WALL_H_CM)) {
+            val p = iso(n.x, n.y, z)
+            if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x
+            if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y
+        }
+    }
+    return ThumbShell(uses, minX, maxX, minY, maxY)
+}
 
 private fun quad(points: List<Offset>): Path = Path().apply {
     points.forEachIndexed { i, o -> if (i == 0) moveTo(o.x, o.y) else lineTo(o.x, o.y) }

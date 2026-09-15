@@ -105,6 +105,12 @@ are no handrails and no pitched roof. One shared fix unblocks both — see
 `7c67454`. If Filament fails to initialise on a device, the design view shows
 nothing — there is no second path and no error state.
 
+**Draw calls are the budget, not triangles.** Every `buildBox` is its own Filament
+renderable, so anything repeated — balusters, posts, parapet segments — has to go
+through `buildBoxes`, which bakes the transform into the vertices and emits one mesh.
+Built one at a time they came to 177 renderables for a two-storey plan; batched, 80.
+Measured on an emulator, where it still ran at 60 fps — a phone GPU is less forgiving.
+
 **Single-sided roof faces.** A roof plane exists only if its triangle winding faces
 the camera, and nothing in the code will warn you — a face wound the wrong way just
 is not there. `buildFace` winds every face away from the mass centre for that reason;

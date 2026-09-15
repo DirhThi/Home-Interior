@@ -37,12 +37,19 @@ class HomeViewModel(app: Application, navigator: Navigator) : BaseViewModel(app,
     init {
         screenState.loading = true
         viewModelScope.launch {
+            // Decoding is keyed on the JSON itself: moving one chair used to re-parse every room's
+            // plan, because the furniture flow re-emits and this block reruns.
+            val planCache = HashMap<String, FloorPlan>()
             combine(
                 db.roomDao().getAllRooms(),
                 db.placedFurnitureDao().getAllFurniture(),
             ) { rooms, furniture ->
                 val byRoom = furniture.groupBy { it.roomId }
-                rooms.map { RoomListItem(it, it.plan(), byRoom[it.id].orEmpty()) }
+                planCache.keys.retainAll(rooms.map { it.floorPlanJson }.toSet())
+                rooms.map { room ->
+                    val plan = planCache.getOrPut(room.floorPlanJson) { room.plan() }
+                    RoomListItem(room, plan, byRoom[room.id].orEmpty())
+                }
             }
                 .flowOn(Dispatchers.Default)
                 .collect { items ->
