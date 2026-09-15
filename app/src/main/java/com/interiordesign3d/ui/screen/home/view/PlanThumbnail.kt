@@ -21,6 +21,8 @@ private const val ISO_Y = 0.5f
 private const val WALL_H_CM = 270f
 private const val STOREY_CM = 280f
 private const val FURN_H_CM = 45f
+private const val WALL_T_CM = 14f      // exaggerated: the visible top edge is what kills the Necker flip
+private const val SLAB_T_CM = 18f
 private const val DOOR_TOP = 0.78f
 private const val WINDOW_BASE = 0.28f
 private const val WINDOW_TOP = 0.83f
@@ -46,6 +48,8 @@ fun PlanThumbnail(
     val floorFill = accents.thumbFloor
     val faceTone = accents.thumbWallFace
     val sideTone = accents.thumbWallSide
+    val topTone = accents.thumbWallTop
+    val slabTone = accents.thumbSlab
     val furnTone = accents.thumbFurniture
     val doorTone = accents.thumbDoor
     val windowTone = accents.window
@@ -93,6 +97,10 @@ fun PlanThumbnail(
                 drawPath(quad(plan.rooms[ri].map { p(nodes[it].x, nodes[it].y, base) }), floorFill)
             }
 
+            // The open sides get a slab edge. Together with the wall tops it settles which way the
+            // drawing reads: without them the eye flips the corner inside out (a Necker cube).
+            val lips = mutableListOf<Pair<Float, DrawScope.() -> Unit>>()
+
             // Walls and furniture share one back-to-front pass, so a sofa sits in front of the wall
             // behind it and behind the one in front.
             val items = mutableListOf<Pair<Float, DrawScope.() -> Unit>>()
@@ -111,9 +119,24 @@ fun PlanThumbnail(
                     // whose normal leans towards the viewer stands between them and the interior.
                     var nx = b.y - a.y; var ny = a.x - b.x
                     if (nx * (mx - cx) + ny * (my - cy) < 0f) { nx = -nx; ny = -ny }
-                    if (exterior && nx + ny > 0f) return@forEach
+                    val len = hypot(b.x - a.x, b.y - a.y).coerceAtLeast(1f)
+                    nx /= len; ny /= len
+                    if (exterior && nx + ny > 0f) {
+                        lips += (mx + my) to {
+                            drawPath(
+                                quad(listOf(
+                                    p(a.x, a.y, base), p(b.x, b.y, base),
+                                    p(b.x, b.y, base - SLAB_T_CM), p(a.x, a.y, base - SLAB_T_CM),
+                                )),
+                                slabTone,
+                            )
+                        }
+                        return@forEach
+                    }
                     val tone = if (kotlin.math.abs(b.x - a.x) >= kotlin.math.abs(b.y - a.y)) faceTone else sideTone
-                    items += (mx + my) to { wall(plan, ai, bi, a, b, lv, base, ::p, tone, doorTone, windowTone) }
+                    items += (mx + my) to {
+                        wall(plan, ai, bi, a, b, lv, base, nx, ny, ::p, tone, topTone, doorTone, windowTone)
+                    }
                 }
             }
 
@@ -123,6 +146,8 @@ fun PlanThumbnail(
                 items += (f.posX + f.posZ) to { box(f.posX, f.posZ, w, d, base, FURN_H_CM, ::p, furnTone) }
             }
 
+            lips.sortBy { it.first }
+            lips.forEach { it.second(this) }
             items.sortBy { it.first }
             items.forEach { it.second(this) }
         }
@@ -139,8 +164,8 @@ private fun quad(points: List<Offset>): Path = Path().apply {
 /** One wall, split around its openings; the opening itself is a coloured panel at door or sill height. */
 private fun DrawScope.wall(
     plan: FloorPlan, ai: Int, bi: Int, a: WallPoint, b: WallPoint,
-    level: Int, base: Float, p: (Float, Float, Float) -> Offset,
-    tone: Color, doorTone: Color, windowTone: Color,
+    level: Int, base: Float, nx: Float, ny: Float, p: (Float, Float, Float) -> Offset,
+    tone: Color, topTone: Color, doorTone: Color, windowTone: Color,
 ) {
     val len = hypot(b.x - a.x, b.y - a.y).coerceAtLeast(1f)
     val cuts = plan.openingsOn(ai, bi, level).map {
@@ -178,6 +203,17 @@ private fun DrawScope.wall(
         if (z1 < top) panel(c0, c1, z1, top, tone)
         panel(c0, c1, z0, z1, if (type == OpeningType.DOOR) doorTone else windowTone)
     }
+
+    // The lit top of the wall. Seeing it means you are looking down onto something standing up,
+    // which is the cue that stops the corner reading as a solid block pointing at you.
+    val ox = nx * WALL_T_CM; val oy = ny * WALL_T_CM
+    drawPath(
+        quad(listOf(
+            p(a.x, a.y, top), p(b.x, b.y, top),
+            p(b.x + ox, b.y + oy, top), p(a.x + ox, a.y + oy, top),
+        )),
+        topTone,
+    )
 }
 
 /** An upright box for one piece of furniture: two sides in shadow, a lit top. */

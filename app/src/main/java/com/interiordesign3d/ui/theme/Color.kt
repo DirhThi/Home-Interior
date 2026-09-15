@@ -82,6 +82,8 @@ data class InteriorAccents(
     val thumbFloor: Color,
     val thumbWallFace: Color,
     val thumbWallSide: Color,
+    val thumbWallTop: Color,
+    val thumbSlab: Color,
     val thumbDoor: Color,
     val thumbFurniture: Color,
 )
@@ -104,6 +106,8 @@ val LightAccents = InteriorAccents(
     thumbFloor         = Color(0xFFEFE2DB),
     thumbWallFace      = Color(0xFFDCD6D1),
     thumbWallSide      = Color(0xFFBEB6AF),
+    thumbWallTop       = Color(0xFFF3EFEB),
+    thumbSlab          = Color(0xFFCFC2BA),
     thumbDoor          = InteriorColors.Moss40,
     thumbFurniture     = Color(0xFF8C7A6B),
 )
@@ -126,6 +130,8 @@ val DarkAccents = InteriorAccents(
     thumbFloor         = Color(0xFF3A302B),
     thumbWallFace      = Color(0xFF4A423C),
     thumbWallSide      = Color(0xFF332D29),
+    thumbWallTop       = Color(0xFF5E544C),
+    thumbSlab          = Color(0xFF2A221E),
     thumbDoor          = InteriorColors.Moss80,
     thumbFurniture     = Color(0xFFA8907E),
 )

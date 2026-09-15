@@ -16,8 +16,10 @@ everything below sits under Unreleased. When the first build goes out, cut a
   so instead of faking a size. The thumbnail is an axonometric doll's house drawn
   straight from the plan — floors, walls stood up, doors and windows punched
   through, the furniture actually in the room, and storeys stacked. Walls facing
-  the viewer are dropped so you can see in. Canvas only: no 3D engine, no cached
-  bitmap, and it cannot show a stale picture.
+  the viewer are dropped so you can see in, and walls carry a lit top edge while
+  the open sides carry a floor slab edge — without those the corner flips inside
+  out as a Necker cube. Canvas only: no 3D engine, no cached bitmap, and it cannot
+  show a stale picture.
 - **Stair proportions per shape.** Each shape carries its own default depth, so a
   new flight gets a ~25 cm tread instead of 17.5 cm; `legCm` and `wellCm` are
   editable in the panel; and the panel warns when a flight is squeezed shallower
