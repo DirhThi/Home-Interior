@@ -51,6 +51,23 @@
     <string name="stairs">Stairs</string>
     <string name="outside">Outside</string>
     <string name="roof">Roof</string>
+    <string name="roof_flat">Flat</string>
+    <string name="roof_hip">Single hip</string>
+    <string name="roof_thai">Thai</string>
+    <string name="roof_pitch">Pitch %1$d°</string>
+    <string name="roof_pitch_label">Roof pitch</string>
+    <string name="roof_eaves">Eaves %1$d</string>
+    <string name="roof_eaves_label">Eaves overhang</string>
+    <string name="roof_taper">Taper %1$d%%</string>
+    <string name="roof_taper_label">End taper — 0%% is a gable, 100%% a full hip</string>
+    <string name="roof_note_flat">Doubles as a roof terrace. Storeys below always stay flat.</string>
+    <string name="roof_note_slanted">This plan has a wall off the axis, so a pitched roof falls back to flat.</string>
+    <string name="roof_note_covers_notch">One roof over the whole footprint — it will cover the notch too, as a porch.</string>
+    <string name="roof_note_single_mass">This plan is one rectangle, so Thai gives a single roof — just steeper, with deeper eaves.</string>
+    <plurals name="roof_masses">
+        <item quantity="one">%d roof following the plan</item>
+        <item quantity="other">%d roofs joined, following the plan</item>
+    </plurals>
     <string name="ground">Ground</string>
     <string name="stair_straight">Straight</string>
     <string name="stair_l">L</string>

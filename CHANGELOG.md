@@ -20,6 +20,15 @@ everything below sits under Unreleased. When the first build goes out, cut a
   the open sides carry a floor slab edge — without those the corner flips inside
   out as a Necker cube. Canvas only: no 3D engine, no cached bitmap, and it cannot
   show a stale picture.
+- **Pitched roofs, and the Thai multi-mass roof.** Three shapes in the Outside tab:
+  **Flat** (also the roof terrace), **Single hip** — one roof over the whole
+  footprint, which on an L covers the notch as a porch — and **Thai**, which splits
+  the outline into rectangular masses and gives each its own hip, stepped down from
+  the main one. Pitch, eaves and an **end taper** are all adjustable, and the taper
+  is what turns a hip into a gable: 100% pulls the ridge fully in (chóp), 0% runs it
+  out to the wall so the end plane stands up as a triangle (tam giác). The panel
+  says what each pick will do to *this* plan — how many masses it will use, or that
+  a single hip will overhang the notch — rather than letting the 3D be a surprise.
 - **Exterior finishes.** Roof and ground presets in a new Outside tab of the
   surfaces sheet, stored on the plan. No new assets: every one is a tint over a
   material the build already shipped.
@@ -81,6 +90,10 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Fixed
 
+- **The plan was only saved by Save or by entering Design mode.** Draw a room and
+  press Back and it was gone; the same went for every wall, floor, stair and roof
+  pick, which all live on the plan now. It auto-saves on the same 400 ms debounce
+  furniture already used.
 - **Every Home card showed the same frozen values** — `380 × 520 cm`, `Hardwood`
   and one fixed pair of colours — because `DesignRoom` kept summary columns that
   stopped being written once `FloorPlan` became the source of truth.

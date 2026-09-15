@@ -98,9 +98,10 @@ are no handrails and no pitched roof. One shared fix unblocks both — see
 `7c67454`. If Filament fails to initialise on a device, the design view shows
 nothing — there is no second path and no error state.
 
-**Drawing a plan and pressing Back discards it.** The plan is persisted only by
-Save and by entering Design mode, so the system Back button silently throws away
-whatever was drawn. See [backlog.md](backlog.md#found-while-fixing-debt-1).
+**Single-sided roof faces.** A roof plane exists only if its triangle winding faces
+the camera, and nothing in the code will warn you — a face wound the wrong way just
+is not there. `buildFace` winds every face away from the mass centre for that reason;
+keep new roof geometry going through it.
 
 **Stair treads are ~17.5 cm at the defaults** where ~25 cm is normal. The riser
 is right; the run is too short. Workaround and fix in

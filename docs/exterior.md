@@ -1,7 +1,6 @@
 # Step 7 — Exterior
 
-**Done**, except that the roof is flat only — single-pitch is still open, and
-`buildBox`'s `pitchDeg` is what it needs. The rest of this file is the record of how
+**Done**, including hip, gable and the multi-mass Thai roof. The rest of this file is the record of how
 it was built and what was deliberately left out.
 
 Six tasks.
@@ -72,7 +71,7 @@ Watch the shadow map: a ground plane much larger than the house will blow out
 the shadow cascade and make interior shadows mushy. Keep it to a few times the
 house span rather than a kilometre.
 
-## t7-3 — Flat or single-pitch roof — flat done
+## t7-3 — Roof shapes — done
 
 **No longer blocked.** `buildBox` takes a `pitchDeg` that tilts a box about its own
 length — added for the raking handrail, and exactly what a sloped slab needs.
@@ -86,11 +85,35 @@ Then:
   with a triangular gable filling each side wall. The gable is not a box — it
   needs a small custom mesh or a triangulated polygon.
 
-**Built: flat only.** One roof per storey, each cut with the storey above as a hole
-— without the hole a smaller upper floor reads as a lid on a lid instead of a box
-standing on a terrace, and the two slabs z-fight. `buildFloorMesh` already takes
-holes, so this costs nothing. Single-pitch is still open, and `pitchDeg` is now
-there for it.
+**Flat** is one roof per storey, each cut with the storey above as a hole — without
+the hole a smaller upper floor reads as a lid on a lid instead of a box standing on
+a terrace, and the two slabs z-fight.
+
+**Pitched** crowns the top storey only, so the storeys below stay flat and usable as
+terraces. Two shapes, one engine:
+
+- **Single hip** takes the bounding rectangle of the whole outline. On an L or U it
+  covers the notch — which is a real choice, not a bug: that overhang is a porch.
+- **Thai** splits the outline into rectangles with `FloorPlan.roofMasses`, hips each
+  one, and steps the smaller masses down from the main ridge. That stepping is what
+  makes it read as joined volumes rather than one folded lid.
+
+`roofMasses` sweeps every vertex coordinate into a grid, keeps the cells inside the
+ring and merges the ones that line up: a rectangle stays one mass, an L gives two, a
+U three, a T two. Only sound for an orthogonal outline, so `isOrthogonal` gates it
+and a slanted plan falls back to flat — the panel says so.
+
+**Gable comes free from the hip.** `hipFactor` is how far the ridge is pulled in
+from each end: 1 is a full hip, 0 leaves the ridge running out to the wall and the
+end plane stands upright as a triangle. Everything between is a half-hip. One number
+instead of three separate shapes.
+
+Two things that bit while building it, both about winding:
+- Roof planes are single-sided, so **winding decides whether a face exists at all**.
+  Flipping only the shading normal left half the roof invisible.
+- "Point the normal up" is not enough either, because a gable end is vertical — one
+  of the two ends always came out culled. Faces are wound away from the mass centre
+  instead.
 
 Hipped and gabled roofs are their own project: they need a straight-skeleton
 solve over the ring, which is a lot more than this step is worth. Say so in the

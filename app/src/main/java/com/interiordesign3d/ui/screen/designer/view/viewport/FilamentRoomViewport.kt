@@ -44,6 +44,7 @@ import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.Stair
 import com.interiordesign3d.data.models.PlacedFurniture
+import com.interiordesign3d.data.models.RoofShape
 import com.interiordesign3d.data.models.WallOpening
 import com.interiordesign3d.data.models.WallPoint
 import java.nio.ByteBuffer
@@ -65,6 +66,7 @@ private const val EAVES_CM = 25f
 private const val ROOF_T_M = 0.16f
 private const val PLOT_MARGIN_CM = 180f
 private const val GROUND_DROP_M = 0.06f
+private const val THAI_STEP_M = 0.45f   // how much each smaller mass drops below the main ridge
 private const val FIELD_MODEL = "mat_concrete034"
 private const val FIELD_TINT = "#8FA184"
 private const val FIELD_TILE_M = 3f
@@ -315,6 +317,7 @@ private class RoomScene(
 
         val sSig = roomPolygons.joinToString(";") { p -> p.joinToString(",") { "${it.x.toInt()}/${it.y.toInt()}" } } +
                 "|$activeLevel|${plan.stairs.joinToString(",") { "${it.level}/${it.x.toInt()}/${it.y.toInt()}/${it.widthCm}/${it.lengthCm}/${it.rotationDeg}" }}|${roomHeightCm.toInt()}|$stairModel|$stairColorHex|$exterior|$roofModel$roofColorHex|$groundModel$groundColorHex" +
+                "|${plan.exterior.roofShape}/${plan.exterior.pitch}/${plan.exterior.eaves}/${plan.exterior.hipFactor}" +
                 "|" + plan.levelSurfaces.joinToString(",") { "${it.wallPresetIdx}/${it.floorPresetIdx}/${it.wallColor}" } +
                 "|" + plan.stairs.joinToString(",") { "${it.shape}/${it.legCm}/${it.wellCm}" } +
                 "|" + openings.joinToString(",") { "${it.nodeA}/${it.nodeB}/${it.t}/${it.type}/${it.widthCm}/${it.style}/${it.leafHidden}/${it.leafOpen}" }
@@ -655,6 +658,7 @@ private class RoomScene(
             buildFloorMesh(outset(ring, PLOT_MARGIN_CM), plotMi, groundTileM, baseY = -GROUND_DROP_M / 2f)
         }
 
+        val ext = plan.exterior
         for (level in 0..topLevel) {
             val rings = plan.outlineRings(level).filter { signedArea(it) > 0f }
             if (rings.isEmpty()) continue
@@ -664,8 +668,26 @@ private class RoomScene(
             } else emptyList()
             val roofY = (level + 1) * (hM + floorT)
 
+            // A pitched roof only crowns the top storey; the ones below stay flat, which is what
+            // makes their uncovered part a terrace. Slanted plans fall back to flat, because the
+            // mass split only holds for an orthogonal outline.
+            if (ext.roofShape != RoofShape.FLAT && level == topLevel && plan.isOrthogonal(level)) {
+                val masses = when (ext.roofShape) {
+                    RoofShape.HIP -> listOf(boundingRing(rings.flatten()))
+                    else -> plan.roofMasses(level)
+                }
+                // Stepping the ridges is what makes a mái Thái read as separate volumes rather than
+                // one lid folded over the plan; a single-mass plan steps by nothing.
+                masses.sortedByDescending { area(it) }.forEachIndexed { i, mass ->
+                    val step = if (ext.roofShape == RoofShape.THAI) i * THAI_STEP_M else 0f
+                    buildHip(mass, roofY + step, ext.pitch, ext.eaves, ext.hipFactor,
+                        roofMi, roofTileM, wx, wz)
+                }
+                continue
+            }
+
             rings.forEach { ring ->
-                val eaves = outset(ring, WALL_THICK_CM / 2f + EAVES_CM)
+                val eaves = outset(ring, WALL_THICK_CM / 2f + ext.eaves)
                 val holes = above.filter { h -> h.all { pointInPoly(it, eaves) } }
                 buildFloorMesh(eaves, roofMi, roofTileM, baseY = roofY + ROOF_T_M, holes = holes)
                 // Fascia: without a visible edge the roof read as a sheet of paper floating there.
@@ -682,6 +704,51 @@ private class RoomScene(
             }
         }
     }
+
+    /** Four planes meeting at a ridge, over one rectangular mass. A square mass gives a pyramid. */
+    private fun buildHip(
+        mass: List<WallPoint>, baseY: Float, pitchDeg: Float, eavesCm: Float, hipFactor: Float,
+        mi: MaterialInstance, tileM: Float, wx: (Float) -> Float, wz: (Float) -> Float,
+    ) {
+        val x0 = mass.minOf { it.x } - eavesCm; val x1 = mass.maxOf { it.x } + eavesCm
+        val y0 = mass.minOf { it.y } - eavesCm; val y1 = mass.maxOf { it.y } + eavesCm
+        val w = x1 - x0; val d = y1 - y0
+        if (w < 1f || d < 1f) return
+        val halfShort = minOf(w, d) / 2f
+        val rise = halfShort * tan(Math.toRadians(pitchDeg.toDouble())).toFloat() * CM
+        val top = baseY + rise
+        // How far the ridge is pulled in from each end. Full inset is a hip; none leaves the ridge
+        // running out to the wall, which turns the end plane vertical — that is a gable.
+        val inset = halfShort * hipFactor.coerceIn(0f, 1f)
+        fun p(x: Float, y: Float, h: Float) = Triple(wx(x), h, wz(y))
+        val c0 = p(x0, y0, baseY); val c1 = p(x1, y0, baseY)
+        val c2 = p(x1, y1, baseY); val c3 = p(x0, y1, baseY)
+        val (r0, r1) = if (w >= d) {
+            p(x0 + inset, (y0 + y1) / 2f, top) to p(x1 - inset, (y0 + y1) / 2f, top)
+        } else {
+            p((x0 + x1) / 2f, y0 + inset, top) to p((x0 + x1) / 2f, y1 - inset, top)
+        }
+        val core = p((x0 + x1) / 2f, (y0 + y1) / 2f, baseY)
+        if (w >= d) {
+            buildFace(listOf(c0, c1, r1, r0), mi, tileM, core)
+            buildFace(listOf(c1, c2, r1), mi, tileM, core)
+            buildFace(listOf(c2, c3, r0, r1), mi, tileM, core)
+            buildFace(listOf(c3, c0, r0), mi, tileM, core)
+        } else {
+            buildFace(listOf(c0, c1, r0), mi, tileM, core)
+            buildFace(listOf(c1, c2, r1, r0), mi, tileM, core)
+            buildFace(listOf(c2, c3, r1), mi, tileM, core)
+            buildFace(listOf(c3, c0, r0, r1), mi, tileM, core)
+        }
+    }
+
+    private fun boundingRing(pts: List<WallPoint>): List<WallPoint> {
+        val x0 = pts.minOf { it.x }; val x1 = pts.maxOf { it.x }
+        val y0 = pts.minOf { it.y }; val y1 = pts.maxOf { it.y }
+        return listOf(WallPoint(x0, y0), WallPoint(x1, y0), WallPoint(x1, y1), WallPoint(x0, y1))
+    }
+
+    private fun area(poly: List<WallPoint>): Float = abs(signedArea(poly))
 
     private fun edgeKey(a: Int, b: Int): Long = minOf(a, b).toLong() * 100_000L + maxOf(a, b)
 
@@ -943,6 +1010,68 @@ private class RoomScene(
     }
 
     /** Flat floor at y = 0 covering the room polygon (grown outward by the wall thickness). */
+    /** One flat convex face at arbitrary heights — a roof plane, which buildFloorMesh cannot express. */
+    private fun buildFace(
+        face: List<Triple<Float, Float, Float>>, mi: MaterialInstance, tileM: Float,
+        inside: Triple<Float, Float, Float>,
+    ) {
+        if (face.size < 3) return
+        // The material is single-sided, so winding decides whether the face exists at all. "Points
+        // up" is not enough to settle it: a gable end stands vertical, so one of the two ends always
+        // came out culled. Wind every face away from [inside] instead.
+        val pts = if (facesAwayFrom(face, inside)) face else face.reversed()
+        val q = faceTangent(pts)
+        val vb = ByteBuffer.allocateDirect(pts.size * VSTRIDE).order(ByteOrder.nativeOrder())
+        pts.forEach { (x, y, z) -> vb.vertex(x, y, z, q, x / tileM, z / tileM) }
+        vb.flip()
+        val ib = ByteBuffer.allocateDirect((pts.size - 2) * 3 * 2).order(ByteOrder.nativeOrder())
+        for (i in 1 until pts.size - 1) {
+            ib.putShort(0); ib.putShort(i.toShort()); ib.putShort((i + 1).toShort())
+        }
+        ib.flip()
+        val cx = pts.map { it.first }.average().toFloat()
+        val cy = pts.map { it.second }.average().toFloat()
+        val cz = pts.map { it.third }.average().toFloat()
+        val hx = (pts.maxOf { it.first } - pts.minOf { it.first }) / 2f + 0.01f
+        val hy = (pts.maxOf { it.second } - pts.minOf { it.second }) / 2f + 0.01f
+        val hz = (pts.maxOf { it.third } - pts.minOf { it.third }) / 2f + 0.01f
+        addMesh(vb, pts.size, ib, (pts.size - 2) * 3, mi, Box(cx, cy, cz, hx, hy, hz), null, false)
+    }
+
+    /**
+     * Filament wants a tangent frame, not a normal. The frame's local +Z is the normal — that is why
+     * the flat-floor quaternion below is a -90° turn about X — so this is the shortest arc from
+     * (0,0,1) to the face's own normal.
+     */
+    private fun facesAwayFrom(
+        pts: List<Triple<Float, Float, Float>>, inside: Triple<Float, Float, Float>,
+    ): Boolean {
+        val (ax, ay, az) = pts[0]; val (bx, by, bz) = pts[1]; val (cx, cy, cz) = pts[2]
+        val ux = bx - ax; val uy = by - ay; val uz = bz - az
+        val vx = cx - ax; val vy = cy - ay; val vz = cz - az
+        val nx = uy * vz - uz * vy; val ny = uz * vx - ux * vz; val nz = ux * vy - uy * vx
+        val mx = pts.map { it.first }.average().toFloat() - inside.first
+        val my = pts.map { it.second }.average().toFloat() - inside.second
+        val mz = pts.map { it.third }.average().toFloat() - inside.third
+        return nx * mx + ny * my + nz * mz > 0f
+    }
+
+    private fun faceTangent(pts: List<Triple<Float, Float, Float>>): FloatArray {
+        val (ax, ay, az) = pts[0]; val (bx, by, bz) = pts[1]; val (cx, cy, cz) = pts[2]
+        val ux = bx - ax; val uy = by - ay; val uz = bz - az
+        val vx = cx - ax; val vy = cy - ay; val vz = cz - az
+        var nx = uy * vz - uz * vy; var ny = uz * vx - ux * vz; var nz = ux * vy - uy * vx
+        val len = sqrt(nx * nx + ny * ny + nz * nz)
+        if (len < 1e-6f) return floatArrayOf(-0.70710678f, 0f, 0f, 0.70710678f)
+        nx /= len; ny /= len; nz /= len
+        if (ny < 0f) { nx = -nx; ny = -ny; nz = -nz }      // a roof plane always faces up
+        val w = 1f + nz
+        if (w < 1e-6f) return floatArrayOf(0f, 1f, 0f, 0f)  // straight down: half turn about Y
+        val qx = -ny; val qy = nx; val qz = 0f
+        val n2 = sqrt(qx * qx + qy * qy + qz * qz + w * w)
+        return floatArrayOf(qx / n2, qy / n2, qz / n2, w / n2)
+    }
+
     private fun buildFloorMesh(
         poly: List<WallPoint>, mi: MaterialInstance, tileM: Float, baseY: Float = 0f,
         holes: List<List<WallPoint>> = emptyList(),

@@ -8,7 +8,9 @@ import com.interiordesign3d.common.base.BaseViewModel
 import com.interiordesign3d.common.base.Navigator
 import com.interiordesign3d.data.catalog.catalogItem
 import com.interiordesign3d.data.models.ColorPalette
+import com.interiordesign3d.data.models.ExteriorSurface
 import com.interiordesign3d.data.models.FloorPlan
+import com.interiordesign3d.data.models.RoofShape
 import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.PlacedFurniture
 import com.interiordesign3d.data.models.Stair
@@ -309,6 +311,22 @@ class DesignerViewModel(
             floorPlan = floorPlan.withSurface(activeLevel) { it.copy(floorPresetIdx = index) }
         }
 
+        // Picking a shape reseeds pitch and eaves from that shape's own defaults, because a 26°
+        // hip and a 38° mái Thái are different roofs, not the same roof with a different name.
+        override fun onRoofShape(shape: RoofShape) = withExterior {
+            it.copy(
+                roofShape = shape,
+                pitchDeg = ExteriorSurface.defaultPitch(shape),
+                eavesCm = ExteriorSurface.defaultEaves(shape),
+            )
+        }
+
+        override fun onRoofPitch(deg: Float) = withExterior { it.copy(pitchDeg = deg) }
+
+        override fun onRoofEaves(cm: Float) = withExterior { it.copy(eavesCm = cm) }
+
+        override fun onRoofHipFactor(pct: Float) = withExterior { it.copy(hipFactor = pct / 100f) }
+
         override fun onRoofPreset(index: Int) {
             floorPlan = floorPlan.copy(exterior = floorPlan.exterior.copy(roofPresetIdx = index))
         }
@@ -354,6 +372,7 @@ class DesignerViewModel(
     init {
         load()
         observeFurnitureForAutoSave()
+        observePlanForAutoSave()
     }
 
     // ── Loading ───────────────────────────────────────────────────────────────
@@ -381,6 +400,21 @@ class DesignerViewModel(
         }
     }
 
+    /**
+     * The plan carries the rooms, the storeys, every surface pick and the roof, and until this
+     * existed all of it was lost unless you hit Save or crossed into Design mode — draw a room,
+     * press Back, gone. Same debounce as furniture.
+     */
+    private fun observePlanForAutoSave() {
+        viewModelScope.launch {
+            snapshotFlow { screenState.floorPlan }.collectLatest {
+                if (!loaded) return@collectLatest
+                delay(AUTO_SAVE_DELAY_MS)
+                persistPlan()
+            }
+        }
+    }
+
     private fun observeFurnitureForAutoSave() {
         viewModelScope.launch {
             snapshotFlow { screenState.placedFurniture }.collectLatest { items ->
@@ -405,6 +439,11 @@ class DesignerViewModel(
     private suspend fun persistFurniture(items: List<PlacedFurniture>) {
         db.placedFurnitureDao().clearRoomFurniture(roomId)
         items.forEach { db.placedFurnitureDao().insertPlacedFurniture(it.copy(roomId = roomId)) }
+    }
+
+    private fun withExterior(transform: (ExteriorSurface) -> ExteriorSurface) {
+        screenState.floorPlan =
+            screenState.floorPlan.copy(exterior = transform(screenState.floorPlan.exterior))
     }
 
     private fun persistSurfaces() {

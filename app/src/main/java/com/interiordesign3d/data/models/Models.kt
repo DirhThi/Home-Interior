@@ -267,12 +267,49 @@ data class LevelSurface(
     val wallColor: String = "",   // blank = take the tint from the wall preset
 )
 
+@Serializable
+enum class RoofShape {
+    /** A slab following the outline. Doubles as a roof terrace. */
+    FLAT,
+    /** One hip over the whole footprint. On an L or U it covers the notch too, as a porch. */
+    HIP,
+    /** One hip per rectangular mass, steeper and with deeper eaves — it follows the plan's shape. */
+    THAI,
+}
+
 /** Finish of the things outside the house. One per building, not per storey. */
 @Serializable
 data class ExteriorSurface(
     val roofPresetIdx: Int = 0,
     val groundPresetIdx: Int = 0,
-)
+    val roofShape: RoofShape = RoofShape.FLAT,
+    val pitchDeg: Float = 0f,     // 0 = take the shape's own default
+    val eavesCm: Float = 0f,      // 0 = take the shape's own default
+    /**
+     * How far the ridge is pulled in from each end, 0..1. **1 is a full hip** — all four planes
+     * slope. **0 is a gable** — the ridge runs out to the wall and the end plane stands upright as
+     * a triangle. Anything between is the half-hip you see on a lot of mái Thái, so one number
+     * covers the whole family instead of three separate shapes.
+     */
+    val hipFactor: Float = 1f,
+) {
+    val pitch: Float get() = if (pitchDeg > 0f) pitchDeg else defaultPitch(roofShape)
+    val eaves: Float get() = if (eavesCm > 0f) eavesCm else defaultEaves(roofShape)
+
+    companion object {
+        fun defaultPitch(shape: RoofShape) = when (shape) {
+            RoofShape.FLAT -> 0f
+            RoofShape.HIP -> 26f
+            RoofShape.THAI -> 38f     // the steep pitch is what makes it read as mái Thái
+        }
+
+        fun defaultEaves(shape: RoofShape) = when (shape) {
+            RoofShape.FLAT -> 25f
+            RoofShape.HIP -> 45f
+            RoofShape.THAI -> 75f     // deep eaves, the other half of the look
+        }
+    }
+}
 
 @Serializable
 data class FloorPlan(
@@ -443,6 +480,57 @@ data class FloorPlan(
         }
         return out
     }
+
+    /**
+     * The storey's outline broken into rectangles — one roof mass each. A sweep of every vertex
+     * coordinate makes a grid of cells, the cells inside the ring are kept, and neighbours that line
+     * up merge back together: a rectangle stays one mass, an L becomes two, a U three.
+     *
+     * Only sound for an orthogonal plan. A ring with a slanted wall comes back as a pile of thin
+     * slivers, so callers check [isOrthogonal] first and fall back to a flat roof.
+     */
+    fun roofMasses(level: Int): List<List<WallPoint>> =
+        outlineRings(level).filter { signedArea2(it) > 0f }.flatMap { ring ->
+            val xs = ring.map { it.x }.distinct().sorted()
+            val ys = ring.map { it.y }.distinct().sorted()
+            if (xs.size < 2 || ys.size < 2 || xs.size * ys.size > 400) return@flatMap emptyList()
+            val cells = mutableListOf<FloatArray>()
+            for (i in 0 until xs.size - 1) for (j in 0 until ys.size - 1) {
+                val mid = WallPoint((xs[i] + xs[i + 1]) / 2f, (ys[j] + ys[j + 1]) / 2f)
+                if (pointInPolygon(mid, ring)) cells += floatArrayOf(xs[i], ys[j], xs[i + 1], ys[j + 1])
+            }
+            var merged = true
+            while (merged) {
+                merged = false
+                outer@ for (a in cells) for (b in cells) {
+                    if (a === b) continue
+                    val sameX = a[0] == b[0] && a[2] == b[2] && a[3] == b[1]
+                    val sameY = a[1] == b[1] && a[3] == b[3] && a[2] == b[0]
+                    if (sameX || sameY) {
+                        val n = if (sameX) floatArrayOf(a[0], a[1], a[2], b[3])
+                                else floatArrayOf(a[0], a[1], b[2], a[3])
+                        cells.remove(a); cells.remove(b); cells.add(n)
+                        merged = true
+                        break@outer
+                    }
+                }
+            }
+            cells.map {
+                listOf(
+                    WallPoint(it[0], it[1]), WallPoint(it[2], it[1]),
+                    WallPoint(it[2], it[3]), WallPoint(it[0], it[3]),
+                )
+            }
+        }
+
+    /** Whether every outline edge of [level] runs along an axis, which the mass split needs. */
+    fun isOrthogonal(level: Int): Boolean =
+        outlineRings(level).all { ring ->
+            ring.indices.all { i ->
+                val a = ring[i]; val b = ring[(i + 1) % ring.size]
+                kotlin.math.abs(a.x - b.x) < 1f || kotlin.math.abs(a.y - b.y) < 1f
+            }
+        }
 
     private fun turn(a: WallPoint, b: WallPoint, c: WallPoint): Float {
         val ax = b.x - a.x; val ay = b.y - a.y

@@ -14,6 +14,7 @@ import com.interiordesign3d.data.models.ColorPalette
 import com.interiordesign3d.data.models.FloorPlan
 import com.interiordesign3d.data.models.OpeningType
 import com.interiordesign3d.data.models.PlacedFurniture
+import com.interiordesign3d.data.models.RoofShape
 import com.interiordesign3d.data.models.Stair
 import com.interiordesign3d.data.models.StairShape
 import com.interiordesign3d.data.models.WallOpening
@@ -86,6 +87,11 @@ open class DesignerState : BaseScreenState() {
     val wallPreset get() = WALL_PRESETS[wallPresetIdx.coerceIn(WALL_PRESETS.indices)]
     val floorPreset get() = FLOOR_PRESETS[floorPresetIdx.coerceIn(FLOOR_PRESETS.indices)]
     val stairPreset get() = FLOOR_PRESETS[stairPresetIdx.coerceIn(FLOOR_PRESETS.indices)]
+    val exteriorSurface get() = floorPlan.exterior
+    /** Rectangles the roof would be split into, and whether a pitched roof is possible at all. */
+    val roofMassCount: Int get() = floorPlan.roofMasses(topLevel).size
+    val roofCanPitch: Boolean get() = floorPlan.isOrthogonal(topLevel)
+    val topLevel: Int get() = (floorPlan.levelCount - 1).coerceAtLeast(0)
     val roofPresetIdx: Int get() = floorPlan.exterior.roofPresetIdx
     val groundPresetIdx: Int get() = floorPlan.exterior.groundPresetIdx
     val roofPreset get() = ROOF_PRESETS[roofPresetIdx.coerceIn(ROOF_PRESETS.indices)]
@@ -161,6 +167,10 @@ open class DesignerState : BaseScreenState() {
     open fun onWallPreset(index: Int) {}
     open fun onFloorPreset(index: Int) {}
     open fun onStairPreset(index: Int) {}
+    open fun onRoofShape(shape: RoofShape) {}
+    open fun onRoofPitch(deg: Float) {}
+    open fun onRoofEaves(cm: Float) {}
+    open fun onRoofHipFactor(pct: Float) {}
     open fun onRoofPreset(index: Int) {}
     open fun onGroundPreset(index: Int) {}
     open fun onWallColor(hex: String?) {}

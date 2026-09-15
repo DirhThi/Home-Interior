@@ -131,13 +131,12 @@ flight, so `FloorPlan.fitStair` has to scale it down.
 
 ## Found while fixing debt 1
 
-### Drawing a plan and pressing Back throws it away
+### ~~Drawing a plan and pressing Back throws it away~~ — fixed
 
-`persistPlan()` runs only from **Save** and from entering Design mode
-(`DesignerViewModel.kt:48`, `:63`). `onBack()` just pops. Draw a room, press the
-system Back button, and the work is gone with no warning — I lost a storey to it
-while testing. One-line fix (persist, then pop), but back-button behaviour is worth
-a deliberate decision rather than a drive-by change.
+`persistPlan()` ran only from **Save** and from entering Design mode, so Back threw
+away the drawing. Worse, once surfaces moved onto the plan it threw away every wall,
+floor, stair and roof pick too — which is how it was finally caught. The plan now
+auto-saves on the same 400 ms debounce furniture already used.
 
 ### `DesignRoom.heightCm` is the last summary column left
 
