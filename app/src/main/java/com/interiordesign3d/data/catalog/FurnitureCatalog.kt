@@ -200,21 +200,33 @@ val WALL_PRESETS = listOf(
 
 // Outside finishes. Roof and apron are separate objects from the walls, so they get their own
 // lists; an exterior WALL finish would need a second skin of boxes and is not built.
+// A preset's INDEX is what gets stored in the plan, so only ever append to these lists. Reordering
+// or inserting silently repaints every saved room — the roof went from clay to corrugated steel that
+// way while this was being written.
 val ROOF_PRESETS = listOf(
     SurfacePreset("Dark slate", "mat_concrete016", "#7E7A76", 2f),
     SurfacePreset("Grey felt", "mat_concrete034", "#B4B0AA", 2f),
     SurfacePreset("Bare concrete", "mat_concrete016", tileM = 2f),
-    SurfacePreset("Clay tile", "mat_bricks059", "#C4643F", 1.2f),
+    SurfacePreset("Brick red", "mat_bricks059", "#C4643F", 1.2f),
     SurfacePreset("White deck", "mat_plaster001", "#F2F0EC", 2f),
+    // colorHex multiplies the texture, so it can only darken: a red tint over a dark slate scan
+    // stays dark. Terracotta has to come from a texture that is already terracotta.
+    SurfacePreset("Terracotta", "mat_roofingtiles012", tileM = 1.2f),
+    SurfacePreset("Aged clay", "mat_roofingtiles014", tileM = 1.2f),
+    SurfacePreset("Charcoal tile", "mat_roofingtiles013", tileM = 1.2f),
+    SurfacePreset("Slate tile", "mat_roofingtiles003", tileM = 1.6f),
+    SurfacePreset("Ridged slate", "mat_roofingtiles001", tileM = 1.6f),
+    SurfacePreset("Metal sheet", "mat_corrugatedsteel009", tileM = 1.6f),
 )
 
 val GROUND_PRESETS = listOf(
     SurfacePreset("Paving", "mat_pavingstones070", tileM = 1.5f),
-    SurfacePreset("Gravel", "mat_concrete034", "#BBB4A6", 1f),
-    SurfacePreset("Lawn", "mat_concrete034", "#8FA184", 2f),
+    SurfacePreset("Gravel", "mat_gravel023", tileM = 1.5f),
+    SurfacePreset("Lawn", "mat_grass005", tileM = 1.5f),
     SurfacePreset("Timber deck", "mat_woodfloor043", tileM = 1.2f),
     SurfacePreset("Sand", "mat_concrete034", "#D9C9A8", 2f),
     SurfacePreset("Dark stone", "mat_marble006", tileM = 2f),
+    SurfacePreset("Bare earth", "mat_ground037", tileM = 2f),
 )
 
 val FLOOR_PRESETS = listOf(
@@ -232,4 +244,6 @@ val FLOOR_PRESETS = listOf(
     SurfacePreset("Beige carpet", "mat_carpet008", tileM = 1f),
     SurfacePreset("Concrete", "mat_concrete034", tileM = 2f),
     SurfacePreset("Paving stone", "mat_pavingstones070", tileM = 1.5f),
+    SurfacePreset("Ash timber", "mat_woodfloor064", tileM = 1f),
+    SurfacePreset("Stone tile", "mat_tiles141", tileM = 1.2f),
 )

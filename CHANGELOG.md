@@ -30,6 +30,11 @@ everything below sits under Unreleased. When the first build goes out, cut a
   sits at the bottom of the exterior view, next to the roof it changes, and says what
   each pick will do to *this* plan — how many masses it will use, or that a single hip
   will overhang the notch — rather than letting the 3D be a surprise.
+- **15 new materials, all real scans.** Terracotta and aged-clay roof tiles, slate,
+  corrugated steel, real grass, gravel and bare earth outside; exposed and painted
+  brick, wood panelling and wall tile inside; two more floors. All ambientCG CC0,
+  fetched and converted by [`tools/make_material.py`](tools/make_material.py), which
+  rebuilds the `mat_*.glb` pipeline that had only ever existed in a scratch folder.
 - **Exterior finishes.** Roof and ground presets in a new Outside tab of the
   surfaces sheet, stored on the plan. No new assets: every one is a tint over a
   material the build already shipped.
@@ -95,6 +100,9 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Fixed
 
+- **A roof tint could not make a dark tile red.** `baseColorFactor` multiplies the
+  texture, so it only ever darkens — terracotta had to come from a scan that is
+  already terracotta, not from tinting slate.
 - **Stepping inside after looking round the outside showed a black screen.** The
   orbit carried across: a low, level angle is natural outside and under the floor
   inside. Each mode now parks its own viewpoint and gets it back.

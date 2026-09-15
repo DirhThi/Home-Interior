@@ -12,7 +12,7 @@ how well it has actually been checked, and what is fragile.
 | Build | `./gradlew assembleDebug` green |
 | Database | Room v2, destructive fallback, no migrations by design (bump the version on every schema change) |
 | Code | 45 Kotlin files, ~6,800 lines |
-| Assets | 6.7 MB — 145 GLB, 144 WebP previews, 4 sample plans |
+| Assets | 7.6 MB — 160 GLB, 159 WebP previews, 4 sample plans |
 | Tests | none |
 
 ---
@@ -52,8 +52,9 @@ real rules — pushed out of other furniture, snapped to walls within 8 cm,
 stacked on surfaces. Scale, rotation, height and colour per item. Auto-saved
 with a 400 ms debounce.
 
-**Materials.** 19 `mat_*.glb` textured quads behind 11 wall presets and 14 floor
-presets, plus custom wall paint and whole-room palettes.
+**Materials.** 34 `mat_*.glb` textured quads behind 15 wall presets, 16 floor
+presets, 11 roof and 7 ground presets, plus custom wall paint and whole-room
+palettes. `tools/make_material.py` adds more from ambientCG.
 
 ---
 

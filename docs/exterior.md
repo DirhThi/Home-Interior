@@ -159,7 +159,7 @@ Two more things the mode has to change:
 Make it a third `EditorMode` rather than a flag on `DESIGN` — the top bar, the
 FAB and the furniture sheet all mean something different out there.
 
-## t7-6 — Asset budget — done, nothing added
+## t7-6 — Asset budget
 
 Where it stands now:
 
@@ -169,9 +169,19 @@ assets/previews   640 KB
 assets total      6.7 MB
 ```
 
-**Nothing was added.** Every roof and ground preset is a tint over a `mat_*.glb`
-already in the build — brick for clay tile, concrete for slate and gravel, paving
-stones, plaster, timber. The figures above are the figures now.
+**+0.9 MB**, spent on 15 new `mat_*.glb` scans and their previews: roof tiles, metal
+sheet, grass, gravel, earth, brick, panelling, tile and two floors. `assets/` is now
+7.6 MB, of which `mat_*` is 1.9 MB across 34 files. Every one is ambientCG CC0 and
+already credited in the app's ⓘ dialog.
+
+[`tools/make_material.py`](../tools/make_material.py) does the fetch and conversion.
+It is a rebuild of the pipeline that made the first batch, which had lived only in a
+scratch folder and was lost — worth keeping in the repo this time, because the format
+is fiddly enough that guessing it again wastes an hour.
+
+One thing that pipeline taught: **a tint cannot lighten.** `colorHex` multiplies the
+texture, so red over a dark slate scan stays dark. Colours that differ from the scan
+have to be their own scan.
 
 **Decision on exterior props** (trees, fences, cars): skipped, not deferred. They
 are real meshes, the interior pack is already 5 MB of the 6.7, and a house that sits
