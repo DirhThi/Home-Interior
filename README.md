@@ -54,13 +54,13 @@ sdk.dir=/Users/yourname/Library/Android/sdk
 ```
 
 ```bash
-./gradlew assembleDebug     # what CI builds
+./gradlew assembleDebug     # the only check a change gets
 ./gradlew assembleRelease
 ./gradlew clean
 ```
 
-CI runs `assembleDebug` on push to `main` / `master` / `develop`
-(`.github/workflows/build.yml`).
+There is no CI: the GitHub Action that built a debug APK on every push was removed.
+`assembleDebug` on your own machine is the only thing that catches a broken build.
 
 `./gradlew test` passes trivially — `test/` and `androidTest/` are empty though
 JUnit, Espresso and Compose-test are wired up.

@@ -20,7 +20,7 @@ Longer-form notes live in `docs/`, not here:
 ## Build Commands
 
 ```bash
-# Build debug APK (what CI runs — see .github/workflows/build.yml)
+# Build debug APK — there is no CI, this is the only thing that checks a build
 ./gradlew assembleDebug
 
 # Build release APK
