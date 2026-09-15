@@ -7,14 +7,19 @@ import androidx.compose.runtime.setValue
 import com.interiordesign3d.common.base.BaseScreenState
 import com.interiordesign3d.data.models.DesignRoom
 import com.interiordesign3d.data.models.FloorPlan
+import com.interiordesign3d.data.models.PlacedFurniture
 import com.interiordesign3d.data.plans.SamplePlan
 
 /**
- * A room plus its decoded plan. The card reads its size, room count and storeys off the plan — the
- * entity does not carry them, because a copy of them only ever goes stale.
+ * A room plus everything the card draws: its decoded plan and what is standing in it. The entity
+ * carries none of this, because a copy of it only ever goes stale.
  */
 @Stable
-data class RoomListItem(val room: DesignRoom, val plan: FloorPlan)
+data class RoomListItem(
+    val room: DesignRoom,
+    val plan: FloorPlan,
+    val furniture: List<PlacedFurniture> = emptyList(),
+)
 
 @Stable
 open class HomeState : BaseScreenState() {

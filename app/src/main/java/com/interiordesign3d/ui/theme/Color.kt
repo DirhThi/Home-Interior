@@ -77,6 +77,13 @@ data class InteriorAccents(
     val dimensionText: Color,
     val dimensionChip: Color,
     val viewportBackground: Color,
+    // Home thumbnail: an axonometric doll's house needs its own opaque shades, because stacking
+    // translucent walls turns the drawing into an x-ray at 64 dp.
+    val thumbFloor: Color,
+    val thumbWallFace: Color,
+    val thumbWallSide: Color,
+    val thumbDoor: Color,
+    val thumbFurniture: Color,
 )
 
 val LightAccents = InteriorAccents(
@@ -94,6 +101,11 @@ val LightAccents = InteriorAccents(
     dimensionText      = InteriorColors.Copper40,
     dimensionChip      = Color(0xEBFFFFFF),
     viewportBackground = Color(0xFF2A211D),
+    thumbFloor         = Color(0xFFEFE2DB),
+    thumbWallFace      = Color(0xFFDCD6D1),
+    thumbWallSide      = Color(0xFFBEB6AF),
+    thumbDoor          = InteriorColors.Moss40,
+    thumbFurniture     = Color(0xFF8C7A6B),
 )
 
 val DarkAccents = InteriorAccents(
@@ -111,6 +123,11 @@ val DarkAccents = InteriorAccents(
     dimensionText      = InteriorColors.Copper80,
     dimensionChip      = Color(0xE60C0C0C),
     viewportBackground = Color(0xFF140F0D),
+    thumbFloor         = Color(0xFF3A302B),
+    thumbWallFace      = Color(0xFF4A423C),
+    thumbWallSide      = Color(0xFF332D29),
+    thumbDoor          = InteriorColors.Moss80,
+    thumbFurniture     = Color(0xFFA8907E),
 )
 
 val LocalInteriorAccents = staticCompositionLocalOf { LightAccents }

@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.data.models.FloorPlan
+import com.interiordesign3d.data.models.PlacedFurniture
 import com.interiordesign3d.data.plans.areaM2
 import com.interiordesign3d.ui.properties.CenterBox
 import com.interiordesign3d.ui.properties.CenterRow
@@ -89,7 +90,7 @@ private fun RoomCard(item: RoomListItem, onClick: () -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            RoomThumbnail(plan = plan, drawn = drawn)
+            RoomThumbnail(plan = plan, furniture = item.furniture, drawn = drawn)
 
             Column(Modifier.weight(1f)) {
                 Text(
@@ -132,7 +133,7 @@ private fun RoomCard(item: RoomListItem, onClick: () -> Unit) {
 
 /** The plan drawn to scale — a better stand-in for a render than a flat colour swatch was. */
 @Composable
-private fun RoomThumbnail(plan: FloorPlan, drawn: Boolean) {
+private fun RoomThumbnail(plan: FloorPlan, furniture: List<PlacedFurniture>, drawn: Boolean) {
     Box(
         Modifier
             .size(64.dp)
@@ -140,7 +141,7 @@ private fun RoomThumbnail(plan: FloorPlan, drawn: Boolean) {
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
     ) {
         if (drawn) {
-            PlanThumbnail(plan, Modifier.fillMaxSize())
+            PlanThumbnail(plan, Modifier.fillMaxSize(), furniture)
         } else {
             CenterBox(Modifier.fillMaxSize()) {
                 Icon(

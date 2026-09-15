@@ -16,6 +16,7 @@ import com.interiordesign3d.ui.screen.home.state.HomeState
 import com.interiordesign3d.ui.screen.home.state.RoomListItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -36,8 +37,13 @@ class HomeViewModel(app: Application, navigator: Navigator) : BaseViewModel(app,
     init {
         screenState.loading = true
         viewModelScope.launch {
-            db.roomDao().getAllRooms()
-                .map { rooms -> rooms.map { RoomListItem(it, it.plan()) } }
+            combine(
+                db.roomDao().getAllRooms(),
+                db.placedFurnitureDao().getAllFurniture(),
+            ) { rooms, furniture ->
+                val byRoom = furniture.groupBy { it.roomId }
+                rooms.map { RoomListItem(it, it.plan(), byRoom[it.id].orEmpty()) }
+            }
                 .flowOn(Dispatchers.Default)
                 .collect { items ->
                     screenState.rooms = items

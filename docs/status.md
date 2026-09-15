@@ -19,6 +19,10 @@ how well it has actually been checked, and what is fragile.
 
 ## What the app does today
 
+**Home.** The room list draws each plan as a small axonometric doll's house —
+walls, doors, windows, furniture, storeys stacked — from the plan itself, with no
+render and no cache behind it.
+
 **Draw a plan.** Tap corners to lay out rooms; nodes are shared so adjacent
 rooms genuinely share an edge rather than each owning a wall. Grid snap, undo,
 drag a node to reshape. Wall lengths are drawn on each edge, de-duplicated and

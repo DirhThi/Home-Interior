@@ -29,6 +29,10 @@ interface PlacedFurnitureDao {
     @Query("SELECT * FROM placed_furniture WHERE roomId = :roomId")
     fun getFurnitureForRoom(roomId: String): Flow<List<PlacedFurniture>>
 
+    /** Everything at once, for the Home list — one query beats one per room. */
+    @Query("SELECT * FROM placed_furniture")
+    fun getAllFurniture(): Flow<List<PlacedFurniture>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlacedFurniture(item: PlacedFurniture)
 
