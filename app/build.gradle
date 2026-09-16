@@ -22,9 +22,26 @@ android {
         vectorDrawables { useSupportLibrary true }
     }
 
+    // Release is signed with the debug key so `assembleRelease` produces an installable APK
+    // without a real keystore — swap this for a proper release signingConfig before shipping.
+    signingConfigs {
+        debug {
+            storeFile file("${System.properties['user.home']}/.android/debug.keystore")
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
     buildTypes {
+        debug {
+            debuggable true
+        }
         release {
-            minifyEnabled false
+            signingConfig signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
+            debuggable false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

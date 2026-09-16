@@ -158,7 +158,10 @@ Other screens: `ui/screen/home/` (the landing — two cards), `ui/screen/project
 - **`FloorPlan`** ↔ JSON via `kotlinx.serialization` (not Gson, despite Gson being a dependency).
 - **No tests** — `test`/`androidTest` dirs are empty though JUnit/Espresso/Compose-test deps are wired. `./gradlew test` passes trivially.
 - **No linter** (`kotlin.code.style=official` only; no detekt/ktlint).
-- **ProGuard disabled** for release (`minifyEnabled false`).
+- **Release is minified and shrunk** (`minifyEnabled true`, `shrinkResources true`), signed with the
+  debug key — see `app/build.gradle` and `proguard-rules.pro`. Swap the signing config for a real
+  keystore before shipping; if a release build fails on a missing class, that's the rule to add, not
+  a reason to flip `minifyEnabled` back off.
 - **Filament/gltfio are live** — verify rendering changes on a real device (the emulator GPU differs).
 - **Images:** previews in `assets/previews` are WebP; `res/mipmap-*/ic_launcher.png` are 14-byte placeholders, not real images.
 - **No emoji as icons** — use `Icons.Outlined.*`. The toolbar and floor-material list used to use 🚪🪟🪵; they don't any more.

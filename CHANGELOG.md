@@ -11,6 +11,12 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Added
 
+- **`assembleRelease` actually produces an installable APK.** Signed with the debug key for now
+  (swap for a real keystore before shipping), and minified/shrunk with a proguard rule set narrow
+  enough to name what each rule protects. The `res/mipmap-*/ic_launcher*.png` files were 14-byte
+  placeholders that AAPT2 only ever tolerated in debug builds — release's fresh resource compile
+  failed on them outright, so they're now a simple clay-coloured icon, not a logo.
+
 - **Language, Onboard and Select rebuilt on the A045_ByteClean first-open pattern, ready for ads.**
   Language and Select each got a `Normal`/`Alternative` pair: picking anything on the base screen
   silently pushes a same-content `Alt` screen on a tiny child `NavDisplay` (no visible transition),
