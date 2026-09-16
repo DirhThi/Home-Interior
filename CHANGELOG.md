@@ -11,6 +11,11 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Added
 
+- **A first-open flow: splash, then a three-page intro.** The splash is a brand moment while Koin
+  and the database come up, and it decides where to go; the intro covers the three things the app
+  does — draw the plan, furnish it in 3D, step outside — and is shown once, gated on a
+  SharedPreferences flag. Skip is reachable from every page: an intro nobody can leave is a toll gate.
+
 - **Real backdrop blur where there is a backdrop to blur.** `io.github.kyant0:backdrop` now backs
   `Modifier.glass`: with a `LocalGlassBackdrop` and `RenderEffect` (API 31+) the pane blurs what is
   behind it, otherwise it falls back to the tint-and-rim it always had. Only the 2D plan canvas

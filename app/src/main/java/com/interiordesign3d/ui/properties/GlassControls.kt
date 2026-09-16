@@ -157,6 +157,7 @@ fun GlassPillButton(
                 onClick = onClick,
             )
             .padding(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, Modifier.size(19.dp), tint = content)

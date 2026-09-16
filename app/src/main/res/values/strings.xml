@@ -26,6 +26,15 @@
     <string name="settings">Settings</string>
     <string name="about">About</string>
     <string name="tab_home">Home</string>
+    <string name="skip">Skip</string>
+    <string name="ob_next">Next</string>
+    <string name="ob_start">Get started</string>
+    <string name="ob1_title">Draw the plan</string>
+    <string name="ob1_body">Tap to place corners. Rooms that touch share a wall, so a door on it opens both sides.</string>
+    <string name="ob2_title">Furnish it in 3D</string>
+    <string name="ob2_body">Drag furniture where you want it. Drop a door near a wall and it becomes a real opening.</string>
+    <string name="ob3_title">Step outside</string>
+    <string name="ob3_body">Roofs, balconies and the ground the house stands on — see the whole thing from out there.</string>
     <string name="tab_project">Projects</string>
     <string name="card_new_title">Start a project</string>
     <string name="card_new_body">Draw a floor plan, then furnish it in 3D.</string>

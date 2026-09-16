@@ -15,12 +15,16 @@ import com.interiordesign3d.ui.screen.catalogue.item.CatalogueItemViewModel
 import com.interiordesign3d.ui.screen.designer.DesignerScreen
 import com.interiordesign3d.ui.screen.designer.DesignerViewModel
 import com.interiordesign3d.ui.screen.main.MainScreen
+import com.interiordesign3d.ui.screen.onboard.OnboardScreen
+import com.interiordesign3d.ui.screen.onboard.OnboardViewModel
+import com.interiordesign3d.ui.screen.splash.SplashScreen
+import com.interiordesign3d.ui.screen.splash.SplashViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 @Composable
 fun AppNavigation(modifier: Modifier = Modifier) {
-    val backStack = rememberNavBackStack(Dest.ScrMain())
+    val backStack = rememberNavBackStack(Dest.ScrSplash)
 
     NavDisplay(
         backStack = backStack,
@@ -33,6 +37,16 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         popTransitionSpec = NavTransition.pop,
         predictivePopTransitionSpec = NavTransition.predictivePop,
         entryProvider = entryProvider {
+            entry<Dest.ScrSplash> {
+                val vm: SplashViewModel = koinViewModel { parametersOf(backStack) }
+                SplashScreen(vm)
+            }
+
+            entry<Dest.ScrOnboard> {
+                val vm: OnboardViewModel = koinViewModel { parametersOf(backStack) }
+                OnboardScreen(vm)
+            }
+
             entry<Dest.ScrMain> { dest ->
                 MainScreen(mainBackStack = backStack, startTab = dest.tab)
             }

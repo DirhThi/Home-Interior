@@ -10,6 +10,16 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed class Dest : NavKey, Parcelable {
 
+    /** Brand moment while Koin and the database come up; decides where to go next. */
+    @Parcelize
+    @Serializable
+    data object ScrSplash : Dest()
+
+    /** Three pages, shown once. */
+    @Parcelize
+    @Serializable
+    data object ScrOnboard : Dest()
+
     /** The tabbed shell. Its own tabs live in [DestMain], on a back stack of their own. */
     @Parcelize
     @Serializable

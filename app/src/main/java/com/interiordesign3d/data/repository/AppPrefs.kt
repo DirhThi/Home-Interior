@@ -18,10 +18,15 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 object AppPrefs {
     private const val FILE = "app_prefs"
     private const val KEY_THEME = "theme_mode"
+    private const val KEY_ONBOARDED = "onboarded"
 
     private var prefs: SharedPreferences? = null
 
     var themeMode by mutableStateOf(ThemeMode.SYSTEM)
+        private set
+
+    /** False until the intro has been seen once; the splash reads it to decide where to go. */
+    var onboarded by mutableStateOf(false)
         private set
 
     fun init(context: Context) {
@@ -30,10 +35,16 @@ object AppPrefs {
         themeMode = store.getString(KEY_THEME, null)
             ?.let { saved -> ThemeMode.entries.firstOrNull { it.name == saved } }
             ?: ThemeMode.SYSTEM
+        onboarded = store.getBoolean(KEY_ONBOARDED, false)
     }
 
     fun updateTheme(mode: ThemeMode) {
         themeMode = mode
         prefs?.edit()?.putString(KEY_THEME, mode.name)?.apply()
+    }
+
+    fun markOnboarded() {
+        onboarded = true
+        prefs?.edit()?.putBoolean(KEY_ONBOARDED, true)?.apply()
     }
 }
