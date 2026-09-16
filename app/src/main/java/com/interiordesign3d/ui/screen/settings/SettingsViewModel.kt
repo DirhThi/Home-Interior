@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.interiordesign3d.common.base.BaseViewModel
+import com.interiordesign3d.ui.navigation.Dest
 import com.interiordesign3d.ui.screen.settings.state.SettingsState
 
 class SettingsViewModel(
@@ -11,5 +12,7 @@ class SettingsViewModel(
     backStack: NavBackStack<NavKey>,
 ) : BaseViewModel(app, backStack) {
 
-    val screenState: SettingsState = object : SettingsState() {}
+    val screenState: SettingsState = object : SettingsState() {
+        override fun onLanguage() = navigateTo(Dest.ScrLanguage(fromSettings = true))
+    }
 }

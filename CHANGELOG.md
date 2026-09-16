@@ -11,6 +11,20 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Added
 
+- **A language picker and a one-question survey, completing the first-open flow.** It now runs
+  splash → language → intro → "what are you designing?" → the app, each step skippable or
+  confirmable and none of it shown again. The language list is the thirteen A045 ships
+  (`en de es fr hi id it ja pt ru tr uk vi`), each row labelled in its own language first — a
+  language list is read by someone who does not yet read the current one — and applied through
+  `AppCompatDelegate` so the platform per-app-language API is used on 33+ and backported below it.
+  **The strings are not translated yet**: picking a language currently changes only what the system
+  supplies, until `res/values-<code>/` exists. Language is also reachable from Settings, where it
+  gets a back button and returns instead of going on.
+
+  The survey records what people are designing — a whole house, an apartment, one room, a workspace.
+  Nothing branches on it yet; it is there to learn what the app is actually opened for, which is why
+  it is skippable.
+
 - **A first-open flow: splash, then a three-page intro.** The splash is a brand moment while Koin
   and the database come up, and it decides where to go; the intro covers the three things the app
   does — draw the plan, furnish it in 3D, step outside — and is shown once, gated on a

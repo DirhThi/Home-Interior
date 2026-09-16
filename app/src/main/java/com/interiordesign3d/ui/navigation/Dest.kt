@@ -15,6 +15,16 @@ sealed class Dest : NavKey, Parcelable {
     @Serializable
     data object ScrSplash : Dest()
 
+    /** Language picker. [fromSettings] gives it a back button and returns instead of going on. */
+    @Parcelize
+    @Serializable
+    data class ScrLanguage(val fromSettings: Boolean = false) : Dest()
+
+    /** Asked once, purely to learn what people open this for. */
+    @Parcelize
+    @Serializable
+    data object ScrSelect : Dest()
+
     /** Three pages, shown once. */
     @Parcelize
     @Serializable

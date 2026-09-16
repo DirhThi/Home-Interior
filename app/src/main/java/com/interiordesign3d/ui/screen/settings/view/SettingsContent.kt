@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -65,6 +66,7 @@ fun SettingsContent(state: SettingsState) {
 
             item {
                 SettingsSection(R.string.appearance) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     SegmentedPills(
                         segments = THEME_OPTIONS.map { Segment(stringResource(it.label), it.icon) },
                         selectedIndex = THEME_OPTIONS.indexOfFirst { it.mode == AppPrefs.themeMode }
@@ -72,6 +74,8 @@ fun SettingsContent(state: SettingsState) {
                         onSelect = { AppPrefs.updateTheme(THEME_OPTIONS[it].mode) },
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    SettingsRow(Icons.Outlined.Language, R.string.language, state::onLanguage)
+                    }
                 }
             }
 

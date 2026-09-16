@@ -27,6 +27,14 @@
     <string name="about">About</string>
     <string name="tab_home">Home</string>
     <string name="skip">Skip</string>
+    <string name="language">Language</string>
+    <string name="apply">Apply</string>
+    <string name="select_title">What are you designing?</string>
+    <string name="select_body">This only helps us learn what people build here. You can skip it.</string>
+    <string name="kind_house">A whole house</string>
+    <string name="kind_apartment">An apartment</string>
+    <string name="kind_room">One room</string>
+    <string name="kind_workspace">A workspace</string>
     <string name="ob_next">Next</string>
     <string name="ob_start">Get started</string>
     <string name="ob1_title">Draw the plan</string>
@@ -143,7 +151,6 @@
     <string name="furniture_color">Colour</string>
     <string name="furniture_rotation">Rotation</string>
     <string name="wall_mount">Wall</string>
-    <string name="apply">Apply</string>
     <string name="cancel">Cancel</string>
     <string name="value_range">%1$d to %2$d</string>
     <string name="decrease">Decrease</string>

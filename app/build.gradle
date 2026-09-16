@@ -105,6 +105,9 @@ dependencies {
     // Splash Screen
     implementation 'androidx.core:core-splashscreen:1.0.1'
 
+    // Per-app language. Delegates to the platform API on 33+ and backports it below.
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+
     // Testing
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

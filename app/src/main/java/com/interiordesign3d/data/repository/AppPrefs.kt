@@ -8,6 +8,9 @@ import androidx.compose.runtime.setValue
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** What the person says they are designing. Recorded once, not yet acted on. */
+enum class SpaceKind { WholeHouse, Apartment, SingleRoom, Workspace }
+
 /**
  * App-wide settings. SharedPreferences rather than DataStore — DataStore was declared once and
  * referenced by nothing, and was removed with the rest of the unused dependencies.
@@ -19,6 +22,7 @@ object AppPrefs {
     private const val FILE = "app_prefs"
     private const val KEY_THEME = "theme_mode"
     private const val KEY_ONBOARDED = "onboarded"
+    private const val KEY_SPACE_KIND = "space_kind"
 
     private var prefs: SharedPreferences? = null
 
@@ -29,6 +33,9 @@ object AppPrefs {
     var onboarded by mutableStateOf(false)
         private set
 
+    var spaceKind by mutableStateOf<SpaceKind?>(null)
+        private set
+
     fun init(context: Context) {
         val store = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
         prefs = store
@@ -36,6 +43,8 @@ object AppPrefs {
             ?.let { saved -> ThemeMode.entries.firstOrNull { it.name == saved } }
             ?: ThemeMode.SYSTEM
         onboarded = store.getBoolean(KEY_ONBOARDED, false)
+        spaceKind = store.getString(KEY_SPACE_KIND, null)
+            ?.let { saved -> SpaceKind.entries.firstOrNull { it.name == saved } }
     }
 
     fun updateTheme(mode: ThemeMode) {
@@ -46,5 +55,10 @@ object AppPrefs {
     fun markOnboarded() {
         onboarded = true
         prefs?.edit()?.putBoolean(KEY_ONBOARDED, true)?.apply()
+    }
+
+    fun recordSpaceKind(kind: SpaceKind) {
+        spaceKind = kind
+        prefs?.edit()?.putString(KEY_SPACE_KIND, kind.name)?.apply()
     }
 }

@@ -16,7 +16,7 @@ class OnboardViewModel(
     val screenState: OnboardState = object : OnboardState() {
         override fun onFinish() {
             AppPrefs.markOnboarded()
-            navigateTo(Dest.ScrMain(), popupTos = listOf(Dest.ScrOnboard::class.java))
+            navigateTo(Dest.ScrSelect, popupTos = listOf(Dest.ScrOnboard::class.java))
         }
     }
 }

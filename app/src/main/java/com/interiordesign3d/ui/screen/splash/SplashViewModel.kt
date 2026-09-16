@@ -33,7 +33,7 @@ class SplashViewModel(
     private fun next() {
         if (navigated) return
         navigated = true
-        val target = if (AppPrefs.onboarded) Dest.ScrMain() else Dest.ScrOnboard
+        val target = if (AppPrefs.onboarded) Dest.ScrMain() else Dest.ScrLanguage()
         navigateTo(target, popupTos = listOf(Dest.ScrSplash::class.java))
     }
 }

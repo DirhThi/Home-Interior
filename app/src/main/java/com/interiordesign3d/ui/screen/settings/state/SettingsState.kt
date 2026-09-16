@@ -11,5 +11,6 @@ open class SettingsState : BaseScreenState() {
     var showCredits by mutableStateOf(false)
 
     open fun onShowCredits() { showCredits = true }
+    open fun onLanguage() {}
     open fun onDismissCredits() { showCredits = false }
 }
