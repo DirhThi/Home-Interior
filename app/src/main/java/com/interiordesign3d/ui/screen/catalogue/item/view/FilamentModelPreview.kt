@@ -75,6 +75,7 @@ fun FilamentModelPreview(
 }
 
 private const val FOV_DEG = 45.0
+private const val WARMUP_FRAMES = 6
 
 private class PreviewScene(
     context: Context,
@@ -111,14 +112,17 @@ private class PreviewScene(
     private var cx = 0f
     private var cy = 0f
     private var cz = 0f
-    private var dirty = true
+    // A single render right after load/resize can beat the driver's first-use shader compile for this
+    // material and show a black frame that then never gets redrawn; keep rendering for a few frames
+    // instead of trusting the first one.
+    private var dirtyFrames = WARMUP_FRAMES
 
     private val frame = object : Choreographer.FrameCallback {
         override fun doFrame(frameTimeNanos: Long) {
             choreographer.postFrameCallback(this)
-            if (!dirty) return
+            if (dirtyFrames <= 0) return
             render()
-            dirty = false
+            dirtyFrames--
         }
     }
 
@@ -140,7 +144,7 @@ private class PreviewScene(
                 swapChain?.let { engine.destroySwapChain(it) }
                 swapChain = engine.createSwapChain(surface)
                 displayHelper.attach(renderer, surfaceView.display)
-                dirty = true
+                dirtyFrames = WARMUP_FRAMES
             }
 
             override fun onDetachedFromSurface() {
@@ -151,7 +155,7 @@ private class PreviewScene(
             override fun onResized(width: Int, height: Int) {
                 view.viewport = Viewport(0, 0, width, height)
                 camera.setProjection(FOV_DEG, width.toDouble() / height, 0.05, 100.0, Camera.Fov.VERTICAL)
-                dirty = true
+                dirtyFrames = WARMUP_FRAMES
             }
         }
         uiHelper.attachTo(surfaceView)
@@ -162,7 +166,7 @@ private class PreviewScene(
         azimuth -= panX * 0.4f
         elevation = (elevation + panY * 0.3f).coerceIn(-80f, 80f)
         zoom = (zoom * scale).coerceIn(0.5f, 4f)
-        dirty = true
+        dirtyFrames = WARMUP_FRAMES
     }
 
     private fun addLights() {
@@ -202,7 +206,7 @@ private class PreviewScene(
         val h = box.halfExtent
         val extent = maxOf(h[0], h[1], h[2]).coerceAtLeast(0.05f)
         radius = extent / tan(Math.toRadians(FOV_DEG / 2.0)).toFloat() * 1.8f
-        dirty = true
+        dirtyFrames = WARMUP_FRAMES
     }
 
     private fun render() {

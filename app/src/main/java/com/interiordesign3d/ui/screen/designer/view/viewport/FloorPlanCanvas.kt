@@ -875,9 +875,24 @@ private fun DrawScope.drawDimension(
     val h = measured.size.height.toFloat()
     if (w + 12f > screenLen) return
 
-    val mid = Offset((screenFrom.x + screenTo.x) / 2f, (screenFrom.y + screenTo.y) / 2f)
     var nx = -(screenTo.y - screenFrom.y) / screenLen
     var ny = (screenTo.x - screenFrom.x) / screenLen
+
+    // A side wall's chip sits at its own vertical midpoint, which for a tall room lands right on
+    // the screen's vertical centre — exactly where the floating tool clusters float too. Slide it
+    // along the wall, away from that band, before the chip is placed.
+    var t = 0.5f
+    val dy = screenTo.y - screenFrom.y
+    if (abs(nx) > abs(ny) && abs(dy) > 1f) {
+        val centerY = size.height / 2f
+        val bandHalf = 100.dp.toPx()
+        val midY = (screenFrom.y + screenTo.y) / 2f
+        if (abs(midY - centerY) < bandHalf) {
+            val targetY = if (midY >= centerY) centerY + bandHalf else centerY - bandHalf
+            t = ((targetY - screenFrom.y) / dy).coerceIn(0.15f, 0.85f)
+        }
+    }
+    val mid = Offset(screenFrom.x + t * (screenTo.x - screenFrom.x), screenFrom.y + t * dy)
     val mid0 = Offset((screenFrom.x + screenTo.x) / 2f, (screenFrom.y + screenTo.y) / 2f)
     if (awayFrom != null && nx * (awayFrom.x - mid0.x) + ny * (awayFrom.y - mid0.y) > 0f) {
         nx = -nx

@@ -106,6 +106,24 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Fixed
 
+- **A floor item's bottom sat exactly on the floor's top — same Y by construction, since both come
+  from `levelY`.** Worst on a rug, whose whole footprint is coplanar with the floor rather than
+  resting on a few chair-leg points. `FLOOR_CLEARANCE_M` (3 mm) lifts anything anchored to the floor
+  or to a `surface` item's top, so a rug and a lamp on a table both get the same treatment.
+- **Dragging outside the house could scatter a piece of furniture's saved position.** `pickFurniture`
+  / `pickOpening` project world points to screen with no occlusion test, so a touch meant to orbit the
+  camera in Exterior could still land on furniture buried behind a wall; grabbing it there and
+  dragging unprojected the touch onto the wrong plane. Both are now disabled while `exteriorMode` is
+  on — there is nothing to select or drag from outside the house anyway.
+- **A catalogue item's 3D preview could open solid black.** `FilamentModelPreview` rendered once when
+  marked dirty and stopped, so a render that landed before the driver finished its first-use shader
+  compile for that material stuck the view on an empty frame with nothing left to trigger a retry.
+  It now keeps rendering for a few frames after load, resize and surface changes instead of trusting
+  the first one.
+- **A side wall's length chip could sit right under the floating tool clusters.** Both are drawn at
+  the wall's own vertical midpoint, which for a tall room lands exactly where `PlanEditCluster` and
+  `PlanToolRail` float too. The chip now slides along the wall, away from that band, when the two
+  would collide.
 - **The "New room" button sat under the tab bar.** The Scaffold places its floating action button at
   the bottom of the window and knows nothing about a tab bar that floats over the content, so the two
   overlapped on the Projects tab.

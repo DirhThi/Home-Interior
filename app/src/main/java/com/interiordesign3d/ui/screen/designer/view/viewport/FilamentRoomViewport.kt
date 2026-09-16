@@ -61,6 +61,11 @@ private val filamentReady: Boolean by lazy { Utils.init(); true }
 
 private const val CM = 0.01f
 private const val BRIDGE_NUDGE_CM = 0.15f
+// A floor item's bottom and the floor mesh's top are the same Y by construction (both derive from
+// the same `levelY`), which z-fights — worst on a rug, whose whole footprint is coplanar with the
+// floor rather than resting on a few chair-leg points. Lifted here rather than widened per rug in
+// the catalogue, since any floor item at any scale can hit the same coplanar case.
+private const val FLOOR_CLEARANCE_M = 0.003f
 private val FLOOR_SLAB_M = FLOOR_SLAB_CM * CM
 private const val OPENING_CASED = "doorway"      // cased opening: hole and reveal, no leaf
 private const val DOOR_OPEN_DEG = 78f
@@ -200,6 +205,11 @@ private class RoomScene(
     private val cornerSegs = mutableListOf<CornerSeg>()
     private var cornerHidden = BooleanArray(0)
     private var autoHideWalls = true
+    // Tap/drag hit-testing (pickFurniture, pickOpening) projects world points to screen with no
+    // occlusion test, so outside the house a touch meant to orbit the camera can still land on a
+    // piece of furniture buried behind a wall. Grabbing it there and dragging unprojects the touch
+    // onto the wrong plane, scattering that item's saved position — this is what actually gates it.
+    private var exteriorMode = false
     var onDropOpening: (Int, Int, Float, Float, String) -> Unit = { _, _, _, _, _ -> }   // (nodeA, nodeB, t, widthCm, propId)
     var onSelectOpening: (String) -> Unit = {}
     private var wallFurnDirty = true                     // re-check wall-mounted furniture visibility
@@ -317,6 +327,7 @@ private class RoomScene(
     ) {
         val allPts = roomPolygons.flatten()
         if (allPts.isEmpty()) return
+        exteriorMode = exterior
         polys = roomPolygons
         planNodes = plan.nodes
         planRooms = plan.rooms
@@ -951,7 +962,7 @@ private class RoomScene(
             applyTransform(asset, s, s, s, bb.center, bb.halfExtent, wx, levelY + roomHeightM, wz, f.rotationY, 1)
             furnitureWorld[f.id] = floatArrayOf(wx, levelY + roomHeightM - halfH, wz)
         } else {
-            val baseY = levelY + supportTopUnder(f, wx, wz, bb, s)
+            val baseY = levelY + supportTopUnder(f, wx, wz, bb, s) + FLOOR_CLEARANCE_M
             applyTransform(asset, s, s, s, bb.center, bb.halfExtent, wx, baseY, wz, f.rotationY, -1)
             furnitureWorld[f.id] = floatArrayOf(wx, baseY + halfH, wz)
         }
@@ -968,7 +979,10 @@ private class RoomScene(
             val ow = furnitureWorld[id] ?: return@forEach
             val os = worldScale(o)
             val half = maxOf(ob.halfExtent[0], ob.halfExtent[2]) * os   // rotation-safe footprint
-            if (abs(wx - ow[0]) <= half && abs(wz - ow[2]) <= half) top = maxOf(top, ob.halfExtent[1] * 2f * os)
+            // +clearance so a lamp on a table gets the same treatment as the table on the floor.
+            if (abs(wx - ow[0]) <= half && abs(wz - ow[2]) <= half) {
+                top = maxOf(top, ob.halfExtent[1] * 2f * os + FLOOR_CLEARANCE_M)
+            }
         }
         return top
     }
@@ -1734,7 +1748,7 @@ private class RoomScene(
     private fun onTouch(v: android.view.View, e: MotionEvent): Boolean {
         dirty = true
         when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { lastX = e.x; lastY = e.y; lastDist = 0f; moved = 0f; grabbedId = pickFurniture(e.x, e.y) }
+            MotionEvent.ACTION_DOWN -> { lastX = e.x; lastY = e.y; lastDist = 0f; moved = 0f; grabbedId = if (exteriorMode) null else pickFurniture(e.x, e.y) }
             MotionEvent.ACTION_POINTER_DOWN -> { lastDist = pinchDist(e); grabbedId = null }
             MotionEvent.ACTION_MOVE -> {
                 if (e.pointerCount >= 2) {
@@ -1755,7 +1769,9 @@ private class RoomScene(
                 val gid = grabbedId
                 if (moved < 18f) {
                     // Furniture wins a shared tap; an opening is only picked when nothing sits on it.
-                    if (gid == null) pickOpening(e.x, e.y)?.let { onSelectOpening(it) } ?: onSelect(null)
+                    // Outside the house neither is reachable, for the same reason dragging isn't.
+                    if (exteriorMode) onSelect(null)
+                    else if (gid == null) pickOpening(e.x, e.y)?.let { onSelectOpening(it) } ?: onSelect(null)
                     else onSelect(gid)
                 }
                 else if (gid != null) tryDropDoorOnWall(gid)
