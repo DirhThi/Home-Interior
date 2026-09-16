@@ -40,11 +40,9 @@ everything below sits under Unreleased. When the first build goes out, cut a
   drawn. `DesignerState` gained one `onModeChange(mode)` in place of
   `onEnterDesign` / `onEditFloorPlan` / `onToggleExterior`, and it flushes whatever the
   mode being left owns.
-- **Glass chrome, hand-rolled.** `ui/theme/Glass.kt` — tint, a rim lit from the top and
-  a soft shadow, as a `GlassTokens` set plus `Modifier.glass`. Deliberately no backdrop
-  blur: the 3D viewport is a `SurfaceView` on its own compositor layer, so nothing drawn
-  above it can sample its pixels, and `Modifier.blur` blurs a node's own content rather
-  than what is behind it. Costs one draw call, and now that minSdk is 31 a real backdrop blur is finally an option.
+- **Glass chrome.** `ui/theme/Glass.kt` — tint, a rim lit from the top and a soft shadow, as
+  a `GlassTokens` set plus `Modifier.glass`. This is the fallback path; the entry above covers
+  the case where there is a real backdrop to blur.
 
   The edge is what carries it: the rim runs bright along the top, fades out by the
   middle and returns half-strength at the bottom — the way light catches both edges of
