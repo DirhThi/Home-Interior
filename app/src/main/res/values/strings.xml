@@ -29,6 +29,8 @@
     <string name="skip">Skip</string>
     <string name="language">Language</string>
     <string name="apply">Apply</string>
+    <string name="confirm_language_title">Use this language?</string>
+    <string name="confirm_language_body">You already picked this one — tap Apply to continue with it.</string>
     <string name="select_title">What are you designing?</string>
     <string name="select_body">This only helps us learn what people build here. You can skip it.</string>
     <string name="kind_house">A whole house</string>

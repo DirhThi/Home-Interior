@@ -13,6 +13,6 @@ class SettingsViewModel(
 ) : BaseViewModel(app, backStack) {
 
     val screenState: SettingsState = object : SettingsState() {
-        override fun onLanguage() = navigateTo(Dest.ScrLanguage(fromSettings = true))
+        override fun onLanguage() = navigateTo(Dest.ScrLanguageSetting)
     }
 }

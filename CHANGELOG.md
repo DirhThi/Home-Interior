@@ -11,6 +11,16 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Added
 
+- **Language, Onboard and Select rebuilt on the A045_ByteClean first-open pattern, ready for ads.**
+  Language and Select each got a `Normal`/`Alternative` pair: picking anything on the base screen
+  silently pushes a same-content `Alt` screen on a tiny child `NavDisplay` (no visible transition),
+  so the step has a second screen identity to track and a second ad slot to carry — Settings'
+  language picker stays a plain single screen (`LanguageSettingScreen`), since it never needed
+  either. Onboard now renders a config-driven list of slots (`OnboardConfig`/`OnboardSlot`) instead
+  of a fixed page array, so an ad page can be inserted between intro pages later without touching
+  the pager. `AdsManager` and `TrackingEvent` are the two seams every touchpoint (`AdSlot`,
+  `TrackingScreen`, `GeneralBackHandler`) calls into — every call is a no-op today; wiring a real
+  ad/analytics SDK in later means filling those two files in, not restructuring the screens.
 - **A language picker and a one-question survey, completing the first-open flow.** It now runs
   splash → language → intro → "what are you designing?" → the app, each step skippable or
   confirmable and none of it shown again. The language list is the thirteen A045 ships

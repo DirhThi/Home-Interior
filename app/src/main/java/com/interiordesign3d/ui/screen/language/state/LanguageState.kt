@@ -4,17 +4,19 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.interiordesign3d.common.base.BaseScreenState
 
 @Stable
-open class LanguageState : BaseScreenState() {
+open class LanguageState {
     /** Chosen but not applied — the list is browsed, then confirmed. */
     var picked by mutableStateOf("en")
 
-    /** True when this is the first-open pass; there is no going back from it. */
-    var firstOpen by mutableStateOf(false)
+    /** Tapping an already-picked language again on the Alt step asks for confirmation instead. */
+    var showConfirmLanguage by mutableStateOf(false)
+    var confirmCode by mutableStateOf("")
 
     open fun onPick(code: String) { picked = code }
     open fun onConfirm() {}
     open fun onBack() {}
+    open fun onConfirmLanguageDismiss() { showConfirmLanguage = false }
+    open fun onConfirmLanguageAccept() {}
 }

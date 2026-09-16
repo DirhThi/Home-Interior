@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.data.repository.SpaceKind
+import com.interiordesign3d.ui.properties.AdSlot
 import com.interiordesign3d.ui.properties.CenterBox
 import com.interiordesign3d.ui.properties.CenterRow
 import com.interiordesign3d.ui.properties.GlassPane
@@ -108,17 +109,18 @@ fun SelectContent(state: SelectState) {
                 .padding(horizontal = 20.dp, vertical = 20.dp),
         )
 
-        GlassPillButton(
-            icon = Icons.AutoMirrored.Outlined.ArrowForward,
-            label = stringResource(R.string.ob_start),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .navigationBarsPadding()
-                .padding(bottom = 24.dp),
-            onClick = state::onContinue,
-        )
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            GlassPillButton(
+                icon = Icons.AutoMirrored.Outlined.ArrowForward,
+                label = stringResource(R.string.ob_start),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                onClick = state::onContinue,
+            )
+            AdSlot(nameSpace = "select_bottom", modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp))
+        }
     }
 }
 

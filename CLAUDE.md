@@ -87,6 +87,27 @@ Asset pipeline (no Blender): Python in the session scratchpad converted OBJ→GL
 The designer and the catalogue are **pushed over the shell**, not tabs: they take the whole screen, and the designer already carries its own Plan/Interior/Exterior bar. `NavigationUtil` holds the back-stack edits, every one of which refuses to empty the stack (`NavDisplay` crashes on an empty one).
 The old `color_picker/{roomId}` route and `ColorPickerScreen` are **gone** — they never wrote to the database (Apply just popped the back stack). Wall colour, floor material and palettes now live in `SurfaceSheet` inside the designer and persist for real.
 
+### First-open funnel (`ui/screen/{language,onboard,select}/`)
+
+Splash → Language → Onboard → Select → Main, built on the A045_ByteClean pattern so a real ad SDK
+can be dropped in later without restructuring these screens.
+
+- **Base/Alt is not an A/B test.** Language and Select each have a `normal/XScreen.kt` and an
+  `alternative/XAltScreen.kt` rendering the *same* `XContent`; picking anything on the base screen
+  pushes the Alt one on a private child `NavDisplay` (`XNavigation.kt`, `DestX` in `ui/navigation/`)
+  with every transition set to `EnterTransition.None` — so the user never sees it happen. The point
+  is a second screen identity (`TrackingScreen`) and a second ad slot (`AdSlot`) per step, not a
+  second UI. Settings' language picker (`language/setting/`) is a separate, plain single screen —
+  it never needed either.
+- **Onboard is slot-driven, not a fixed page array.** `OnboardConfig.DEFAULT` (`data/onboard/`) is a
+  local list today; `OnboardViewModel` turns it into `OnboardSlot.Page`/`OnboardSlot.Ad`, and the
+  pager in `OnboardContent.kt` just renders whatever it gets. Inserting an ad page later is a config
+  change, not a pager change.
+- **`ads/AdsManager.kt` and `ads/TrackingEvent.kt` are the only two files a real SDK touches.** Every
+  screen calls into one of them (or the `AdSlot`/`TrackingScreen`/`GeneralBackHandler` composables in
+  `ui/properties/AdsUi.kt`) instead of doing anything ad/analytics-shaped itself; every call is a
+  no-op today.
+
 ### Glass (`ui/theme/Glass.kt`)
 
 `Modifier.glass` has two paths. With a `LocalGlassBackdrop` and `RenderEffect` (API 31+) it uses `io.github.kyant0:backdrop` for a **real** backdrop blur; otherwise it falls back to tint, sheen and a lit rim. A screen supplies a backdrop only where the content behind is Compose — the 2D plan canvas does, the Filament viewport cannot: a `SurfaceView` is composited on its own layer and its pixels never reach this draw pass, at any API level.

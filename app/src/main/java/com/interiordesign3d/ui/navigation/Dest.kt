@@ -15,10 +15,15 @@ sealed class Dest : NavKey, Parcelable {
     @Serializable
     data object ScrSplash : Dest()
 
-    /** Language picker. [fromSettings] gives it a back button and returns instead of going on. */
+    /** First-open language step — its own Base/Alt back stack, see [ui.screen.language.LanguageNavigation]. */
     @Parcelize
     @Serializable
-    data class ScrLanguage(val fromSettings: Boolean = false) : Dest()
+    data object ScrLanguage : Dest()
+
+    /** Language picker reached from Settings — one screen, a back button, no Alt step. */
+    @Parcelize
+    @Serializable
+    data object ScrLanguageSetting : Dest()
 
     /** Asked once, purely to learn what people open this for. */
     @Parcelize

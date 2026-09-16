@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.interiordesign3d.R
 import com.interiordesign3d.data.repository.LanguageManager
+import com.interiordesign3d.ui.properties.AdSlot
 import com.interiordesign3d.ui.properties.CenterBox
 import com.interiordesign3d.ui.properties.CenterRow
 import com.interiordesign3d.ui.properties.GlassIconButton
@@ -35,8 +36,12 @@ import com.interiordesign3d.ui.properties.GlassPillButton
 import com.interiordesign3d.ui.properties.onClickNotRipple
 import com.interiordesign3d.ui.screen.language.state.LanguageState
 
+/**
+ * Shared by all three ways into this list: the first-open base step, its Alt step, and the
+ * Settings entry. [showBack] and [adPlacement] are the only things that tell them apart.
+ */
 @Composable
-fun LanguageContent(state: LanguageState) {
+fun LanguageContent(state: LanguageState, showBack: Boolean = false, adPlacement: String? = null) {
     Box(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) {
@@ -50,7 +55,7 @@ fun LanguageContent(state: LanguageState) {
                     Modifier.fillMaxWidth().padding(vertical = 12.dp),
                     Arrangement.spacedBy(12.dp),
                 ) {
-                    if (!state.firstOpen) {
+                    if (showBack) {
                         GlassIconButton(
                             icon = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = stringResource(R.string.back),
@@ -74,17 +79,20 @@ fun LanguageContent(state: LanguageState) {
             }
         }
 
-        GlassPillButton(
-            icon = Icons.Outlined.Check,
-            label = stringResource(R.string.apply),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .navigationBarsPadding()
-                .padding(bottom = 20.dp),
-            onClick = state::onConfirm,
-        )
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            GlassPillButton(
+                icon = Icons.Outlined.Check,
+                label = stringResource(R.string.apply),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                onClick = state::onConfirm,
+            )
+            adPlacement?.let {
+                AdSlot(nameSpace = it, modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp))
+            }
+        }
     }
 }
 

@@ -14,11 +14,11 @@ import com.interiordesign3d.ui.screen.catalogue.item.CatalogueItemScreen
 import com.interiordesign3d.ui.screen.catalogue.item.CatalogueItemViewModel
 import com.interiordesign3d.ui.screen.designer.DesignerScreen
 import com.interiordesign3d.ui.screen.designer.DesignerViewModel
-import com.interiordesign3d.ui.screen.language.LanguageScreen
-import com.interiordesign3d.ui.screen.language.LanguageViewModel
+import com.interiordesign3d.ui.screen.language.LanguageNavigation
+import com.interiordesign3d.ui.screen.language.setting.LanguageSettingScreen
+import com.interiordesign3d.ui.screen.language.setting.LanguageSettingViewModel
 import com.interiordesign3d.ui.screen.main.MainScreen
-import com.interiordesign3d.ui.screen.select.SelectScreen
-import com.interiordesign3d.ui.screen.select.SelectViewModel
+import com.interiordesign3d.ui.screen.select.SelectNavigation
 import com.interiordesign3d.ui.screen.onboard.OnboardScreen
 import com.interiordesign3d.ui.screen.onboard.OnboardViewModel
 import com.interiordesign3d.ui.screen.splash.SplashScreen
@@ -46,18 +46,14 @@ fun AppNavigation(modifier: Modifier = Modifier) {
                 SplashScreen(vm)
             }
 
-            entry<Dest.ScrLanguage> { dest ->
-                val vm: LanguageViewModel =
-                    koinViewModel(key = "lang_${dest.fromSettings}") {
-                        parametersOf(backStack, dest.fromSettings)
-                    }
-                LanguageScreen(vm)
+            entry<Dest.ScrLanguage> { LanguageNavigation(backStack = backStack) }
+
+            entry<Dest.ScrLanguageSetting> {
+                val vm: LanguageSettingViewModel = koinViewModel { parametersOf(backStack) }
+                LanguageSettingScreen(vm)
             }
 
-            entry<Dest.ScrSelect> {
-                val vm: SelectViewModel = koinViewModel { parametersOf(backStack) }
-                SelectScreen(vm)
-            }
+            entry<Dest.ScrSelect> { SelectNavigation(backStack = backStack) }
 
             entry<Dest.ScrOnboard> {
                 val vm: OnboardViewModel = koinViewModel { parametersOf(backStack) }
