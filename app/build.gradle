@@ -73,6 +73,9 @@ dependencies {
     implementation 'androidx.compose.foundation:foundation'
     implementation 'androidx.compose.foundation:foundation-layout'
 
+    // Liquid glass (backdrop) — real RenderEffect blur where the backdrop is Compose content
+    implementation 'io.github.kyant0:backdrop:2.0.1'
+
     // Navigation3 + Koin
     implementation 'androidx.navigation3:navigation3-runtime:1.1.6'
     implementation 'androidx.navigation3:navigation3-ui:1.1.6'

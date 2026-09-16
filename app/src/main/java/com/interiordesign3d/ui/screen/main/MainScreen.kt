@@ -58,6 +58,8 @@ fun MainScreen(mainBackStack: NavBackStack<NavKey>, startTab: DestMain = DestMai
     ) {
         MainNavigation(mainBackStack = mainBackStack, tabBackStack = tabBackStack)
 
+        // No backdrop here on purpose: the tab screens are flat, so a blur shows nothing, and
+        // sharing one recorded layer across three tabs left a ghost of the indicator's old position.
         GlassTabBar(
             tabs = MainTab.entries.map { GlassTab(stringResource(it.title), it.icon) },
             selectedIndex = selectedIndex,

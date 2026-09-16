@@ -11,6 +11,13 @@ everything below sits under Unreleased. When the first build goes out, cut a
 
 ### Added
 
+- **Real backdrop blur where there is a backdrop to blur.** `io.github.kyant0:backdrop` now backs
+  `Modifier.glass`: with a `LocalGlassBackdrop` and `RenderEffect` (API 31+) the pane blurs what is
+  behind it, otherwise it falls back to the tint-and-rim it always had. Only the 2D plan canvas
+  supplies one — the Filament viewport is a `SurfaceView` composited on its own layer, so its pixels
+  never reach this draw pass at any API level, and the main tab screens are flat enough that a blur
+  would show nothing.
+
 - **Three top-level destinations, on a floating tab bar.** Home / Projects / Settings. Home is two
   cards — start a project, or explore furniture — because those are the only two things you can do
   from a standing start. Projects is the saved room list. Settings is a screen now rather than a
@@ -81,6 +88,10 @@ everything below sits under Unreleased. When the first build goes out, cut a
   a pinned `TopAppBar`, and the room cards got a larger thumbnail and more air.
 
 ### Fixed
+
+- **The "New room" button sat under the tab bar.** The Scaffold places its floating action button at
+  the bottom of the window and knows nothing about a tab bar that floats over the content, so the two
+  overlapped on the Projects tab.
 
 - **The plan editor framed every plan as if it were 6 m wide.** `scale = width * 0.8 / 600`
   was a constant, so anything larger opened half off-screen — a 11.6 m townhouse showed

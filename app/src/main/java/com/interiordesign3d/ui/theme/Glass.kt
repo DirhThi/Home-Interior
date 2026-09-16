@@ -1,9 +1,17 @@
 package com.interiordesign3d.ui.theme
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.platform.LocalDensity
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.isRenderEffectSupported
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -76,39 +84,87 @@ val DayGlass = GlassTokens(
 val LocalGlass = staticCompositionLocalOf { StudioGlass }
 
 /**
+ * What a glass pane may blur, when anything can be blurred at all.
+ *
+ * Only Compose content can be recorded into a backdrop layer, so a screen supplies one only where
+ * that holds. Over the Filament viewport it stays null and [glass] falls back to tint and rim — the
+ * viewport is a `SurfaceView` on its own compositor layer and its pixels never reach this pass.
+ */
+val LocalGlassBackdrop = staticCompositionLocalOf<Backdrop?> { null }
+
+/**
  * Paints a glass pane behind the content.
  *
  * [strong] picks the heavier tint — use it for anything with readable text on it, since over an
  * arbitrary 3D scene the light tint alone will not hold contrast.
  */
+@Composable
 fun Modifier.glass(
     shape: Shape,
     tokens: GlassTokens,
     strong: Boolean = false,
     elevation: Dp = 10.dp,
+    blurRadius: Dp = 24.dp,
+): Modifier {
+    val backdrop = LocalGlassBackdrop.current
+    val radiusPx = with(LocalDensity.current) { blurRadius.toPx() }
+
+    // Without RenderEffect the backdrop would be drawn sharp behind the pane, which reads worse than
+    // no blur at all — so the fallback takes the whole path, not just the blur step.
+    return if (backdrop != null && isRenderEffectSupported()) {
+        this
+            .shadow(elevation, shape, ambientColor = tokens.shadow, spotColor = tokens.shadow)
+            // drawBackdrop does not clip its content the way shadow(clip = true) does, so the tab
+            // indicator escaped past the pill's rounded end.
+            .clip(shape)
+            .drawBackdrop(
+                backdrop = backdrop,
+                shape = { shape },
+                effects = { blur(radiusPx) },
+                highlight = { null },
+                shadow = { null },
+                onDrawSurface = { drawGlassSurface(shape, tokens, strong) },
+            )
+    } else {
+        this.glassTinted(shape, tokens, strong, elevation)
+    }
+}
+
+/** Tint, sheen and rim with nothing sampled behind them. */
+private fun Modifier.glassTinted(
+    shape: Shape,
+    tokens: GlassTokens,
+    strong: Boolean,
+    elevation: Dp,
 ): Modifier = this
     .shadow(elevation, shape, ambientColor = tokens.shadow, spotColor = tokens.shadow)
-    .drawWithCache {
-        val outline = shape.createOutline(size, layoutDirection, this)
-        val body = if (strong) tokens.fillStrong else tokens.fill
-        val rimWidth = 1.25.dp.toPx()
+    .drawWithContent {
+        drawGlassSurface(shape, tokens, strong)
+        drawContent()
+    }
 
-        // Bright along the top, gone by the middle, half-bright again at the bottom — the way light
-        // catches both edges of a real pane. This, not transparency, is what reads as glass when
-        // whatever sits behind is flat, which over a 3D viewport it usually is.
-        val rim = Brush.verticalGradient(
+/**
+ * Tint, sheen and rim, painted over whatever is already there.
+ *
+ * Shared by both paths so the two never drift: on the blurred path it lands on top of the blurred
+ * backdrop, on the fallback path on top of nothing.
+ */
+internal fun DrawScope.drawGlassSurface(shape: Shape, tokens: GlassTokens, strong: Boolean) {
+    val outline = shape.createOutline(size, layoutDirection, this)
+    val rimWidth = 1.25.dp.toPx()
+
+    drawOutline(outline, if (strong) tokens.fillStrong else tokens.fill)
+    drawOutline(
+        outline,
+        Brush.verticalGradient(0f to tokens.sheen, 0.55f to Color.Transparent),
+    )
+    drawOutline(
+        outline,
+        Brush.verticalGradient(
             0f to tokens.rimHigh,
             0.5f to tokens.rimLow,
             1f to tokens.rimHigh.copy(alpha = tokens.rimHigh.alpha * 0.55f),
-        )
-        val sheen = Brush.verticalGradient(
-            0f to tokens.sheen,
-            0.55f to Color.Transparent,
-        )
-
-        onDrawBehind {
-            drawOutline(outline, body)
-            drawOutline(outline, sheen)
-            drawOutline(outline, rim, style = Stroke(rimWidth))
-        }
-    }
+        ),
+        style = Stroke(rimWidth),
+    )
+}

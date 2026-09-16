@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,7 +30,10 @@ import com.interiordesign3d.ui.screen.designer.EditorMode
 import com.interiordesign3d.ui.screen.designer.state.DesignerState
 import com.interiordesign3d.ui.screen.designer.view.viewport.FilamentRoomViewport
 import com.interiordesign3d.ui.screen.designer.view.viewport.WallDrawingCanvas
+import com.interiordesign3d.ui.theme.LocalGlassBackdrop
 import com.interiordesign3d.ui.theme.LocalInteriorAccents
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 
 /** Gap the bottom chrome leaves for the tab bar. */
 private val PANEL_BOTTOM_GAP = ModeTabBarHeight + 10.dp
@@ -51,13 +55,21 @@ fun DesignerContent(
     state: DesignerState,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
+    // Only the 2D canvas is Compose content, so only there is there anything for the chrome to blur.
+    // The 3D modes leave the backdrop null and the glass falls back to tint and rim.
+    val planBackdrop = rememberLayerBackdrop()
+    val drawing = state.editorMode == EditorMode.DRAW_WALLS
+
+    CompositionLocalProvider(LocalGlassBackdrop provides planBackdrop.takeIf { drawing }) {
     Box(
         Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
         when (state.editorMode) {
-            EditorMode.DRAW_WALLS -> PlanEditor(state)
+            EditorMode.DRAW_WALLS ->
+                Box(Modifier.fillMaxSize().layerBackdrop(planBackdrop)) { PlanEditor(state) }
+
             EditorMode.DESIGN, EditorMode.EXTERIOR -> RoomDesignView(state)
         }
 
@@ -110,6 +122,8 @@ fun DesignerContent(
                 .navigationBarsPadding()
                 .padding(bottom = PANEL_BOTTOM_GAP, start = 12.dp, end = 12.dp),
         )
+    }
+
     }
 
     if (state.showAddFurnitureSheet) {

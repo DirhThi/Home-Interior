@@ -43,7 +43,8 @@ On-device verification is theirs, not yours — build to prove it compiles, then
 ./gradlew clean
 ```
 
-**Toolchain:** Gradle 8.0, AGP 8.1.2, Kotlin 1.9.20, Compose compiler 1.5.4 (BOM 2024.06.00), **JDK 17**. Room uses **kapt** (not KSP). Android SDK API 26–36 required.
+**Toolchain:** Gradle 9.5, AGP 9.3.1, Kotlin 2.4.10, Compose BOM 2026.08.00, **JDK 17**. Room uses **KSP**. Android SDK API 31–37 required.
+AGP 9 carries Kotlin itself — there is no `org.jetbrains.kotlin.android` plugin, and compiler options live in a top-level `kotlin { compilerOptions { } }` block, not `kotlinOptions`.
 `local.properties` is gitignored — create it locally with `sdk.dir=<path>`.
 
 ## Architecture
@@ -58,9 +59,9 @@ ui/screen/<feature>/
 └── view/<Feature>Content.kt // pure UI; takes only the State, so it stays previewable
 ```
 
-`common/base/` holds `BaseScreen` (Scaffold + loading + snackbar), `BaseViewModel` (navigation + one-shot `UiMessage`s), `BaseScreenState`, `Navigator` and `rememberScreenViewModel`.
+`common/base/` holds `BaseScreen` (Scaffold + loading + snackbar), `BaseViewModel` (takes the `NavBackStack`, one-shot `UiMessage`s), `BaseScreenState` and `CollectMessages`.
 
-**There is still no DI.** A045 injects through Koin; here `rememberScreenViewModel { VM(app) }` builds the ViewModel with a `viewModelFactory`, and the NavHost hands each screen a `Navigator` wrapping `NavHostController`. `InteriorDesignApp` (the `Application` class in `MainActivity.kt`) is an empty placeholder.
+**DI is Koin.** `di/Modules.kt` registers every ViewModel with `viewModelOf`; `InteriorDesignApp` (in `MainActivity.kt`) calls `startKoin` and `AppPrefs.init`. Screens resolve with `koinViewModel(parameters = { parametersOf(backStack, …) })`. The old `Navigator` interface and `rememberScreenViewModel` stand-in are gone.
 
 **ViewModels own the database.** Composables never touch `AppDatabase` — that is the rule the refactor established; don't reintroduce direct DB reads in a `@Composable`.
 
@@ -79,12 +80,16 @@ There is no AR and no camera capture. ARCore, CameraX, Coil, colorpicker-compose
 
 Asset pipeline (no Blender): Python in the session scratchpad converted OBJ→GLB, rendered flat-shaded previews, and wrote `mat_*.glb` from JPEGs; keep previews as **WebP**.
 
-### Navigation (`ui/Navigation.kt`)
+### Navigation (`ui/navigation/`)
 
-Plain Compose Navigation (`androidx.navigation:navigation-compose`), `Screen` sealed class, **2 routes**, no bottom nav: `Home` → `room_designer/{roomId}`.
+**Navigation3** (`NavDisplay` / `NavKey` / `rememberNavBackStack`), not Nav2. `Dest` is the root back stack — `ScrMain`, `ScrDesigner`, `ScrCatalogue`, `ScrCatalogueItem`; `DestMain` is the tabs' own stack inside `MainScreen` — `ScrHome`, `ScrProject`, `ScrSettings`.
+
+The designer and the catalogue are **pushed over the shell**, not tabs: they take the whole screen, and the designer already carries its own Plan/Interior/Exterior bar. `NavigationUtil` holds the back-stack edits, every one of which refuses to empty the stack (`NavDisplay` crashes on an empty one).
 The old `color_picker/{roomId}` route and `ColorPickerScreen` are **gone** — they never wrote to the database (Apply just popped the back stack). Wall colour, floor material and palettes now live in `SurfaceSheet` inside the designer and persist for real.
 
-`rememberNavigator` adapts the `NavHostController` to the `Navigator` interface so ViewModels can navigate without knowing about Compose Navigation.
+### Glass (`ui/theme/Glass.kt`)
+
+`Modifier.glass` has two paths. With a `LocalGlassBackdrop` and `RenderEffect` (API 31+) it uses `io.github.kyant0:backdrop` for a **real** backdrop blur; otherwise it falls back to tint, sheen and a lit rim. A screen supplies a backdrop only where the content behind is Compose — the 2D plan canvas does, the Filament viewport cannot: a `SurfaceView` is composited on its own layer and its pixels never reach this draw pass, at any API level.
 
 ### Data layer (`data/`)
 
@@ -108,25 +113,25 @@ The two viewport files are **carried over untouched** apart from their package l
 Supporting files:
 - `DesignerModels.kt` — enums (`EditorMode`, `ViewMode`, `PlacementTool`, …), `ROOM_PALETTES`, hit-test helper classes. Data only.
 - `DesignerUtils.kt` — pure geometry: grid snap, polygon area, `findNearestWall` (shared by 2D canvas and 3D viewport).
-- `view/DesignerTopBar.kt`, `view/FloorPlanToolbar.kt` — screen chrome (the toolbar used to live at the bottom of `FloorPlanCanvas.kt`).
+- `view/DesignerTopBar.kt` (back button + hint chip), `view/DesignerActions.kt` (floating clusters), `view/ModeTabBar.kt` — screen chrome. `FloorPlanToolbar.kt` is gone.
 - `view/FurnitureControlPanel.kt` — panel shown when furniture is selected in DESIGN mode; capped at 320 dp so it stops covering the viewport.
 - `view/AddFurnitureSheet.kt`, `view/SurfaceSheet.kt` — bottom sheets. `SurfaceSheet` has four tabs: wall preset, floor preset, wall paint, palettes.
 
-**Furniture state flow:** `DesignerState.placedFurniture` → mutated through state callbacks → `snapshotFlow` + `collectLatest` + 400 ms `delay` auto-saves it (that is the debounce; no `FlowPreview` API involved) → also written on explicit Save.
+**Furniture state flow:** `DesignerState.placedFurniture` → mutated through state callbacks → auto-saved by watching `furnitureRevision`, a counter bumped in the setter. The plan works the same way through `planRevision`. **Do not watch the values themselves** — both are structures of lists, so `snapshotFlow` would run a deep `equals` on every frame of a drag. The 150 ms delay is coalescing, not laziness: it folds a whole gesture into one write. `onBack` flushes, because there is no Save button.
 
-Other screens: `ui/screen/home/` (room list, swipe-to-delete with snackbar undo, FAB to create).
+Other screens: `ui/screen/home/` (the landing — two cards), `ui/screen/project/` (room list, swipe-to-delete with snackbar undo), `ui/screen/settings/`, `ui/screen/catalogue/` (+ `item/`, which renders one model in its own small Filament scene).
 
 ### Theme (`ui/theme/`)
 
 - `Color.kt` — the **Clay on white** ramps (`InteriorColors`: clay primary, neutral-grey secondary, teal accent, white/near-black surfaces) plus `InteriorAccents`, a `staticCompositionLocalOf` for the door/window and 2D-canvas colours Material has no slot for. **Don't hardcode colours in a composable**; add a token here. `FloorPlanCanvas` used to paint a fixed `#12121F` ground with `Color.White` strokes, which ignored light mode entirely — it now reads `LocalInteriorAccents`. Wall lengths are drawn there too, in the accent colour, pushed to the outside of each room.
-- `Type.kt` — `AppFont` is Plus Jakarta Sans, one **variable** TTF in `res/font/`; Compose derives each weight from the `wght` axis (API 26+, which matches minSdk).
+- `Type.kt` — `AppFont` is Plus Jakarta Sans, one **variable** TTF in `res/font/`; Compose derives each weight from the `wght` axis.
 - `Theme.kt` — full light *and* dark `ColorScheme`s. Both define every slot, including `tertiary`, `error` and the `surfaceContainer*` family; leaving one out silently falls back to the default M3 purple. **Every value here must be a `C.` token** — hardcoding a hex in this file survives palette swaps and silently tints one mode (a moss-green `#141E19` did exactly that to dark mode).
 - The ground is **pure white**, so surfaces cannot separate by value. Cards, sheets, the toolbar and the furniture tiles separate with a 1 dp `outlineVariant` border; the contrast in the app comes from the near-black 3D viewport, not from a darkened background.
 - Strings live in `res/values/strings.xml` and the UI is English. Catalog item labels are plain strings in `FurnitureCatalog.kt`, not string resources.
 
 ## Key Constraints
 
-- **Min SDK 26** — guard newer APIs with version checks.
+- **Min SDK 31** — Android 12. That is the line where `RenderEffect` works, which is what lets the glass blur for real; AGSL (refraction) would need 33.
 - **Global opt-ins** in `build.gradle` `freeCompilerArgs`: `ExperimentalMaterial3Api`, `ExperimentalFoundationApi`, `ExperimentalAnimationApi` — **do not** add redundant `@OptIn` in files.
 - **DB schema:** no `Migration` objects, ever — this is a single-developer app with no installed users, so a schema change wipes the database. But you **must bump `version`** in `@Database` on every schema change. `fallbackToDestructiveMigration()` only fires when the version moves; leave it unchanged and Room compares a schema hash instead, finds a mismatch and throws *"Room cannot verify the data integrity"* — a crash on launch for anyone holding the older database (verified on an emulator, 2026-09-15). The version is a schema fingerprint here, not a migration count.
 - **`FloorPlan`** ↔ JSON via `kotlinx.serialization` (not Gson, despite Gson being a dependency).

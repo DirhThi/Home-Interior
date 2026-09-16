@@ -48,6 +48,8 @@ fun ProjectContent(
                 GlassPillButton(
                     icon = Icons.Outlined.Add,
                     label = stringResource(R.string.new_room),
+                    // Lifted clear of the floating tab bar, which the Scaffold knows nothing about.
+                    modifier = Modifier.padding(bottom = MainBottomInset),
                     onClick = state::onCreateRoom,
                 )
             }
